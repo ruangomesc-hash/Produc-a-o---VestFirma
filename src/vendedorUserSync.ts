@@ -60,29 +60,17 @@ export function managedUserToVendedor(
   }
 }
 
-function vendedorAindaTemUsuario(v: Vendedor, usersById: Map<string, ManagedUser>, usersByEmail: Map<string, ManagedUser>): boolean {
-  if (!v.userId || v.userId === 'admin-seed') return true
-  if (usersById.has(v.userId)) return true
-  const em = v.email?.trim().toLowerCase()
-  if (em && usersByEmail.has(em)) return true
-  if (isEmailLikeId(v.userId) && usersByEmail.has(v.userId.toLowerCase())) return true
-  return false
-}
-
 /**
  * Mantém vendedores do quadro alinhados aos usuários cadastrados.
- * Só remove linha com userId se o usuário foi excluído em Usuários (admin).
+ * Só adiciona/atualiza — não remove linha do quadro aqui (remoção só quando admin exclui em Usuários).
  */
 export function reconcileBoardVendedoresWithUsers(
   board: BoardState,
   users: ManagedUser[],
 ): BoardState {
-  const usersById = new Map(users.map((u) => [u.id, u]))
   const usersByEmail = new Map(users.map((u) => [u.email.trim().toLowerCase(), u]))
 
-  let vendedores = board.vendedores.filter((v) =>
-    vendedorAindaTemUsuario(v, usersById, usersByEmail),
-  )
+  let vendedores = [...board.vendedores]
 
   for (const user of users) {
     if (user.role !== 'vendedor' && user.role !== 'admin') continue

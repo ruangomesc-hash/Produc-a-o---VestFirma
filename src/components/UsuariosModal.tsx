@@ -87,19 +87,23 @@ export function UsuariosModal({
   const seedUsersRef = useRef(seedUsers)
   seedUsersRef.current = seedUsers
 
+  const notifyUsersLoaded = useCallback((list: ManagedUser[]) => {
+    setUsers(list)
+    onUsersLoadedRef.current?.(list)
+  }, [])
+
   const reload = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const list = await fetchUsersWithTimeout()
-      setUsers(list)
-      onUsersLoadedRef.current?.(list)
+      notifyUsersLoaded(list)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [notifyUsersLoaded])
 
   useEffect(() => {
     if (!open) return

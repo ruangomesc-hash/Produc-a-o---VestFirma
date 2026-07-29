@@ -1,10 +1,12 @@
 import crypto from 'node:crypto'
-import { readJsonStore, writeJsonStore } from './storageAdapter.mjs'
 import { isValidLoginEmail, normalizeLoginEmail } from '../shared/loginEmail.mjs'
+import {
+  loadUsersData,
+  mutateUsersStore,
+  usersStoreFileExists,
+} from './usersPersist.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
-
-const USERS_STORE = 'users.json'
 
 const SEED_ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'ruan.gomesc@gmail.com').toLowerCase().trim()
 const SEED_ADMIN_NAME = process.env.SEED_ADMIN_NAME || 'Administrador'
@@ -28,31 +30,34 @@ function normalizeEmail(email) {
 }
 
 async function loadRaw() {
-  const data = await readJsonStore(USERS_STORE)
-  if (data && Array.isArray(data.users)) return data
-  return { users: [] }
-}
-
-async function saveRaw(data) {
-  await writeJsonStore(USERS_STORE, data)
+  return loadUsersData()
 }
 
 export async function ensureUsersSeeded() {
-  const data = await loadRaw()
-  if (data.users.length > 0) return
+  const exists = await usersStoreFileExists()
+  if (exists) {
+    const data = await loadRaw()
+    if (data.users.length > 0) return
+    console.warn('[vestfirma] users.json existe mas está sem usuários — não recriar admin automaticamente')
+    return
+  }
 
-  let email = SEED_ADMIN_EMAIL
-  let password = SEED_ADMIN_PASSWORD || randomPassword(12)
+  const email = SEED_ADMIN_EMAIL
+  const password = SEED_ADMIN_PASSWORD || randomPassword(12)
 
-  data.users.push({
-    id: crypto.randomBytes(8).toString('hex'),
-    email,
-    name: SEED_ADMIN_NAME,
-    role: 'admin',
-    password,
-    createdAt: new Date().toISOString(),
-  })
-  await saveRaw(data)
+  await mutateUsersStore(
+    () => [
+      {
+        id: crypto.randomBytes(8).toString('hex'),
+        email,
+        name: SEED_ADMIN_NAME,
+        role: 'admin',
+        password,
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    { replace: true },
+  )
 }
 
 export async function listUsers() {
@@ -88,9 +93,6 @@ export async function createUser(email, role, name) {
   const norm = normalizeEmail(email)
   if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
 
-  const data = await loadRaw()
-  if (findUserByEmail(data.users, norm)) throw new Error('Este e-mail já está cadastrado')
-
   const user = {
     id: crypto.randomBytes(8).toString('hex'),
     email: norm,
@@ -99,50 +101,67 @@ export async function createUser(email, role, name) {
     password: randomPassword(12),
     createdAt: new Date().toISOString(),
   }
-  data.users.push(user)
-  await saveRaw(data)
-  return user
+
+  let created = user
+  await mutateUsersStore((users) => {
+    if (findUserByEmail(users, norm)) throw new Error('Este e-mail já está cadastrado')
+    users.push(user)
+    created = user
+    return users
+  })
+
+  return created
 }
 
 export async function updateUser(id, { email, role, name, regeneratePassword }) {
-  const data = await loadRaw()
-  const user = findUserById(data.users, id)
-  if (!user) throw new Error('Usuário não encontrado')
+  let updated = null
+  await mutateUsersStore((users) => {
+    const user = findUserById(users, id)
+    if (!user) throw new Error('Usuário não encontrado')
 
-  if (email != null) {
-    const norm = normalizeEmail(email)
-    if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
-    const other = findUserByEmail(data.users, norm)
-    if (other && other.id !== id) throw new Error('Este e-mail já está cadastrado')
-    user.email = norm
-  }
-  if (role != null) {
-    if (!ROLES.includes(role)) throw new Error('Perfil inválido')
-    if (user.role === 'admin' && role !== 'admin') {
-      throw new Error('Não é possível alterar o perfil do administrador geral')
+    if (email != null) {
+      const norm = normalizeEmail(email)
+      if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
+      const other = findUserByEmail(users, norm)
+      if (other && other.id !== id) throw new Error('Este e-mail já está cadastrado')
+      user.email = norm
     }
-    if (role === 'admin') throw new Error('Só existe um administrador geral')
-    user.role = role
-  }
-  if (name != null && String(name).trim()) user.name = String(name).trim()
-  if (regeneratePassword) user.password = randomPassword(12)
+    if (role != null) {
+      if (!ROLES.includes(role)) throw new Error('Perfil inválido')
+      if (user.role === 'admin' && role !== 'admin') {
+        throw new Error('Não é possível alterar o perfil do administrador geral')
+      }
+      if (role === 'admin') throw new Error('Só existe um administrador geral')
+      user.role = role
+    }
+    if (name != null && String(name).trim()) user.name = String(name).trim()
+    if (regeneratePassword) user.password = randomPassword(12)
 
-  await saveRaw(data)
-  return user
+    updated = user
+    return users
+  })
+
+  if (!updated) throw new Error('Usuário não encontrado')
+  return updated
 }
 
 export async function deleteUser(id, currentUserId, session) {
   if (!session || session.role !== 'admin') {
     throw new Error('Apenas o administrador pode excluir usuários')
   }
-  const data = await loadRaw()
-  const idx = data.users.findIndex((u) => u.id === id)
-  if (idx < 0) throw new Error('Usuário não encontrado')
-  const user = data.users[idx]
-  if (user.role === 'admin') throw new Error('Não é possível excluir o administrador geral')
-  if (id === currentUserId) throw new Error('Você não pode excluir a si mesmo')
-  data.users.splice(idx, 1)
-  await saveRaw(data)
+
+  await mutateUsersStore(
+    (users) => {
+      const idx = users.findIndex((u) => u.id === id)
+      if (idx < 0) throw new Error('Usuário não encontrado')
+      const user = users[idx]
+      if (user.role === 'admin') throw new Error('Não é possível excluir o administrador geral')
+      if (id === currentUserId) throw new Error('Você não pode excluir a si mesmo')
+      users.splice(idx, 1)
+      return users
+    },
+    { replace: true },
+  )
 }
 
 export async function verifyUserPassword(email, password) {

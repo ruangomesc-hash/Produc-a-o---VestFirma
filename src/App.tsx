@@ -195,6 +195,12 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const handleUserCreated = useCallback(
     (user: ManagedUser, contato?: VendedorContatoPatch) => {
       upsertVendedorFromManagedUser(user, contato)
+      setManagedUsers((prev) => {
+        const exists = prev.some((u) => u.id === user.id)
+        if (exists) return prev.map((u) => (u.id === user.id ? user : u))
+        return [...prev, user]
+      })
+      setManagedUsersReady(true)
       void refreshManagedUsers()
     },
     [upsertVendedorFromManagedUser, refreshManagedUsers],
