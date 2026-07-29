@@ -18,6 +18,7 @@
     "preserver": "npm run build",
     "server": "node --env-file=.env server/server.mjs",
     "start:production": "node server/server.mjs",
+    "start:render": "node server/render-start.mjs",
     "server:api": "API_ONLY=1 PORT=8787 node --env-file=.env server/server.mjs",
     "lint": "oxlint"
   },

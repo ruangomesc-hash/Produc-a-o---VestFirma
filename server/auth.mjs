@@ -219,8 +219,8 @@ export async function handleLoginApi(req, res, readBody) {
       error: 'Erro interno ao processar login.',
       message: msg,
       fix: diskHint
-        ? 'Render → Disks: monte /var/data. Environment: BOARD_DATA_DIR=/var/data, BOARD_DATA_FILE=/var/data/board.json. Redeploy.'
-        : 'Render → Logs do serviço. Confira SEED_ADMIN_PASSWORD, REQUIRE_LOGIN=true e Start Command: npm run start:production.',
+        ? 'Render: remova BOARD_DATA_DIR=/var/data do Environment OU anexe disco. Faça redeploy com o código mais recente.'
+        : 'Render → Logs. Confira SEED_ADMIN_PASSWORD e Start: npm run start:production.',
     })
     return true
   }

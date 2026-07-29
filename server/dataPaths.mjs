@@ -5,11 +5,14 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export const ROOT = path.join(__dirname, '..')
 
-/** Pasta gravável escolhida na subida do servidor. */
+/** Pasta gravável escolhida na subida do servidor (nunca confiar só no env). */
 let dataDir = null
 let boardFile = null
 let logoDir = null
 let storageNote = ''
+let initDone = false
+
+const RENDER_APP_DATA = '/opt/render/project/src/data'
 
 async function canWriteDirectory(dir) {
   try {
@@ -36,25 +39,29 @@ function uniquePaths(list) {
   return out
 }
 
+function defaultLocalDataDir() {
+  return path.join(ROOT, 'data')
+}
+
 /**
  * Escolhe onde gravar board/users/logos.
- * /var/data só funciona com disco persistente montado na Render.
+ * Ignora BOARD_DATA_* do painel se a pasta não for gravável (evita EACCES em /var/data).
  */
 export async function initStoragePaths() {
-  if (dataDir) return getBoardPaths()
+  if (initDone && dataDir) return getBoardPaths()
 
   const envDir = process.env.BOARD_DATA_DIR?.trim()
   const envBoard = process.env.BOARD_DATA_FILE?.trim()
   const envLogos = process.env.BOARD_LOGO_DIR?.trim()
-
   const fromEnvFile = envBoard ? path.dirname(path.resolve(envBoard)) : null
 
   const candidates = uniquePaths([
+    process.env.RENDER === 'true' ? RENDER_APP_DATA : null,
     envDir,
     fromEnvFile,
     '/var/data',
-    path.join(ROOT, 'data'),
-    '/opt/render/project/src/data',
+    defaultLocalDataDir(),
+    RENDER_APP_DATA,
   ])
 
   let chosen = null
@@ -66,38 +73,38 @@ export async function initStoragePaths() {
   }
 
   if (!chosen) {
-    throw new Error(
-      'Nenhuma pasta gravável para dados. Na Render: anexe disco em /var/data ou remova BOARD_DATA_DIR=/var/data até montar o disco.',
-    )
+    throw new Error('Nenhuma pasta gravável para dados do VestFirma.')
   }
 
   dataDir = chosen
-  boardFile = envBoard && path.dirname(path.resolve(envBoard)) === chosen
-    ? path.resolve(envBoard)
-    : path.join(chosen, 'board.json')
-  logoDir = envLogos && path.resolve(envLogos).startsWith(chosen)
-    ? path.resolve(envLogos)
-    : path.join(chosen, 'logos')
+  boardFile =
+    envBoard && path.dirname(path.resolve(envBoard)) === chosen
+      ? path.resolve(envBoard)
+      : path.join(chosen, 'board.json')
+  logoDir =
+    envLogos && path.resolve(envLogos).startsWith(chosen)
+      ? path.resolve(envLogos)
+      : path.join(chosen, 'logos')
 
   process.env.BOARD_DATA_DIR = dataDir
   process.env.BOARD_DATA_FILE = boardFile
   process.env.BOARD_LOGO_DIR = logoDir
 
-  const wantedVar = envDir || fromEnvFile
-  if (wantedVar && path.resolve(wantedVar) !== chosen) {
-    storageNote = `Aviso: ${wantedVar} sem permissão — usando ${chosen}. Anexe disco Render em /var/data e redeploy.`
+  const wanted = envDir || fromEnvFile
+  const wantedResolved = wanted ? path.resolve(wanted) : null
+  if (wantedResolved && wantedResolved !== chosen) {
+    storageNote = `Pasta ${wanted} sem permissão; usando ${chosen}.`
     console.warn('[vestfirma]', storageNote)
-  } else if (chosen === '/var/data' || chosen.includes('/var/data')) {
-    storageNote = 'Disco persistente /var/data ativo.'
+  } else if (chosen === RENDER_APP_DATA || chosen.includes('render/project/src/data')) {
+    storageNote = 'Disco/pasta persistente na Render ativa.'
   } else if (process.env.RENDER === 'true') {
-    storageNote =
-      'Dados na pasta do app (ephemeral). Anexe disco Render montado em /var/data para não perder pedidos no redeploy.'
-    console.warn('[vestfirma]', storageNote)
+    storageNote = 'Dados graváveis OK (confira disco persistente no painel Render).'
   } else {
     storageNote = `Dados em ${chosen}`
   }
 
   await fs.mkdir(logoDir, { recursive: true })
+  initDone = true
 
   console.log('[vestfirma] BOARD_DATA_DIR =', dataDir)
   console.log('[vestfirma] BOARD_DATA_FILE =', boardFile)
@@ -106,18 +113,24 @@ export async function initStoragePaths() {
   return getBoardPaths()
 }
 
+/** Sempre usa pasta já validada — nunca /var/data só porque está no env. */
 export function getDataDir() {
-  if (!dataDir) {
-    return process.env.BOARD_DATA_DIR || path.join(ROOT, 'data')
-  }
-  return dataDir
+  if (dataDir) return dataDir
+  return defaultLocalDataDir()
 }
 
 export function getBoardPaths() {
+  const dir = getDataDir()
   return {
-    dataDir: dataDir || getDataDir(),
-    boardFile: boardFile || process.env.BOARD_DATA_FILE || path.join(getDataDir(), 'board.json'),
-    logoDir: logoDir || process.env.BOARD_LOGO_DIR || path.join(getDataDir(), 'logos'),
+    dataDir: dir,
+    boardFile: boardFile || path.join(dir, 'board.json'),
+    logoDir: logoDir || path.join(dir, 'logos'),
     storageNote,
+    storageReady: initDone,
   }
+}
+
+export async function ensureStorageReady() {
+  if (!initDone) await initStoragePaths()
+  return getBoardPaths()
 }

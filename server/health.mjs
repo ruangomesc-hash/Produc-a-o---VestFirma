@@ -41,6 +41,7 @@ export function handleHealthApi(req, res, corsHeaders) {
       adminPasswordConfigured: adminPwdConfigured,
       storageNote: paths.storageNote || undefined,
       onRender: process.env.RENDER === 'true',
+      buildTag: 'storage-fallback-v2',
       whatsappWebhookConfigured: webhook,
       timestamp: new Date().toISOString(),
     }),
