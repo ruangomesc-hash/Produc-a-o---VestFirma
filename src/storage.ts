@@ -8,6 +8,8 @@ import {
   saveRemoteBoard,
   type SaveBoardResult,
 } from './remoteBoard'
+import { requiresLogin, getSessionToken } from './authSession'
+import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -152,12 +154,16 @@ async function saveBoardToIdb(state: BoardState): Promise<void> {
 }
 
 export async function loadBoard(): Promise<BoardState> {
+  await initRuntimeConfig()
   const localRaw = await loadBoardFromIdb()
   const local = localRaw ? normalizeBoard(localRaw) : null
 
   if (!isRemoteSyncEnabled()) {
     return local ?? structuredClone(DEFAULT_BOARD)
   }
+
+  const protectedServer =
+    blockLocalFallbackWhenProtected() || (requiresLogin() && !getSessionToken())
 
   try {
     const remoteRaw = await fetchRemoteBoard()
@@ -168,12 +174,19 @@ export async function loadBoard(): Promise<BoardState> {
     }
 
     if (local && boardHasPedidos(local)) {
+      if (protectedServer) {
+        throw new Error('Login necessário para acessar o quadro')
+      }
       await saveRemoteBoard(local)
       return local
     }
 
     return local ?? structuredClone(DEFAULT_BOARD)
   } catch (err) {
+    if (protectedServer) {
+      console.warn('VestFirma: servidor protegido — não usar cópia local sem login.', err)
+      throw err
+    }
     console.warn('VestFirma: falha ao carregar do servidor, usando cópia local.', err)
     return local ?? structuredClone(DEFAULT_BOARD)
   }

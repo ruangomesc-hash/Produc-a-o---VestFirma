@@ -62,9 +62,32 @@ Há duas formas de hospedar a API:
 
    Campos legados (`admin_user` / `admin_password`) ainda funcionam na migração; o admin principal passa a ser o e-mail em `users.json`.
 
-3. Crie a pasta **`data/`** com permissão de escrita (grava `board.json`, `sessions.json` e **`users.json`**).
+3. Na raiz do site (junto do `index.html`), confira **`vestfirma-config.json`**:
 
-4. **Envie estes arquivos da API** (além do que já tinha). Se faltar algum, login/admin não funciona no ar:
+   ```json
+   {
+     "requireLogin": true,
+     "apiBase": "/api",
+     "version": "2026-07-29-login"
+   }
+   ```
+
+   Se o kanban estiver em subpasta (ex. `/kanban/`), use `"apiBase": "/kanban/api"`. **Dá para corrigir login só editando este JSON no FTP**, sem rebuild.
+
+4. Em **`api/config.php`** (não substitua o arquivo inteiro se já tiver dados):
+
+   ```php
+   'require_login' => true,
+   'seed_admin_email' => 'ruan.gomesc@gmail.com',
+   'users_file' => __DIR__ . '/../data/users.json',
+   'sessions_file' => __DIR__ . '/../data/sessions.json',
+   ```
+
+   Modelo completo: `api/CONFIG-LOGIN-SNIPPET.php`.
+
+5. Teste no navegador: **`https://SEU-DOMINIO/api/health.php`** deve mostrar `"requireLogin": true`. Se for `false`, o `config.php` no servidor ainda não está certo.
+
+6. Envie estes arquivos da API** (além do que já tinha). Se faltar algum, login/admin não funciona no ar:
    - `api/login.php`, `api/logout.php`, `api/session.php`
    - **`api/users.php`**
    - `api/lib/auth.php`, **`api/lib/users.php`**

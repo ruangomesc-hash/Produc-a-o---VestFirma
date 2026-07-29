@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { logout, requiresLogin, fetchSessionProfile } from './authSession'
+import { logout, fetchSessionProfile, ensureAuthConfigReady } from './authSession'
+import { requiresLogin } from './runtimeConfig'
 import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin } from './usersApi'
@@ -20,23 +21,27 @@ import { isPortalFestaPreviewRoute, isPortalPedidoRoute } from './portalPedidoRo
 import { useBoard } from './hooks/useBoard'
 import type { OrderCard } from './types'
 
-type AuthState = 'checking' | 'login' | 'ok'
+type AuthState = 'boot' | 'checking' | 'login' | 'ok'
 
 export default function App() {
-  const [authState, setAuthState] = useState<AuthState>(() =>
-    requiresLogin() ? 'checking' : 'ok',
-  )
+  const [authState, setAuthState] = useState<AuthState>('boot')
   const [session, setSession] = useState<SessionProfile | null>(null)
 
   useEffect(() => {
-    if (!requiresLogin()) return
-
     let cancelled = false
-    fetchSessionProfile().then((profile) => {
-      if (!cancelled) {
+
+    void ensureAuthConfigReady().then(() => {
+      if (cancelled) return
+      if (!requiresLogin()) {
+        setAuthState('ok')
+        return
+      }
+      setAuthState('checking')
+      return fetchSessionProfile().then((profile) => {
+        if (cancelled) return
         setSession(profile)
         setAuthState(profile ? 'ok' : 'login')
-      }
+      })
     })
 
     return () => {
@@ -53,10 +58,10 @@ export default function App() {
     return () => window.removeEventListener('vestfirma:unauthorized', onUnauthorized)
   }, [])
 
-  if (authState === 'checking') {
+  if (authState === 'boot' || authState === 'checking') {
     return (
       <div className="app-loading">
-        <p>Verificando acesso…</p>
+        <p>{authState === 'boot' ? 'Carregando configuração…' : 'Verificando acesso…'}</p>
       </div>
     )
   }

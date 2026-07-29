@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { requiresLogin } from '../authSession'
+import { requiresLogin } from '../runtimeConfig'
 import { colunaParaNovoPedido } from '../defaultBoard'
 import { useBoard } from '../hooks/useBoard'
 import { iniciarSinoVenda, prepararAudioVenda, pararSinoVenda } from '../vendaSino'

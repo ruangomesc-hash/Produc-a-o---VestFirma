@@ -1,21 +1,17 @@
 import type { ManagedUser, SessionProfile, UserRole } from './userRoles'
 import { CREATABLE_ROLES } from './userRoles'
-import { authHeaders, handleAuthResponse } from './authSession'
+import { authHeaders, ensureAuthConfigReady, handleAuthResponse } from './authSession'
+import { getApiBase } from './runtimeConfig'
 
 export { CREATABLE_ROLES }
-
-function apiBase(): string | null {
-  const raw = import.meta.env.VITE_API_BASE?.trim()
-  if (!raw) return null
-  return raw.replace(/\/$/, '')
-}
 
 function apiPath(file: string): string {
   return file.startsWith('/') ? file : `/${file}`
 }
 
 export async function fetchUsers(): Promise<ManagedUser[]> {
-  const base = apiBase()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
   const res = await fetch(`${base}${apiPath('users.php')}`, {
@@ -32,7 +28,8 @@ export async function createManagedUser(input: {
   role: UserRole
   name?: string
 }): Promise<ManagedUser> {
-  const base = apiBase()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
   const res = await fetch(`${base}${apiPath('users.php')}`, {
@@ -53,7 +50,8 @@ export async function updateManagedUser(input: {
   name?: string
   regeneratePassword?: boolean
 }): Promise<ManagedUser> {
-  const base = apiBase()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
   const res = await fetch(`${base}${apiPath('users.php')}`, {
@@ -68,7 +66,8 @@ export async function updateManagedUser(input: {
 }
 
 export async function deleteManagedUser(id: string): Promise<void> {
-  const base = apiBase()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
   const res = await fetch(`${base}${apiPath('users.php')}?id=${encodeURIComponent(id)}`, {

@@ -1,4 +1,4 @@
-import { requiresLogin } from '../authSession'
+import { requiresLogin } from '../runtimeConfig'
 import { portalPedidoHref } from '../portalPedidoRoute'
 import { iniciarSinoVenda, pararSinoVenda } from '../vendaSino'
 import { PortalVendaCelebracao } from './PortalVendaCelebracao'

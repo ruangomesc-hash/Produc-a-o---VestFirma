@@ -5,6 +5,7 @@ import { registrarCriacaoPedido, registrarMudancaEtapa } from '../historicoEtapa
 import { isRemoteSyncEnabled } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
+import { notifyUnauthorized } from '../authSession'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 
@@ -70,6 +71,9 @@ export function useBoard() {
             status: 'saved',
           })
         }
+      })
+      .catch(() => {
+        if (!cancelled) notifyUnauthorized()
       })
       .finally(() => {
         if (!cancelled) {

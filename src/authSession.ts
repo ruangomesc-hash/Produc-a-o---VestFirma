@@ -1,4 +1,9 @@
 import type { SessionProfile } from './userRoles'
+import {
+  getApiBase,
+  initRuntimeConfig,
+  requiresLogin as runtimeRequiresLogin,
+} from './runtimeConfig'
 
 const TOKEN_KEY = 'vestfirma_auth_token'
 
@@ -6,20 +11,16 @@ export type LoginResult =
   | { ok: true; profile: SessionProfile }
   | { ok: false; error: string }
 
-function apiBase(): string | null {
-  const raw = import.meta.env.VITE_API_BASE?.trim()
-  if (!raw) return null
-  return raw.replace(/\/$/, '')
-}
-
 function apiPath(file: string): string {
   return file.startsWith('/') ? file : `/${file}`
 }
 
 export function requiresLogin(): boolean {
-  if (!apiBase()) return false
-  const flag = import.meta.env.VITE_REQUIRE_LOGIN?.trim().toLowerCase()
-  return flag === 'true' || flag === '1'
+  return runtimeRequiresLogin()
+}
+
+export async function ensureAuthConfigReady(): Promise<void> {
+  await initRuntimeConfig()
 }
 
 export function getSessionToken(): string | null {
@@ -61,9 +62,10 @@ function parseProfile(data: {
 }
 
 export async function login(email: string, password: string): Promise<LoginResult> {
-  const base = apiBase()
+  await initRuntimeConfig()
+  const base = getApiBase()
   if (!base) {
-    return { ok: false, error: 'API não configurada' }
+    return { ok: false, error: 'API não configurada (vestfirma-config.json / VITE_API_BASE)' }
   }
 
   const loginId = email.trim()
@@ -99,7 +101,7 @@ export async function login(email: string, password: string): Promise<LoginResul
 }
 
 export async function logout(): Promise<void> {
-  const base = apiBase()
+  const base = getApiBase()
   const token = getSessionToken()
   clearSessionToken()
   if (!base || !token) return
@@ -115,8 +117,9 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchSessionProfile(): Promise<SessionProfile | null> {
+  await initRuntimeConfig()
   if (!requiresLogin()) return null
-  const base = apiBase()
+  const base = getApiBase()
   const token = getSessionToken()
   if (!base || !token) return null
 
