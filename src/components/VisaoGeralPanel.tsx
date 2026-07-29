@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { etapaDevePiscar, resumirPrazosColuna } from '../etapas'
+import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import type { BoardState } from '../types'
 
 type Props = {
@@ -18,12 +19,7 @@ const TEMA_POR_COLUNA: Record<string, string> = {
 }
 
 export function VisaoGeralPanel({ board, tvMode = false, onExitTv }: Props) {
-  const [agora, setAgora] = useState(() => Date.now())
-
-  useEffect(() => {
-    const id = window.setInterval(() => setAgora(Date.now()), 30_000)
-    return () => window.clearInterval(id)
-  }, [])
+  const agora = useRelogioPrazo()
 
   const cardsByColumn = useMemo(() => {
     const map = new Map<string, typeof board.cards>()

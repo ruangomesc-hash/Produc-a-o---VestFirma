@@ -1,21 +1,16 @@
-import { useEffect, useState } from 'react'
-import { calcularEtapaPrazo } from '../etapas'
+import { calcularEtapaPrazo, type EtapaPrazoCardRef } from '../etapas'
+import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 
 type Props = {
   columnId: string
   columnTitle: string
-  etapaDesde: string
+  card: EtapaPrazoCardRef
 }
 
-export function EtapaPrazoBadge({ columnId, columnTitle, etapaDesde }: Props) {
-  const [agora, setAgora] = useState(() => Date.now())
+export function EtapaPrazoBadge({ columnId, columnTitle, card }: Props) {
+  const agora = useRelogioPrazo()
 
-  useEffect(() => {
-    const id = window.setInterval(() => setAgora(Date.now()), 30_000)
-    return () => window.clearInterval(id)
-  }, [])
-
-  const prazo = calcularEtapaPrazo(columnId, columnTitle, etapaDesde, agora)
+  const prazo = calcularEtapaPrazo(columnId, columnTitle, card, agora)
 
   if (prazo.tipo === 'nenhum') return null
 

@@ -61,6 +61,11 @@ function formatRestante(ms: number): string {
   return `${h}h ${m}min restantes`
 }
 
+export type EtapaPrazoUi =
+  | { tipo: 'nenhum' }
+  | { tipo: 'prazo'; atrasado: boolean; texto: string }
+  | { tipo: 'logistica' }
+
 export type EtapaPrazoCardRef = Pick<OrderCard, 'columnId' | 'etapaDesde' | 'historicoEtapa'>
 
 export function calcularEtapaPrazo(
@@ -94,11 +99,6 @@ export function calcularEtapaPrazo(
   }
 }
 
-export type EtapaPrazoUi =
-  | { tipo: 'nenhum' }
-  | { tipo: 'prazo'; atrasado: boolean; texto: string }
-  | { tipo: 'logistica' }
-
 export type ResumoPrazosColuna = {
   temContagemPrazo: boolean
   noPrazo: number
@@ -108,7 +108,7 @@ export type ResumoPrazosColuna = {
 export function resumirPrazosColuna(
   columnId: string,
   columnTitle: string,
-  cards: { etapaDesde: string }[],
+  cards: EtapaPrazoCardRef[],
   agora = Date.now(),
 ): ResumoPrazosColuna {
   if (etapaDevePiscar(columnId, columnTitle) || slaHorasEtapa(columnId, columnTitle) == null) {
@@ -118,7 +118,7 @@ export function resumirPrazosColuna(
   let noPrazo = 0
   let atrasado = 0
   for (const card of cards) {
-    const prazo = calcularEtapaPrazo(columnId, columnTitle, card.etapaDesde, agora)
+    const prazo = calcularEtapaPrazo(columnId, columnTitle, card, agora)
     if (prazo.tipo !== 'prazo') continue
     if (prazo.atrasado) atrasado += 1
     else noPrazo += 1

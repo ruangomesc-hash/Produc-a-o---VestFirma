@@ -158,15 +158,26 @@ function corrigirHistoricoLegado(
 /** Preenche ou corrige histórico de etapas do pedido. */
 export function garantirHistoricoCard(card: OrderCard, board: BoardState): OrderCard {
   if (!card.historicoEtapa?.length) {
-    return { ...card, historicoEtapa: buildHistoricoInicial(card, board) }
+    const withHist = { ...card, historicoEtapa: buildHistoricoInicial(card, board) }
+    const inicio = inicioContagemEtapa(withHist)
+    if (inicio !== withHist.etapaDesde) {
+      return { ...withHist, etapaDesde: inicio }
+    }
+    return withHist
   }
 
   const corrigido = corrigirHistoricoLegado(card.historicoEtapa, card, board)
+  let next = card
   if (corrigido !== card.historicoEtapa) {
-    return { ...card, historicoEtapa: corrigido }
+    next = { ...next, historicoEtapa: corrigido }
   }
 
-  return card
+  const inicio = inicioContagemEtapa(next)
+  if (inicio && inicio !== next.etapaDesde) {
+    return { ...next, etapaDesde: inicio }
+  }
+
+  return next
 }
 
 export function textoHistorico(entry: HistoricoEtapaEntry): string {

@@ -1,7 +1,8 @@
 import { useDroppable } from '@dnd-kit/core'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { COLUNA_NOVO_PEDIDO_ID } from '../defaultBoard'
 import { etapaDevePiscar, resumirPrazosColuna } from '../etapas'
+import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import type { BoardState, Column as ColumnType, OrderCard } from '../types'
 import { ConfirmModal } from './ConfirmModal'
 import { KanbanCard } from './KanbanCard'
@@ -31,12 +32,7 @@ export function KanbanColumn({
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
-  const [agora, setAgora] = useState(() => Date.now())
-
-  useEffect(() => {
-    const id = window.setInterval(() => setAgora(Date.now()), 30_000)
-    return () => window.clearInterval(id)
-  }, [])
+  const agora = useRelogioPrazo()
 
   const handleConfirmDeleteColumn = () => {
     onDeleteColumn(column.id, false)

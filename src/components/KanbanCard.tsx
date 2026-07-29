@@ -82,7 +82,7 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
           <EtapaPrazoBadge
             columnId={card.columnId}
             columnTitle={columnTitle}
-            etapaDesde={card.etapaDesde}
+            card={card}
           />
           {qtdComentarios > 0 ? (
             <span
