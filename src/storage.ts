@@ -10,6 +10,7 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
+import { mergeBoardPreservingPedidos } from './pedidosPolicy'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -78,6 +79,7 @@ function normalizeCard(
     createdAt: raw.createdAt ?? raw.etapaDesde ?? new Date().toISOString(),
     historicoEtapa: raw.historicoEtapa ?? [],
     comentarios: Array.isArray(raw.comentarios) ? raw.comentarios : [],
+    arquivadoEm: raw.arquivadoEm ?? null,
   }
 }
 
@@ -157,17 +159,36 @@ async function saveBoardToIdb(state: BoardState): Promise<void> {
   })
 }
 
+export type SaveBoardOptions = {
+  /** Restauração manual — servidor exige header force. */
+  forceRemote?: boolean
+  /** Não gravar no servidor (ex.: modo demo). */
+  skipRemote?: boolean
+}
+
+export type LoadBoardResult = {
+  board: BoardState
+  /** Pedidos só neste navegador — servidor tem menos (ex.: após bug de sync). */
+  richerLocal?: BoardState
+}
+
 export type LoadBoardOptions = {
   signal?: AbortSignal
 }
 
-export async function loadBoard(options?: LoadBoardOptions): Promise<BoardState> {
+export async function loadBoardFromBrowserCache(): Promise<BoardState | null> {
+  const localRaw = await loadBoardFromIdb()
+  return localRaw ? normalizeBoard(localRaw) : null
+}
+
+export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardResult> {
   await initRuntimeConfig()
   const localRaw = await loadBoardFromIdb()
   const local = localRaw ? normalizeBoard(localRaw) : null
 
   if (!isRemoteSyncEnabled()) {
-    return local ?? structuredClone(DEFAULT_BOARD)
+    const board = local ?? structuredClone(DEFAULT_BOARD)
+    return { board }
   }
 
   const protectedServer =
@@ -177,8 +198,11 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<BoardState>
     const remoteRaw = await fetchRemoteBoard({ signal: options?.signal })
     if (remoteRaw) {
       const remote = normalizeBoard(remoteRaw)
+      if (local && boardHasPedidos(local) && local.cards.length > remote.cards.length) {
+        return { board: remote, richerLocal: local }
+      }
       await saveBoardToIdb(remote)
-      return remote
+      return { board: remote }
     }
 
     if (local && boardHasPedidos(local)) {
@@ -186,22 +210,42 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<BoardState>
         throw new Error('Login necessário para acessar o quadro')
       }
       await saveRemoteBoard(local)
-      return local
+      return { board: local }
     }
 
-    return local ?? structuredClone(DEFAULT_BOARD)
+    const board = local ?? structuredClone(DEFAULT_BOARD)
+    return { board }
   } catch (err) {
     if (protectedServer) {
       console.warn('VestFirma: servidor protegido — não usar cópia local sem login.', err)
       throw err
     }
     console.warn('VestFirma: falha ao carregar do servidor, usando cópia local.', err)
-    return local ?? structuredClone(DEFAULT_BOARD)
+    const board = local ?? structuredClone(DEFAULT_BOARD)
+    return { board }
   }
 }
 
-export async function saveBoard(state: BoardState): Promise<SaveBoardResult> {
-  const normalized = normalizeBoard(state)
+export async function saveBoard(
+  state: BoardState,
+  options?: SaveBoardOptions,
+): Promise<SaveBoardResult> {
+  let normalized = normalizeBoard(state)
+
+  if (normalized.demo && !options?.skipRemote && !options?.forceRemote) {
+    options = { ...options, skipRemote: true }
+  }
+
+  if (isRemoteSyncEnabled() && !options?.skipRemote && !options?.forceRemote) {
+    try {
+      const remoteRaw = await fetchRemoteBoard()
+      if (remoteRaw) {
+        normalized = mergeBoardPreservingPedidos(normalizeBoard(remoteRaw), normalized)
+      }
+    } catch {
+      /* servidor também faz merge */
+    }
+  }
 
   try {
     await saveBoardToIdb(normalized)
@@ -210,12 +254,20 @@ export async function saveBoard(state: BoardState): Promise<SaveBoardResult> {
     return { ok: false, error: message, remote: isRemoteSyncEnabled() }
   }
 
-  if (!isRemoteSyncEnabled()) {
+  if (!isRemoteSyncEnabled() || options?.skipRemote) {
     return { ok: true, remote: false }
   }
 
+  if (!options?.forceRemote && !boardHasPedidos(normalized)) {
+    return {
+      ok: false,
+      error: 'Recusado: não enviar quadro vazio ao servidor (proteção de pedidos).',
+      remote: true,
+    }
+  }
+
   try {
-    await saveRemoteBoard(normalized)
+    await saveRemoteBoard(normalized, { force: options?.forceRemote })
     return { ok: true, remote: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao salvar no servidor'

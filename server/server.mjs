@@ -24,6 +24,12 @@ const { handleNotifyApi } = await import('./notify.mjs')
 const { handleHealthApi } = await import('./health.mjs')
 const { handleUsersApi } = await import('./users.mjs')
 const { externalizeBoardLogos, logoMime, resolveLogoFile } = await import('./boardLogos.mjs')
+const {
+  backupBoardBeforeWrite,
+  countBoardCards,
+  mergeBoardPreservingPedidos,
+  readExistingBoard,
+} = await import('./boardPersist.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -89,9 +95,59 @@ async function handleBoardApi(req, res) {
     const LOGO_DIR = logoDirPath()
     const body = await readBody(req)
     let board = JSON.parse(body)
+    const existing = await readExistingBoard(DATA_FILE)
+    const existingCount = countBoardCards(existing)
+    const incomingCount = countBoardCards(board)
+    const force =
+      String(req.headers['x-vestfirma-force-board'] || req.headers['X-Vestfirma-Force-Board'] || '') ===
+      '1'
+
+    if (board?.demo === true && existingCount > 0) {
+      res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(
+        JSON.stringify({
+          ok: false,
+          code: 'DEMO_BOARD_BLOCKED',
+          error: 'Modo demo não pode substituir pedidos reais no servidor.',
+        }),
+      )
+      return
+    }
+
+    if (!force && existingCount > 0 && incomingCount === 0) {
+      res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(
+        JSON.stringify({
+          ok: false,
+          code: 'BOARD_WIPE_BLOCKED',
+          error: 'Recusado: salvar quadro vazio apagaria pedidos no servidor.',
+          existingCards: existingCount,
+        }),
+      )
+      return
+    }
+
+    board = mergeBoardPreservingPedidos(existing, board)
+    const mergedCount = countBoardCards(board)
+    if (!force && existingCount > 0 && mergedCount < existingCount) {
+      res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(
+        JSON.stringify({
+          ok: false,
+          code: 'BOARD_CARDS_LOST',
+          error: 'Recusado: este save removeria pedidos já gravados.',
+          existingCards: existingCount,
+          mergedCards: mergedCount,
+        }),
+      )
+      return
+    }
+
     if (process.env.EXTERNALIZE_BOARD_LOGOS !== '0') {
       board = await externalizeBoardLogos(board, LOGO_DIR)
     }
+
+    await backupBoardBeforeWrite(DATA_FILE)
     const out = JSON.stringify(board)
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     const tmp = `${DATA_FILE}.tmp`

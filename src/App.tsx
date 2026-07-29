@@ -123,6 +123,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     board,
     ready,
     sync,
+    localRestore,
+    restoreRicherLocalToServer,
+    dismissLocalRestore,
     addColumn,
     removeColumn,
     updateVendedorContato,
@@ -135,7 +138,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     addCard,
     updateCard,
     addPedidoComentario,
-    deleteCard,
+    archiveCard,
     moveCard,
     loadDemo,
     exitDemo,
@@ -380,13 +383,30 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
       {view === 'kanban' ? (
         <div id="panel-kanban" className="app-panel" role="tabpanel" aria-labelledby="tab-meus-pedidos">
+          {localRestore && localRestore.cards.length > board.cards.length ? (
+            <div className="board-restore-banner" role="status">
+              <p>
+                Este navegador guarda <strong>{localRestore.cards.length}</strong> pedido(s), mas o
+                servidor só tem <strong>{board.cards.length}</strong>. Isso pode ter ocorrido durante
+                falhas de login anteriores.
+              </p>
+              <div className="board-restore-actions">
+                <button type="button" className="btn primary" onClick={restoreRicherLocalToServer}>
+                  Restaurar pedidos no servidor
+                </button>
+                <button type="button" className="btn ghost" onClick={dismissLocalRestore}>
+                  Ignorar
+                </button>
+              </div>
+            </div>
+          ) : null}
         <KanbanBoard
           board={board}
           dragEnabled={!modalOpen && !vendedoresOpen && !whatsappNotifyOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
-          onDeleteCard={deleteCard}
+          onArchiveCard={archiveCard}
           onDeleteColumn={removeColumn}
           onAddColumn={addColumn}
         />

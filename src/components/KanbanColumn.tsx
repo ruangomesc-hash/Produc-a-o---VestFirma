@@ -12,7 +12,7 @@ type Props = {
   canDelete: boolean
   onAddCard: () => void
   onEditCard: (card: OrderCard) => void
-  onDeleteCard: (id: string) => void
+  onArchiveCard: (id: string) => void
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
 }
 
@@ -23,7 +23,7 @@ export function KanbanColumn({
   canDelete,
   onAddCard,
   onEditCard,
-  onDeleteCard,
+  onArchiveCard,
   onDeleteColumn,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
@@ -82,10 +82,7 @@ export function KanbanColumn({
                 <div className="column-delete-confirm">
                   <span>Excluir coluna?</span>
                   <button type="button" className="btn-text" onClick={() => handleDeleteColumn(false)}>
-                    Mover cards
-                  </button>
-                  <button type="button" className="btn-text danger" onClick={() => handleDeleteColumn(true)}>
-                    Apagar tudo
+                    Mover pedidos e excluir coluna
                   </button>
                   <button type="button" className="btn-text" onClick={() => setConfirmDelete(false)}>
                     Cancelar
@@ -105,9 +102,13 @@ export function KanbanColumn({
             board={board}
             columnTitle={column.title}
             onEdit={() => onEditCard(card)}
-            onDelete={() => {
-              if (window.confirm(`Excluir pedido ${card.numeroPedido} de ${card.cliente}?`)) {
-                onDeleteCard(card.id)
+            onArchive={() => {
+              if (
+                window.confirm(
+                  `Arquivar pedido ${card.numeroPedido} (${card.cliente})? Ele sai do quadro, mas permanece guardado no sistema.`,
+                )
+              ) {
+                onArchiveCard(card.id)
               }
             }}
           />

@@ -1,0 +1,24 @@
+---
+description: Regra máxima — pedidos do kanban nunca podem ser apagados do quadro
+alwaysApply: true
+---
+
+# Pedidos nunca apagados (VestFirma)
+
+**Prioridade absoluta**, acima de refactors e “limpeza” de código.
+
+## Proibido
+
+- Apagar pedidos do `board.json` / API `/api/board` (quadro vazio, merge que remove cards, demo gravando no servidor, sync que sobrescreve com menos pedidos).
+- Remover cards do array no cliente como “excluir pedido” — usar **arquivamento** (`arquivadoEm`) se precisar tirar do kanban.
+- Desativar backup, merge ou bloqueios de wipe sem pedido **explícito** do usuário citando perda de dados aceita.
+
+## Obrigatório
+
+- Servidor: **merge por id** em todo PUT do quadro; **backup** antes de gravar; recusar quadro vazio se já existiam pedidos.
+- Cliente: antes de PUT remoto, **mesclar** com o quadro do servidor; não enviar quadro vazio; modo demo **não** sobrescreve o servidor de produção.
+- Qualquer feature nova que toque em `cards`, `persist`, `saveBoard`, `loadBoard` ou `handleBoardApi` deve **preservar** todos os pedidos existentes.
+
+## UI
+
+- Não oferecer “apagar pedidos” / “apagar tudo” na coluna. Arquivar = ocultar do kanban, dados mantidos.

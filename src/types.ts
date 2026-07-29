@@ -65,6 +65,8 @@ export interface OrderCard {
   historicoEtapa: HistoricoEtapaEntry[]
   /** Observações compartilhadas (atrasos, alterações, etc.). */
   comentarios: PedidoComentario[]
+  /** Preenchido ao “arquivar” — pedido some do kanban mas permanece no JSON. */
+  arquivadoEm?: string | null
 }
 
 export interface Column {

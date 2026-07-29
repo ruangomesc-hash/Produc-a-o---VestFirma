@@ -50,10 +50,10 @@ type Props = {
   board: BoardState
   columnTitle: string
   onEdit: () => void
-  onDelete: () => void
+  onArchive: () => void
 }
 
-export function KanbanCard({ card, board, columnTitle, onEdit, onDelete }: Props) {
+export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
     data: { type: 'card', columnId: card.columnId },
@@ -171,8 +171,8 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onDelete }: Props
             <button type="button" className="btn-text" onClick={onEdit}>
               Editar
             </button>
-            <button type="button" className="btn-text danger" onClick={onDelete}>
-              Excluir
+            <button type="button" className="btn-text" onClick={onArchive}>
+              Arquivar
             </button>
           </div>
         </>

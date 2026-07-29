@@ -57,16 +57,26 @@ export async function fetchRemoteBoard(
   return JSON.parse(text) as BoardState
 }
 
-export async function saveRemoteBoard(state: BoardState): Promise<void> {
+export type RemoteBoardSaveOptions = {
+  force?: boolean
+}
+
+export async function saveRemoteBoard(
+  state: BoardState,
+  options?: RemoteBoardSaveOptions,
+): Promise<void> {
   const base = getApiBase()
   if (!base) return
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...authHeaders(),
+  }
+  if (options?.force) headers['X-Vestfirma-Force-Board'] = '1'
+
   const res = await fetch(`${base}${boardEndpoint()}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
+    headers,
     body: JSON.stringify(state),
   })
 

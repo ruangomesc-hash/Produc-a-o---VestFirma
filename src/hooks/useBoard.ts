@@ -63,6 +63,7 @@ export function useBoard() {
     remote: isRemoteSyncEnabled(),
     status: 'idle',
   }))
+  const [localRestore, setLocalRestore] = useState<BoardState | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -76,9 +77,10 @@ export function useBoard() {
         }, 2500)
 
     loadBoard({ signal: abort.signal })
-      .then((data) => {
+      .then((result) => {
         if (!cancelled) {
-          setBoard(data)
+          setBoard(result.board)
+          setLocalRestore(result.richerLocal ?? null)
           setSync({
             remote,
             status: 'saved',
@@ -110,12 +112,16 @@ export function useBoard() {
     }
   }, [])
 
-  const persist = useCallback((next: BoardState) => {
+  const persist = useCallback(
+    (next: BoardState, opts?: { forceRemote?: boolean; skipRemote?: boolean }) => {
     setBoard(next)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       setSync((s) => ({ ...s, status: 'saving' }))
-      void saveBoard(next).then((result) => {
+      void saveBoard(next, {
+        forceRemote: opts?.forceRemote,
+        skipRemote: opts?.skipRemote,
+      }).then((result) => {
         if (result.ok) {
           setSync({ remote: result.remote, status: 'saved' })
         } else {
@@ -127,7 +133,9 @@ export function useBoard() {
         }
       })
     }, 400)
-  }, [])
+    },
+    [],
+  )
 
   const addColumn = useCallback(
     (title: string) => {
@@ -142,26 +150,21 @@ export function useBoard() {
   )
 
   const removeColumn = useCallback(
-    (columnId: string, deleteCards: boolean) => {
+    (columnId: string, _deleteCards: boolean) => {
       if (board.columns.length <= 1) return
       const rest = board.columns.filter((c) => c.id !== columnId)
-      let cards = board.cards
-      if (deleteCards) {
-        cards = cards.filter((c) => c.columnId !== columnId)
-      } else {
-        const fallback = rest[0]?.id
-        if (!fallback) return
-        cards = cards.map((c) => {
-          if (c.columnId !== columnId) return c
-          const now = new Date().toISOString()
-          return {
-            ...c,
-            columnId: fallback,
-            etapaDesde: now,
-            historicoEtapa: registrarMudancaEtapa(c, board, fallback, now),
-          }
-        })
-      }
+      const fallback = rest[0]?.id
+      if (!fallback) return
+      const cards = board.cards.map((c) => {
+        if (c.columnId !== columnId) return c
+        const now = new Date().toISOString()
+        return {
+          ...c,
+          columnId: fallback,
+          etapaDesde: now,
+          historicoEtapa: registrarMudancaEtapa(c, board, fallback, now),
+        }
+      })
       persist({ ...board, columns: rest, cards })
     },
     [board, persist],
@@ -352,11 +355,14 @@ export function useBoard() {
     [board, persist],
   )
 
-  const deleteCard = useCallback(
+  const archiveCard = useCallback(
     (cardId: string) => {
+      const now = new Date().toISOString()
       persist({
         ...board,
-        cards: board.cards.filter((c) => c.id !== cardId),
+        cards: board.cards.map((c) =>
+          c.id === cardId ? { ...c, arquivadoEm: now } : c,
+        ),
       })
     },
     [board, persist],
@@ -385,11 +391,26 @@ export function useBoard() {
     [board, persist],
   )
 
+  const restoreRicherLocalToServer = useCallback(() => {
+    if (!localRestore?.cards.length) return
+    const merged = normalizeBoard({
+      ...localRestore,
+      demo: false,
+      vendedores: localRestore.vendedores.length
+        ? localRestore.vendedores
+        : board.vendedores,
+    })
+    setLocalRestore(null)
+    persist(merged, { forceRemote: true })
+  }, [localRestore, board.vendedores, persist])
+
+  const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
+
   const loadDemo = useCallback(() => {
     if (!board.demo) {
       savePreDemoBoard(board)
     }
-    persist(createDemoBoard())
+    persist(createDemoBoard(), { skipRemote: true })
   }, [board, persist])
 
   const exitDemo = useCallback(() => {
@@ -406,6 +427,9 @@ export function useBoard() {
     board,
     ready,
     sync,
+    localRestore,
+    restoreRicherLocalToServer,
+    dismissLocalRestore,
     addColumn,
     removeColumn,
     addVendedor,
@@ -419,7 +443,7 @@ export function useBoard() {
     addCard,
     updateCard,
     addPedidoComentario,
-    deleteCard,
+    archiveCard,
     moveCard,
     loadDemo,
     exitDemo,

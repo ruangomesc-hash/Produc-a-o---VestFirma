@@ -9,6 +9,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
+import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState, OrderCard } from '../types'
 import { KanbanColumn } from './KanbanColumn'
 
@@ -17,7 +18,7 @@ type Props = {
   onMoveCard: (cardId: string, columnId: string) => void
   onAddCard: (columnId: string) => void
   onEditCard: (card: OrderCard) => void
-  onDeleteCard: (id: string) => void
+  onArchiveCard: (id: string) => void
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
   onAddColumn: (title: string) => void
   dragEnabled?: boolean
@@ -28,7 +29,7 @@ export function KanbanBoard({
   onMoveCard,
   onAddCard,
   onEditCard,
-  onDeleteCard,
+  onArchiveCard,
   onDeleteColumn,
   onAddColumn,
   dragEnabled = true,
@@ -51,6 +52,7 @@ export function KanbanBoard({
     for (const col of board.columns) map.set(col.id, [])
     const fallback = board.columns[0]?.id
     for (const card of board.cards) {
+      if (!pedidoVisivelNoKanban(card)) continue
       const columnId = map.has(card.columnId) ? card.columnId : fallback
       if (!columnId) continue
       map.get(columnId)!.push(
@@ -105,7 +107,7 @@ export function KanbanBoard({
               canDelete={board.columns.length > 1}
               onAddCard={() => onAddCard(column.id)}
               onEditCard={onEditCard}
-              onDeleteCard={onDeleteCard}
+              onArchiveCard={onArchiveCard}
               onDeleteColumn={onDeleteColumn}
             />
           ))}
