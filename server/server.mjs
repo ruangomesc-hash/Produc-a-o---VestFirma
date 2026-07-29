@@ -31,6 +31,7 @@ const {
   mergeBoardPreservingPedidos,
   readExistingBoard,
   readBoardWithRecovery,
+  preserveArquivadoEmUnlessAdmin,
 } = await import('./boardPersist.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -167,6 +168,7 @@ async function handleBoardApi(req, res) {
     }
 
     board = mergeBoardPreservingPedidos(existing, board, removeArchivedIds)
+    board = preserveArquivadoEmUnlessAdmin(existing, board, session)
     const mergedCount = countBoardCards(board)
     if (!force && existingCount > 0 && mergedCount < existingCount) {
       const removed = existingCount - mergedCount
@@ -326,6 +328,12 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/board' || url.pathname === '/api/board.php') {
       await handleBoardApi(req, res)
+      return
+    }
+
+    if (url.pathname === '/api/board/backups' || url.pathname === '/api/board/backups.php') {
+      const { handleBoardBackupsApi } = await import('./boardBackups.mjs')
+      await handleBoardBackupsApi(req, res, readBody, requireSession, corsHeaders, getBoardPaths())
       return
     }
 

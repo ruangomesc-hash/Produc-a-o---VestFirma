@@ -74,6 +74,23 @@ export function mergeBoardPreservingPedidos(existing, incoming, removeCardIds = 
   }
 }
 
+/** Só inclui pedidos que faltam em `primary` — ideal para restaurar backup. */
+export function mergeBoardAddingMissingPedidosOnly(existing, incoming) {
+  if (!incoming?.cards?.length) return existing
+  const primary = existing ?? { cards: [], columns: incoming.columns, vendedores: [], segmentos: [] }
+  const byId = new Map((primary.cards ?? []).map((c) => [c.id, c]))
+  let added = 0
+  for (const c of incoming.cards) {
+    if (c?.id && !byId.has(c.id)) {
+      byId.set(c.id, c)
+      added++
+    }
+  }
+  if (added === 0) return primary
+  const shell = mergeBoardShell(primary, incoming)
+  return { ...primary, ...shell, cards: [...byId.values()] }
+}
+
 export async function backupBoardBeforeWrite(DATA_FILE) {
   const existing = await readExistingBoard(DATA_FILE)
   if (!existing?.cards?.length) return
@@ -102,6 +119,24 @@ export async function backupBoardBeforeWrite(DATA_FILE) {
 
 export function countBoardCards(board) {
   return Array.isArray(board?.cards) ? board.cards.length : 0
+}
+
+/** Só administrador pode arquivar ou desarquivar no servidor. */
+export function preserveArquivadoEmUnlessAdmin(existing, board, session) {
+  if (!existing?.cards?.length || session?.role === 'admin') return board
+  const prevById = new Map(
+    existing.cards.filter((c) => c?.id).map((c) => [c.id, c.arquivadoEm ?? null]),
+  )
+  let changed = false
+  const cards = (board.cards ?? []).map((c) => {
+    if (!c?.id || !prevById.has(c.id)) return c
+    const prevArq = prevById.get(c.id)
+    const nextArq = c.arquivadoEm ?? null
+    if (prevArq === nextArq) return c
+    changed = true
+    return { ...c, arquivadoEm: prevArq }
+  })
+  return changed ? { ...board, cards } : board
 }
 
 /** Se board.json ficou vazio por bug, tenta .bak e backups/ antes de responder. */

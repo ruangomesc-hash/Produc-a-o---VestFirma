@@ -14,6 +14,7 @@ import {
   snapshotBoardPedidos,
   loadBoardPedidosSnapshot,
   contagemPedidosNoSnapshot,
+  removeCardFromPedidosSnapshot,
 } from '../boardPedidosSnapshot'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
@@ -510,24 +511,56 @@ export function useBoard() {
   )
 
   const permanentlyDeleteArchivedCard = useCallback(
-    (cardId: string) => {
-      if (getAuditActor()?.role !== 'admin') return
-      const alvo = board.cards.find((c) => c.id === cardId)
-      if (!alvo?.arquivadoEm) return
-      persist(
-        {
-          ...board,
-          cards: board.cards.filter((c) => c.id !== cardId),
-        },
-        { immediate: true, permanentlyRemoveArchivedCardIds: [cardId] },
+    async (cardId: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+      if (getAuditActor()?.role !== 'admin') {
+        return { ok: false, error: 'Só o administrador pode apagar pedidos arquivados.' }
+      }
+      const current = boardRef.current
+      const alvo = current.cards.find((c) => c.id === cardId)
+      if (!alvo?.arquivadoEm) {
+        return { ok: false, error: 'Pedido não está arquivado ou já foi removido.' }
+      }
+      const removeIds = [cardId]
+      const next = mergeBoardPreservingPedidos(
+        current,
+        { ...current, cards: current.cards.filter((c) => c.id !== cardId) },
+        removeIds,
       )
-      recordAudit({
-        action: 'pedido.excluido',
-        summary: `Apagou definitivamente o pedido arquivado ${alvo.numeroPedido} — ${alvo.cliente}`,
-        meta: { cardId, numeroPedido: alvo.numeroPedido },
+      setBoard(next)
+      setSync((s) => ({ ...s, status: 'saving' }))
+      const result = await saveBoard(next, {
+        permanentlyRemoveArchivedCardIds: removeIds,
       })
+      if (result.ok) {
+        snapshotBoardPedidos(next)
+        removeCardFromPedidosSnapshot(cardId)
+        setSync({ remote: result.remote, status: 'saved' })
+        recordAudit({
+          action: 'pedido.excluido',
+          summary: `Apagou definitivamente o pedido arquivado ${alvo.numeroPedido} — ${alvo.cliente}`,
+          meta: { cardId, numeroPedido: alvo.numeroPedido },
+        })
+        return { ok: true }
+      }
+      try {
+        const reloaded = await loadBoard()
+        setBoard(
+          relinkOrphanVendedorIdsConservative(
+            unifyVendedorRowsAndRelinkCards(
+              mergeBoardPreservingPedidos(boardRef.current, reloaded.board),
+            ),
+          ),
+        )
+      } catch {
+        setBoard(current)
+      }
+      const message =
+        result.error ||
+        'Não foi possível apagar no servidor. Confira se o deploy do Node está atualizado (exclusão de arquivados).'
+      setSync({ remote: result.remote, status: 'error', message })
+      return { ok: false, error: message }
     },
-    [board, persist],
+    [],
   )
 
   const moveCard = useCallback(

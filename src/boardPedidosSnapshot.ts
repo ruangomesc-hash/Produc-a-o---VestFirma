@@ -26,3 +26,23 @@ export function contagemPedidosNoSnapshot(): number {
   const snap = loadBoardPedidosSnapshot()
   return snap ? contagemPedidos(snap) : 0
 }
+
+/** Remove um pedido do snapshot local (após exclusão definitiva no servidor). */
+export function removeCardFromPedidosSnapshot(cardId: string): void {
+  const snap = loadBoardPedidosSnapshot()
+  if (!snap?.cards?.length) return
+  const next = { ...snap, cards: snap.cards.filter((c) => c.id !== cardId) }
+  if (contagemPedidos(next) === 0) {
+    try {
+      localStorage.removeItem(SNAPSHOT_LS_KEY)
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  try {
+    localStorage.setItem(SNAPSHOT_LS_KEY, JSON.stringify(next))
+  } catch {
+    /* quota */
+  }
+}

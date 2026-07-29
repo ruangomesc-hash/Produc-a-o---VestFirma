@@ -2,20 +2,35 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { analyzeBoardCheckup } from '../boardCheckup'
 import { contagemPedidosNoSnapshot } from '../boardPedidosSnapshot'
 import { contagemPedidos } from '../pedidosPolicy'
-import { fetchRemoteBoard, isRemoteSyncEnabled } from '../remoteBoard'
+import {
+  fetchBoardBackups,
+  isRemoteSyncEnabled,
+  restoreBoardFromBackup,
+  type BoardBackupSummary,
+} from '../boardRestoreApi'
+import { recordAudit } from '../auditLog'
 import { fetchAuditLog, type AuditEntry } from '../auditLog'
+import { fetchRemoteBoard } from '../remoteBoard'
 import type { BoardState } from '../types'
 
 type Props = {
   board: BoardState
+  onBoardRestored?: () => void
 }
 
-export function PedidosCheckupPanel({ board }: Props) {
+export function PedidosCheckupPanel({ board, onBoardRestored }: Props) {
   const report = useMemo(() => analyzeBoardCheckup(board), [board])
   const [remoteTotal, setRemoteTotal] = useState<number | null>(null)
   const [remoteError, setRemoteError] = useState<string | null>(null)
   const [loadingRemote, setLoadingRemote] = useState(false)
   const [exclusoes, setExclusoes] = useState<AuditEntry[]>([])
+  const [backupQuery, setBackupQuery] = useState('junior')
+  const [backups, setBackups] = useState<BoardBackupSummary[]>([])
+  const [backupsCurrent, setBackupsCurrent] = useState<number | null>(null)
+  const [backupsLoading, setBackupsLoading] = useState(false)
+  const [backupsError, setBackupsError] = useState<string | null>(null)
+  const [restoreBusy, setRestoreBusy] = useState(false)
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
 
   const snapshotTotal = contagemPedidosNoSnapshot()
 
@@ -52,6 +67,57 @@ export function PedidosCheckupPanel({ board }: Props) {
       cancelled = true
     }
   }, [board.cards.length])
+
+  const loadBackups = useCallback(async () => {
+    if (!isRemoteSyncEnabled()) {
+      setBackupsError('API desligada — backups só no servidor Node.')
+      return
+    }
+    setBackupsLoading(true)
+    setBackupsError(null)
+    setRestoreMessage(null)
+    try {
+      const data = await fetchBoardBackups(backupQuery.trim() || undefined)
+      setBackupsCurrent(data.currentCards)
+      setBackups(data.backups)
+    } catch (err) {
+      setBackups([])
+      setBackupsError(err instanceof Error ? err.message : 'Falha ao listar backups')
+    } finally {
+      setBackupsLoading(false)
+    }
+  }, [backupQuery])
+
+  useEffect(() => {
+    void loadBackups()
+  }, [loadBackups])
+
+  const runRestore = useCallback(
+    async (opts: { autoBest?: boolean; backup?: string }) => {
+      setRestoreBusy(true)
+      setRestoreMessage(null)
+      setBackupsError(null)
+      try {
+        const q = backupQuery.trim() || undefined
+        const result = await restoreBoardFromBackup({ ...opts, q })
+        setRestoreMessage(result.message)
+        if (result.added > 0) {
+          recordAudit({
+            action: 'quadro.restaurado',
+            summary: `Restaurou ${result.added} pedido(s) do backup do servidor${result.backupUsed ? ` (${result.backupUsed})` : ''}${q ? ` — busca “${q}”` : ''}`,
+          })
+          onBoardRestored?.()
+          void refreshRemote()
+          void loadBackups()
+        }
+      } catch (err) {
+        setBackupsError(err instanceof Error ? err.message : 'Falha ao restaurar')
+      } finally {
+        setRestoreBusy(false)
+      }
+    },
+    [backupQuery, loadBackups, onBoardRestored, refreshRemote],
+  )
 
   const localTotal = report.total
   const diff =
@@ -170,6 +236,102 @@ export function PedidosCheckupPanel({ board }: Props) {
           </tbody>
         </table>
       ) : null}
+
+      <div className="pedidos-checkup-restore">
+        <h3 className="pedidos-checkup-subtitle">Restaurar do backup do servidor</h3>
+        <p className="pedidos-checkup-hint">
+          Antes de cada gravação o Render guarda cópias em <code>data/backups/</code>. Aqui você
+          traz de volta só pedidos que <strong>faltam</strong> no quadro atual (não apaga nada).
+        </p>
+        <div className="pedidos-checkup-restore-toolbar">
+          <label className="pedidos-checkup-search">
+            <span>Buscar pedido / vendedor</span>
+            <input
+              type="search"
+              value={backupQuery}
+              onChange={(e) => setBackupQuery(e.target.value)}
+              placeholder="ex.: junior, número do pedido, cliente"
+            />
+          </label>
+          <button
+            type="button"
+            className="btn ghost small"
+            onClick={() => void loadBackups()}
+            disabled={backupsLoading}
+          >
+            {backupsLoading ? 'Buscando…' : 'Buscar nos backups'}
+          </button>
+          <button
+            type="button"
+            className="btn primary small"
+            disabled={restoreBusy || backupsLoading}
+            onClick={() => void runRestore({ autoBest: true })}
+          >
+            {restoreBusy ? 'Restaurando…' : 'Restaurar pedidos ausentes (melhor backup)'}
+          </button>
+        </div>
+        {backupsError ? (
+          <p className="pedidos-checkup-alert danger-text" role="alert">
+            {backupsError}
+          </p>
+        ) : null}
+        {restoreMessage ? (
+          <p className="pedidos-checkup-ok" role="status">
+            {restoreMessage}
+          </p>
+        ) : null}
+        {backupsCurrent !== null ? (
+          <p className="pedidos-checkup-meta">
+            Servidor agora: <strong>{backupsCurrent}</strong> pedido(s) no JSON ·{' '}
+            {backups.length} backup(s) listado(s)
+            {backupQuery.trim() ? ` (filtro “${backupQuery.trim()}”)` : ''}
+          </p>
+        ) : null}
+        {backups.length > 0 ? (
+          <ul className="pedidos-checkup-backups">
+            {backups.map((b) => (
+              <li key={b.file} className="pedidos-checkup-backup-item">
+                <div className="pedidos-checkup-backup-main">
+                  <strong>{b.label}</strong>
+                  <span className="pedidos-checkup-meta">
+                    {b.totalCards} no arquivo ·{' '}
+                    {backupQuery.trim()
+                      ? `${b.missingMatchingQuery} ausente(s) com filtro`
+                      : `${b.missingCount} ausente(s)`}
+                  </span>
+                  {b.preview.length > 0 ? (
+                    <ul className="pedidos-checkup-backup-preview">
+                      {b.preview.map((p) => (
+                        <li key={p.id}>
+                          {p.numeroPedido} — {p.cliente}
+                          {p.vendedor ? ` (${p.vendedor})` : ''}
+                          {p.arquivado ? ' · arquivado' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+                {(backupQuery.trim() ? b.missingMatchingQuery : b.missingCount) > 0 ? (
+                  <button
+                    type="button"
+                    className="btn ghost small"
+                    disabled={restoreBusy}
+                    onClick={() => void runRestore({ backup: b.file })}
+                  >
+                    Trazer deste backup
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : !backupsLoading && isRemoteSyncEnabled() && !backupsError ? (
+          <p className="pedidos-checkup-meta">
+            Nenhum backup com pedidos ausentes
+            {backupQuery.trim() ? ` para “${backupQuery.trim()}”` : ''}. Tente outro termo ou
+            confira Pedidos arquivados abaixo.
+          </p>
+        ) : null}
+      </div>
 
       {exclusoes.length > 0 ? (
         <div className="pedidos-checkup-exclusoes">

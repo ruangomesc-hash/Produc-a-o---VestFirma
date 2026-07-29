@@ -91,6 +91,18 @@ export async function saveRemoteBoard(
 
   if (!res.ok) {
     const msg = await res.text().catch(() => '')
+    try {
+      const j = JSON.parse(msg) as { error?: string; code?: string }
+      if (j.code === 'BOARD_CARDS_LOST') {
+        throw new Error(
+          j.error ||
+            'Servidor recusou apagar (deploy antigo?). Atualize o serviço Node na Render e tente de novo.',
+        )
+      }
+      if (j.error) throw new Error(j.error)
+    } catch (e) {
+      if (e instanceof Error && e.message !== msg) throw e
+    }
     throw new Error(msg || `Falha ao salvar (${res.status})`)
   }
 }

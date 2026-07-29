@@ -634,6 +634,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             showArchived={isAdmin(session)}
             onRestoreArchived={restoreArchivedCard}
             onDeleteArchived={permanentlyDeleteArchivedCard}
+            onBoardRestored={() => void refreshBoardFromServer()}
           />
         </div>
       )}

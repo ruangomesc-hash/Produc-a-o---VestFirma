@@ -6,11 +6,13 @@ import { ConfirmModal } from './ConfirmModal'
 type Props = {
   board: BoardState
   onRestore: (cardId: string) => void
-  onDelete?: (cardId: string) => void
+  onDelete?: (cardId: string) => Promise<{ ok: true } | { ok: false; error: string }>
 }
 
 export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
   const [deleteConfirm, setDeleteConfirm] = useState<OrderCard | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const arquivados = useMemo(() => {
     return board.cards
@@ -38,15 +40,22 @@ export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
         <h2 id="pedidos-arquivados-title" className="pedidos-arquivados-title">
           Pedidos arquivados ({arquivados.length})
         </h2>
-        <p className="pedidos-arquivados-hint">
-          Ocultos do kanban, mas intactos no sistema. Restaure para voltar à etapa{' '}
-          <strong>em que estavam</strong> (não mudam de coluna ao arquivar).{' '}
-          {onDelete ? (
-            <>
-              <strong>Apagar</strong> remove o pedido de forma permanente (só administrador).
-            </>
-          ) : null}
+      <p className="pedidos-arquivados-hint">
+        Ocultos do kanban, mas intactos no sistema. Restaure para voltar à etapa{' '}
+        <strong>em que estavam</strong> (não mudam de coluna ao arquivar). Só{' '}
+        <strong>administrador</strong> arquiva ou apaga definitivamente — vendedor não tem essa ação.
+        {onDelete ? (
+          <>
+            {' '}
+            <strong>Apagar</strong> remove o pedido de forma permanente.
+          </>
+        ) : null}
+      </p>
+      {deleteError ? (
+        <p className="pedidos-arquivados-error" role="alert">
+          {deleteError}
         </p>
+      ) : null}
         <ul className="pedidos-arquivados-list">
           {arquivados.map((c) => (
             <PedidoArquivadoRow
@@ -68,13 +77,24 @@ export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
             ? `O pedido ${deleteConfirm.numeroPedido} (${deleteConfirm.cliente}) será removido do servidor. Esta ação não pode ser desfeita — diferente de arquivar, os dados deixam de existir no sistema.`
             : ''
         }
-        confirmLabel="Sim, apagar definitivamente"
+        confirmLabel={deleteBusy ? 'Apagando…' : 'Sim, apagar definitivamente'}
         cancelLabel="Cancelar"
         destructive
-        onCancel={() => setDeleteConfirm(null)}
+        onCancel={() => {
+          if (!deleteBusy) setDeleteConfirm(null)
+        }}
         onConfirm={() => {
-          if (deleteConfirm && onDelete) onDelete(deleteConfirm.id)
-          setDeleteConfirm(null)
+          if (!deleteConfirm || !onDelete || deleteBusy) return
+          setDeleteBusy(true)
+          setDeleteError(null)
+          void onDelete(deleteConfirm.id).then((result) => {
+            setDeleteBusy(false)
+            if (result.ok) {
+              setDeleteConfirm(null)
+            } else {
+              setDeleteError(result.error)
+            }
+          })
         }}
       />
     </>

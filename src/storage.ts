@@ -358,7 +358,7 @@ export async function saveBoard(
     boardHasPedidos(idbUsable) &&
     !boardHasPedidos(normalized)
   ) {
-    normalized = mergeBoardPreservingPedidos(normalized, idbUsable)
+    normalized = mergeBoardPreservingPedidos(normalized, idbUsable, removeIds)
   }
 
   try {

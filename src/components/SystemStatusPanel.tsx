@@ -9,7 +9,10 @@ type Props = {
   board: BoardState
   showArchived?: boolean
   onRestoreArchived?: (cardId: string) => void
-  onDeleteArchived?: (cardId: string) => void
+  onDeleteArchived?: (
+    cardId: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>
+  onBoardRestored?: () => void
 }
 
 function statusLabel(status: HealthCheck['status']) {
@@ -30,6 +33,7 @@ export function SystemStatusPanel({
   showArchived = false,
   onRestoreArchived,
   onDeleteArchived,
+  onBoardRestored,
 }: Props) {
   const [checks, setChecks] = useState<HealthCheck[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -94,7 +98,7 @@ export function SystemStatusPanel({
 
         <BoardStorageMeter board={board} />
 
-        {showArchived ? <PedidosCheckupPanel board={board} /> : null}
+        {showArchived ? <PedidosCheckupPanel board={board} onBoardRestored={onBoardRestored} /> : null}
 
         {showArchived && onRestoreArchived ? (
           <PedidosArquivadosPanel
