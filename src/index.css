@@ -1534,6 +1534,20 @@ textarea {
   font-weight: 500;
 }
 
+.card-historico-autor {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--vestfirma-gold);
+  font-size: 0.67rem;
+  font-weight: 600;
+}
+
+.card-historico-autor--legado {
+  color: var(--muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
 .card-historico-data {
   display: block;
   margin-top: 0.1rem;

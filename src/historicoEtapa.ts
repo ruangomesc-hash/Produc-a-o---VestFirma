@@ -1,5 +1,28 @@
 import { COLUNA_NOVO_PEDIDO_ID } from './defaultBoard'
 import type { BoardState, HistoricoEtapaEntry, OrderCard } from './types'
+import { USER_ROLE_LABELS, type UserRole } from './userRoles'
+import { getAuditActor } from './auditContext'
+
+function autorHistoricoAtual(): Pick<
+  HistoricoEtapaEntry,
+  'autorNome' | 'autorEmail' | 'autorRole'
+> {
+  const actor = getAuditActor()
+  if (!actor) return {}
+  return {
+    autorNome: actor.user,
+    autorEmail: actor.email,
+    autorRole: actor.role,
+  }
+}
+
+export function rotuloAutorHistorico(entry: HistoricoEtapaEntry): string | null {
+  const role = entry.autorRole ? USER_ROLE_LABELS[entry.autorRole as UserRole] : null
+  if (entry.autorNome && role) return `${entry.autorNome} · ${role}`
+  if (entry.autorNome) return entry.autorNome
+  if (entry.autorEmail) return entry.autorEmail
+  return null
+}
 
 /** Quando o pedido entrou na coluna atual (histórico ou etapaDesde). */
 export function inicioContagemEtapa(
@@ -48,6 +71,7 @@ export function criarEntradaHistorico(
     columnTitle: tituloColuna(board, columnId),
     at,
     ...extra,
+    ...autorHistoricoAtual(),
   }
 }
 

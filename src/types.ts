@@ -13,6 +13,10 @@ export interface HistoricoEtapaEntry {
   at: string
   fromColumnId?: string
   fromColumnTitle?: string
+  /** Quem moveu o pedido nesta etapa (a partir do login). */
+  autorNome?: string
+  autorEmail?: string
+  autorRole?: UserRole
 }
 
 export interface PedidoComentario {
