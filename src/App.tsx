@@ -550,14 +550,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onUpdateContato={updateVendedorContato}
         onRemove={removeVendedor}
         canManageUsers={isAdmin(session)}
-        onOpenUsuarios={
-          isAdmin(session)
-            ? () => {
-                setVendedoresOpen(false)
-                setUsuariosOpen(true)
-              }
-            : undefined
-        }
+        onUserCreated={upsertVendedorFromManagedUser}
+        onUsersLoaded={syncVendedoresFromManagedUsers}
       />
 
       <WhatsAppNotifyModal

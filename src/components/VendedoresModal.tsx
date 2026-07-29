@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { fetchUsers } from '../usersApi'
+import type { ManagedUser } from '../userRoles'
+import type { VendedorContatoPatch } from '../vendedorUserSync'
 import { AlertModal } from './AlertModal'
+import { NovoUsuarioForm } from './NovoUsuarioForm'
 
 type VendedorRow = {
   id: string
@@ -19,8 +23,9 @@ type Props = {
     patch: { whatsapp?: string; grupoWhatsapp?: string },
   ) => void
   onRemove: (id: string) => void
-  onOpenUsuarios?: () => void
   canManageUsers?: boolean
+  onUserCreated?: (user: ManagedUser, contato?: VendedorContatoPatch) => void
+  onUsersLoaded?: (users: ManagedUser[]) => void
 }
 
 export function VendedoresModal({
@@ -29,10 +34,32 @@ export function VendedoresModal({
   onClose,
   onUpdateContato,
   onRemove,
-  onOpenUsuarios,
   canManageUsers = false,
+  onUserCreated,
+  onUsersLoaded,
 }: Props) {
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const reloadUsers = useCallback(async () => {
+    if (!canManageUsers || !onUsersLoaded) return
+    try {
+      const list = await fetchUsers()
+      onUsersLoaded(list)
+    } catch {
+      /* lista do quadro ainda funciona */
+    }
+  }, [canManageUsers, onUsersLoaded])
+
+  useEffect(() => {
+    if (!open) return
+    void reloadUsers()
+  }, [open, reloadUsers])
+
+  const handleCreated = (user: ManagedUser, contato?: VendedorContatoPatch) => {
+    onUserCreated?.(user, contato)
+    void reloadUsers()
+  }
 
   if (!open && !alertMessage) return null
 
@@ -47,7 +74,7 @@ export function VendedoresModal({
           }}
         >
           <div
-            className="modal modal-narrow modal-pedido"
+            className="modal modal-wide modal-pedido usuarios-modal"
             role="dialog"
             aria-labelledby="vendedores-title"
             onMouseDown={(e) => e.stopPropagation()}
@@ -60,46 +87,55 @@ export function VendedoresModal({
               </button>
             </header>
 
-            <div className="vendedores-body">
-              <p className="vendedores-hint">
-                Lista do quadro para lançar e filtrar pedidos. Novos vendedores são criados em{' '}
-                <strong>Usuários</strong> (perfil Vendedor) — entram aqui automaticamente. Nesta tela
-                você ajusta <strong>WhatsApp</strong> e <strong>ID do grupo</strong> (termina em{' '}
-                <code>@g.us</code> — não use link <code>chat.whatsapp.com/…</code>).
+            <div className="usuarios-body">
+              <p className="usuarios-hint">
+                Cadastro completo do vendedor: <strong>e-mail</strong>, <strong>senha</strong>, nome no
+                quadro, <strong>WhatsApp</strong> e <strong>grupo</strong>. Cada pedido fica atrelado à
+                pessoa certa. Quem já tem login aparece na lista para ajustar contatos.
               </p>
 
-              {canManageUsers && onOpenUsuarios ? (
-                <div className="vendedores-usuarios-cta">
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={() => {
-                      onClose()
-                      onOpenUsuarios()
-                    }}
-                  >
-                    Cadastrar novo vendedor
-                  </button>
-                </div>
+              {canManageUsers && onUserCreated ? (
+                <NovoUsuarioForm
+                  mode="vendedor-only"
+                  onCreated={handleCreated}
+                  onError={setError}
+                  onSuccessAlert={setAlertMessage}
+                />
               ) : null}
 
+              {error ? <p className="usuarios-error">{error}</p> : null}
+
               {vendedores.length === 0 ? (
-                <p className="vendedores-empty">
-                  Nenhum vendedor no quadro. Cadastre em Usuários com perfil Vendedor — a lista
-                  atualiza sozinha.
+                <p className="usuarios-loading">
+                  {canManageUsers
+                    ? 'Nenhum vendedor no quadro — use o formulário acima.'
+                    : 'Nenhum vendedor no quadro.'}
                 </p>
               ) : (
-                <ul className="vendedores-list">
-                  {vendedores.map((v) => (
-                    <VendedorContatoEditor
-                      key={v.id}
-                      vendedor={v}
-                      onSave={onUpdateContato}
-                      onRemove={onRemove}
-                      onAlert={setAlertMessage}
-                    />
-                  ))}
-                </ul>
+                <div className="usuarios-table-wrap">
+                  <table className="usuarios-table vendedores-table">
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>WhatsApp</th>
+                        <th>Grupo (ID)</th>
+                        <th aria-label="Ações" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vendedores.map((v) => (
+                        <VendedorTableRow
+                          key={v.id}
+                          vendedor={v}
+                          onSave={onUpdateContato}
+                          onRemove={onRemove}
+                          onAlert={setAlertMessage}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
@@ -115,7 +151,7 @@ export function VendedoresModal({
   )
 }
 
-function VendedorContatoEditor({
+function VendedorTableRow({
   vendedor,
   onSave,
   onRemove,
@@ -138,8 +174,7 @@ function VendedorContatoEditor({
 
   const savedWhatsapp = (vendedor.whatsapp ?? '').trim()
   const savedGrupo = (vendedor.grupoWhatsapp ?? '').trim()
-  const dirty =
-    whatsapp.trim() !== savedWhatsapp || grupoWhatsapp.trim() !== savedGrupo
+  const dirty = whatsapp.trim() !== savedWhatsapp || grupoWhatsapp.trim() !== savedGrupo
 
   const handleSave = () => {
     onSave(vendedor.id, { whatsapp, grupoWhatsapp })
@@ -152,38 +187,38 @@ function VendedorContatoEditor({
   }, [dirty])
 
   return (
-    <li className="vendedores-list-item">
-      <div className="vendedor-row-main">
-        <div className="vendedor-nome-block">
-          <span className="vendedor-nome">{vendedor.nome}</span>
-          {vendedor.email ? (
-            <code className="vendedor-email-tag">{vendedor.email}</code>
-          ) : null}
-        </div>
-        <label className="vendedor-wa-edit">
-          <span className="vendedor-field-label">WhatsApp</span>
-          <input
-            type="tel"
-            inputMode="tel"
-            placeholder="Número para marcar"
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-          />
-        </label>
-        <label className="vendedor-wa-edit">
-          <span className="vendedor-field-label">Grupo WhatsApp (ID)</span>
-          <input
-            type="text"
-            placeholder="120363…@g.us"
-            value={grupoWhatsapp}
-            onChange={(e) => setGrupoWhatsapp(e.target.value)}
-          />
-        </label>
-      </div>
-      <div className="vendedor-row-actions">
+    <tr>
+      <td>{vendedor.nome}</td>
+      <td>
+        {vendedor.email ? (
+          <code className="usuarios-email">{vendedor.email}</code>
+        ) : (
+          <span className="usuarios-muted">—</span>
+        )}
+      </td>
+      <td>
+        <input
+          className="usuarios-table-input"
+          type="tel"
+          inputMode="tel"
+          placeholder="Número"
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+        />
+      </td>
+      <td>
+        <input
+          className="usuarios-table-input"
+          type="text"
+          placeholder="120363…@g.us"
+          value={grupoWhatsapp}
+          onChange={(e) => setGrupoWhatsapp(e.target.value)}
+        />
+      </td>
+      <td className="usuarios-actions vendedores-row-actions">
         <button
           type="button"
-          className="btn primary btn-sm"
+          className="btn primary btn-xs"
           disabled={!dirty}
           onClick={handleSave}
         >
@@ -197,7 +232,7 @@ function VendedorContatoEditor({
         {!linked ? (
           <button
             type="button"
-            className="link-btn danger"
+            className="btn ghost btn-xs danger-text"
             onClick={() => {
               if (confirm('Excluir ' + vendedor.nome + '? Pedidos ficam sem vendedor.')) {
                 onRemove(vendedor.id)
@@ -209,15 +244,15 @@ function VendedorContatoEditor({
         ) : (
           <button
             type="button"
-            className="link-btn"
+            className="btn ghost btn-xs"
             onClick={() =>
-              onAlert('Para remover o login, exclua o usuário em Usuários (perfil Vendedor).')
+              onAlert('Para remover o login, exclua o usuário em Usuários (mesmo e-mail).')
             }
           >
             Remover login
           </button>
         )}
-      </div>
-    </li>
+      </td>
+    </tr>
   )
 }

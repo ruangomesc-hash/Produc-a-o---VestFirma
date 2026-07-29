@@ -579,6 +579,33 @@ textarea {
   color: var(--muted);
 }
 
+.usuarios-create-grid--vendedor {
+  grid-template-columns: 1.4fr 1fr auto;
+}
+
+.usuarios-table-input {
+  width: 100%;
+  min-width: 7rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.vendedores-table .vendedores-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.usuarios-muted {
+  color: var(--muted);
+}
+
 .usuarios-error {
   white-space: pre-wrap;
   color: #fecaca;
