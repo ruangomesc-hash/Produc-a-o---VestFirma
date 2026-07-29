@@ -31,6 +31,17 @@ function mergeOrderCard(existing: OrderCard, incoming: OrderCard): OrderCard {
   return { ...incoming, ...existing }
 }
 
+function mergeBoardShell(
+  existing: BoardState | null | undefined,
+  incoming: BoardState,
+): Pick<BoardState, 'columns' | 'vendedores' | 'segmentos'> {
+  return {
+    columns: incoming.columns?.length ? incoming.columns : (existing?.columns ?? incoming.columns),
+    vendedores: mergeVendedoresUnion(existing?.vendedores ?? [], incoming.vendedores ?? []),
+    segmentos: incoming.segmentos?.length ? incoming.segmentos : (existing?.segmentos ?? incoming.segmentos),
+  }
+}
+
 /**
  * Regra máxima VestFirma: o servidor nunca perde pedidos por PUT parcial.
  * Une por id — existentes que não vieram no payload são mantidos.
@@ -40,7 +51,10 @@ export function mergeBoardPreservingPedidos(
   existing: BoardState | null | undefined,
   incoming: BoardState,
 ): BoardState {
-  if (!existing?.cards?.length) return incoming
+  const shell = mergeBoardShell(existing, incoming)
+  if (!existing?.cards?.length) {
+    return { ...incoming, ...shell }
+  }
 
   const byId = new Map<string, OrderCard>()
   const legacy: OrderCard[] = []
@@ -56,9 +70,7 @@ export function mergeBoardPreservingPedidos(
 
   return {
     ...incoming,
-    columns: incoming.columns?.length ? incoming.columns : existing.columns,
-    vendedores: mergeVendedoresUnion(existing.vendedores ?? [], incoming.vendedores ?? []),
-    segmentos: incoming.segmentos?.length ? incoming.segmentos : existing.segmentos,
+    ...shell,
     cards: [...legacy, ...Array.from(byId.values())],
   }
 }

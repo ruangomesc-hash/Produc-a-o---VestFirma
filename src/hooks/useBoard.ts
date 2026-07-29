@@ -18,15 +18,34 @@ import {
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
+import { fetchUsers } from '../usersApi'
 import {
   findVendedorForManagedUser,
   findVendedorIdForSession,
   managedUserToVendedor,
   managedUserFromSession,
-  mergeVendedoresFromManagedUsers,
+  reconcileBoardVendedoresWithUsers,
   vendedorPodeAcessarPedido,
   type VendedorContatoPatch,
 } from '../vendedorUserSync'
+import type { Vendedor } from '../types'
+
+function vendedoresListChanged(before: Vendedor[], after: Vendedor[]): boolean {
+  if (before.length !== after.length) return true
+  return after.some((v) => {
+    const c = before.find((x) => x.id === v.id)
+    return !c || c.nome !== v.nome || c.userId !== v.userId || (c.email ?? '') !== (v.email ?? '')
+  })
+}
+
+async function boardComVendedoresDosUsuarios(board: BoardState): Promise<BoardState> {
+  try {
+    const users = await fetchUsers()
+    return reconcileBoardVendedoresWithUsers(board, users)
+  } catch {
+    return board
+  }
+}
 
 export type BoardSyncState = {
   remote: boolean
@@ -75,28 +94,33 @@ export function useBoard() {
         }, 2500)
 
     loadBoard({ signal: abort.signal })
-      .then((result) => {
-        if (!cancelled) {
-          let board = result.board
-          let richer = result.richerLocal ?? null
+      .then(async (result) => {
+        if (cancelled) return
+        let board = result.board
+        let richer = result.richerLocal ?? null
 
-          if (contagemPedidos(board) === 0) {
-            const snapRaw = loadBoardPedidosSnapshot()
-            const snap = snapRaw ? normalizeBoard(snapRaw) : null
-            if (snap && contagemPedidos(snap) > 0) {
-              board = mergeBoardPreservingPedidos(board, snap)
-              richer = board
-              void saveBoard(board)
-            }
+        if (contagemPedidos(board) === 0) {
+          const snapRaw = loadBoardPedidosSnapshot()
+          const snap = snapRaw ? normalizeBoard(snapRaw) : null
+          if (snap && contagemPedidos(snap) > 0) {
+            board = mergeBoardPreservingPedidos(board, snap)
+            richer = board
+            void saveBoard(board)
           }
-
-          setBoard(board)
-          setLocalRestore(richer)
-          setSync({
-            remote,
-            status: 'saved',
-          })
         }
+
+        const beforeVendedores = board.vendedores
+        board = await boardComVendedoresDosUsuarios(board)
+        if (vendedoresListChanged(beforeVendedores, board.vendedores)) {
+          void saveBoard(board, { immediate: true })
+        }
+
+        setBoard(board)
+        setLocalRestore(richer)
+        setSync({
+          remote,
+          status: 'saved',
+        })
       })
       .catch((err) => {
         if (cancelled) return
@@ -134,12 +158,22 @@ export function useBoard() {
         if (saveTimer.current) clearTimeout(saveTimer.current)
         saveTimer.current = setTimeout(() => {
           setSync((s) => ({ ...s, status: 'saving' }))
-          void saveBoard(safe, {
-            forceRemote: opts?.forceRemote,
-            skipRemote: opts?.skipRemote,
-          }).then((result) => {
+          void (async () => {
+            let payload = safe
+            try {
+              payload = await boardComVendedoresDosUsuarios(safe)
+              if (vendedoresListChanged(safe.vendedores, payload.vendedores)) {
+                setBoard((prev) => mergeBoardPreservingPedidos(prev, payload))
+              }
+            } catch {
+              /* mantém safe */
+            }
+            const result = await saveBoard(payload, {
+              forceRemote: opts?.forceRemote,
+              skipRemote: opts?.skipRemote,
+            })
             if (result.ok) {
-              snapshotBoardPedidos(safe)
+              snapshotBoardPedidos(payload)
               setSync({ remote: result.remote, status: 'saved' })
             } else {
               setSync({
@@ -148,7 +182,7 @@ export function useBoard() {
                 message: result.error,
               })
             }
-          })
+          })()
         }, delay)
         return safe
       })
@@ -318,19 +352,10 @@ export function useBoard() {
   const syncVendedoresFromManagedUsers = useCallback(
     (users: ManagedUser[]) => {
       const current = boardRef.current
-      const merged = mergeVendedoresFromManagedUsers(current, users)
-      const same =
-        merged.vendedores.length === current.vendedores.length &&
-        merged.vendedores.every((v) => {
-          const c = current.vendedores.find((x) => x.id === v.id)
-          return (
-            c &&
-            c.nome === v.nome &&
-            c.userId === v.userId &&
-            (c.email ?? '') === (v.email ?? '')
-          )
-        })
-      if (!same) persist(merged, { immediate: true })
+      const merged = reconcileBoardVendedoresWithUsers(current, users)
+      if (vendedoresListChanged(current.vendedores, merged.vendedores)) {
+        persist(merged, { immediate: true })
+      }
     },
     [persist],
   )

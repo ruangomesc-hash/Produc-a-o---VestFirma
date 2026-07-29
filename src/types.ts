@@ -41,6 +41,8 @@ export interface Vendedor {
    * Enviado no webhook para n8n postar no grupo certo.
    */
   grupoWhatsapp?: string
+  /** Perfil do login vinculado (Usuários). */
+  managedRole?: UserRole
 }
 
 export interface SegmentoEmpresa {

@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { mergeBoardShell } from '../shared/boardVendedoresMerge.mjs'
 
 const MAX_BACKUPS = 48
 
@@ -41,7 +42,10 @@ function mergeOrderCard(existing, incoming) {
 }
 
 export function mergeBoardPreservingPedidos(existing, incoming) {
-  if (!existing?.cards?.length) return incoming
+  const shell = mergeBoardShell(existing, incoming)
+  if (!existing?.cards?.length) {
+    return { ...incoming, ...shell }
+  }
 
   const byId = new Map()
   const legacy = []
@@ -57,6 +61,7 @@ export function mergeBoardPreservingPedidos(existing, incoming) {
 
   return {
     ...incoming,
+    ...shell,
     cards: [...legacy, ...Array.from(byId.values())],
   }
 }

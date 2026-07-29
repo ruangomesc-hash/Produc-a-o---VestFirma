@@ -1,6 +1,5 @@
 import type { BoardState, OrderCard, Vendedor } from './types'
 import type { ManagedUser, SessionProfile } from './userRoles'
-import { canPlaceOrders } from './userRoles'
 
 export function vendedorNomeFromUser(user: Pick<ManagedUser, 'name' | 'email'>): string {
   const name = user.name?.trim()
@@ -42,20 +41,29 @@ export function managedUserToVendedor(
     nome,
     email: user.email,
     userId: user.id,
+    managedRole: user.role,
     whatsapp: whatsapp || undefined,
     grupoWhatsapp: grupoWhatsapp || undefined,
   }
 }
 
-export function mergeVendedoresFromManagedUsers(
+/**
+ * Mantém vendedores do quadro alinhados aos usuários cadastrados.
+ * Só remove linha com userId se o usuário foi excluído em Usuários (admin).
+ */
+export function reconcileBoardVendedoresWithUsers(
   board: BoardState,
   users: ManagedUser[],
 ): BoardState {
-  const sellers = users.filter((u) => canPlaceOrders(u.role))
-  if (sellers.length === 0) return board
+  const usersById = new Map(users.map((u) => [u.id, u]))
 
-  let vendedores = [...board.vendedores]
-  for (const user of sellers) {
+  let vendedores = board.vendedores.filter((v) => {
+    if (!v.userId || v.userId === 'admin-seed') return true
+    return usersById.has(v.userId)
+  })
+
+  for (const user of users) {
+    if (user.role !== 'vendedor' && user.role !== 'admin') continue
     const existing = findVendedorForManagedUser({ ...board, vendedores }, user)
     const next = managedUserToVendedor(user, existing)
     if (existing) {
@@ -64,7 +72,15 @@ export function mergeVendedoresFromManagedUsers(
       vendedores.push(next)
     }
   }
+
   return { ...board, vendedores }
+}
+
+export function mergeVendedoresFromManagedUsers(
+  board: BoardState,
+  users: ManagedUser[],
+): BoardState {
+  return reconcileBoardVendedoresWithUsers(board, users)
 }
 
 /** Une listas do quadro sem perder vendedores (ex.: merge servidor + local). */
@@ -116,8 +132,12 @@ export function vendedoresParaAtribuirPedido(
   session: SessionProfile | null,
 ): Vendedor[] {
   if (!session || session.role === 'vendedor') return vendedores
-  const porPerfil = vendedores.filter((v) => !v.userId || v.userId !== 'admin-seed')
-  const lista = porPerfil.length > 0 ? porPerfil : vendedores
+  const perfilVendedor = vendedores.filter((v) => {
+    if (!v.userId || v.userId === 'admin-seed') return false
+    if (v.managedRole) return v.managedRole === 'vendedor'
+    return true
+  })
+  const lista = perfilVendedor.length > 0 ? perfilVendedor : vendedores.filter((v) => v.userId !== 'admin-seed')
   return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 

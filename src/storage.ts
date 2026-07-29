@@ -101,6 +101,7 @@ export function normalizeBoard(raw: BoardState | LegacyBoardRaw | undefined | nu
     email: v.email?.trim() || undefined,
     whatsapp: v.whatsapp?.trim() || undefined,
     grupoWhatsapp: v.grupoWhatsapp?.trim() || undefined,
+    managedRole: v.managedRole,
   }))
   const segmentos = mesclarSegmentos(raw.segmentos)
   let cards = (raw.cards ?? []).map((card) =>
