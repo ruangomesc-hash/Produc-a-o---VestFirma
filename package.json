@@ -20,7 +20,8 @@
     "start:production": "node server/server.mjs",
     "start:render": "node server/render-start.mjs",
     "server:api": "API_ONLY=1 PORT=8787 node --env-file=.env server/server.mjs",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "test:pedidos": "node --test tests/pedidos-persist.test.mjs && node --test scripts/test-pedidos-server.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

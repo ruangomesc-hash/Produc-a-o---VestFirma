@@ -5,6 +5,7 @@ import { useBoard } from '../hooks/useBoard'
 import { iniciarSinoVenda, prepararAudioVenda, pararSinoVenda } from '../vendaSino'
 import type { CardFormData } from '../types'
 import type { SaveBoardResult } from '../storage'
+import { pedidoGravadoNoServidor, mensagemFalhaGravacaoServidor } from '../pedidoSaveResult'
 import type { SessionProfile } from '../userRoles'
 import { findVendedorIdForSession } from '../vendedorUserSync'
 import { canPlaceOrders } from '../userRoles'
@@ -64,11 +65,8 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
       if (!columnId) return
       setSaveError(null)
       const result: SaveBoardResult = await addCard(columnId, data)
-      if (!result.ok) {
-        setSaveError(
-          result.error ||
-            'Não foi possível gravar no servidor. O pedido ficou neste aparelho — tente de novo ou avise o administrador.',
-        )
+      if (!pedidoGravadoNoServidor(result)) {
+        setSaveError(mensagemFalhaGravacaoServidor(result))
         return
       }
       setModalOpen(false)

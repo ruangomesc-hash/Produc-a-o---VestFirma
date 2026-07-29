@@ -302,7 +302,6 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       }
 
       await saveBoardToIdb(board)
-      snapshotBoardPedidos(board)
 
       const shouldPushMissingToServer =
         loggedIn &&
@@ -310,20 +309,27 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
         boardHasPedidos(board) &&
         (richerLocal != null || boardTemPedidosAlemDoServidor(board, remote))
 
+      const anonRicherPush =
+        richerLocal != null && !protectedServer && !loggedIn && boardHasPedidos(board)
+
       if (shouldPushMissingToServer) {
         try {
           await saveRemoteBoard(board)
+          snapshotBoardPedidos(board)
           richerLocal = undefined
         } catch {
           /* banner / checkup / nova tentativa */
         }
-      } else if (richerLocal && !protectedServer && !loggedIn && boardHasPedidos(board)) {
+      } else if (anonRicherPush) {
         try {
           await saveRemoteBoard(board)
+          snapshotBoardPedidos(board)
           richerLocal = undefined
         } catch {
           /* banner / nova tentativa depois */
         }
+      } else {
+        snapshotBoardPedidos(board)
       }
       return { board, richerLocal }
     }
@@ -393,13 +399,13 @@ export async function saveBoard(
 
   try {
     await saveBoardToIdb(normalized)
-    snapshotBoardPedidos(normalized)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao salvar no navegador'
     return { ok: false, error: message, remote: isRemoteSyncEnabled() }
   }
 
   if (!isRemoteSyncEnabled() || options?.skipRemote) {
+    snapshotBoardPedidos(normalized)
     return { ok: true, remote: false }
   }
 
@@ -416,6 +422,7 @@ export async function saveBoard(
       force: options?.forceRemote,
       permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
     })
+    snapshotBoardPedidos(normalized)
     return { ok: true, remote: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao salvar no servidor'

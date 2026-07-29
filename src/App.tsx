@@ -39,6 +39,8 @@ import { setAuditActor } from './auditContext'
 import { recordAudit } from './auditLog'
 import { useBoard } from './hooks/useBoard'
 import { contagemPedidos, pedidoVisivelNoKanban } from './pedidosPolicy'
+import { pedidoGravadoNoServidor } from './pedidoSaveResult'
+import { isRemoteSyncEnabled } from './remoteBoard'
 import type { OrderCard } from './types'
 
 type AuthState = 'boot' | 'checking' | 'login' | 'ok'
@@ -171,6 +173,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [modalSession, setModalSession] = useState(0)
   const [usuariosOpen, setUsuariosOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
+  const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
   const [managedUsersReady, setManagedUsersReady] = useState(false)
@@ -369,6 +372,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   }, [view, visaoTvMode, sairModoTv])
 
   const openCreate = (columnId: string) => {
+    setCreateSaveError(null)
     setModalSession((n) => n + 1)
     setModalMode('create')
     setActiveColumnId(columnId)
@@ -520,6 +524,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
       {view === 'kanban' ? (
         <div id="panel-kanban" className="app-panel" role="tabpanel" aria-labelledby="tab-meus-pedidos">
+          {createSaveError ? (
+            <div className="board-restore-banner board-sync-error-banner" role="alert">
+              <p>
+                <strong>Não foi possível criar o pedido:</strong> {createSaveError}
+              </p>
+            </div>
+          ) : null}
           {sync.status === 'error' && sync.message ? (
             <div className="board-restore-banner board-sync-error-banner" role="alert">
               <p>
@@ -670,9 +681,21 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           setUsuariosOpen(true)
         }}
         onAddSegmento={addSegmento}
-        onSubmit={(data) => {
+        onSubmit={async (data) => {
           if (modalMode === 'create' && activeColumnId) {
-            addCard(activeColumnId, data)
+            setCreateSaveError(null)
+            const result = await addCard(activeColumnId, data)
+            if (
+              !result.ok ||
+              (isRemoteSyncEnabled() && !pedidoGravadoNoServidor(result))
+            ) {
+              setCreateSaveError(
+                (!result.ok && result.error) ||
+                  'Falha ao gravar no servidor. O pedido não foi confirmado.',
+              )
+              return
+            }
+            setModalOpen(false)
           } else if (modalMode === 'edit' && editingCardLive) {
             updateCard(editingCardLive.id, data)
           }

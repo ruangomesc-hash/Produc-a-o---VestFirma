@@ -185,13 +185,12 @@ export function useBoard() {
               permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
             })
             if (result.ok) {
-              snapshotBoardPedidos(payload)
               setSync({ remote: result.remote, status: 'saved' })
             } else {
               setSync({
                 remote: result.remote,
                 status: 'error',
-                message: result.error,
+                message: !result.ok ? result.error : undefined,
               })
             }
           })()
@@ -427,14 +426,16 @@ export function useBoard() {
       setSync((s) => ({ ...s, status: 'saving' }))
       const result = await saveBoard(next)
       if (result.ok) {
-        snapshotBoardPedidos(next)
+        if (!isRemoteSyncEnabled() || result.remote) {
+          snapshotBoardPedidos(next)
+          notificarSePedidoCriado(card, next)
+          recordAudit({
+            action: 'pedido.criado',
+            summary: `Novo pedido ${card.numeroPedido} — ${card.cliente}`,
+            meta: { cardId: card.id, columnId },
+          })
+        }
         setSync({ remote: result.remote, status: 'saved' })
-        notificarSePedidoCriado(card, next)
-        recordAudit({
-          action: 'pedido.criado',
-          summary: `Novo pedido ${card.numeroPedido} — ${card.cliente}`,
-          meta: { cardId: card.id, columnId },
-        })
       } else {
         setSync({
           remote: result.remote,
@@ -557,8 +558,7 @@ export function useBoard() {
       const result = await saveBoard(next, {
         permanentlyRemoveArchivedCardIds: removeIds,
       })
-      if (result.ok) {
-        snapshotBoardPedidos(next)
+      if (result.ok && (!isRemoteSyncEnabled() || result.remote)) {
         removeCardFromPedidosSnapshot(cardId)
         setSync({ remote: result.remote, status: 'saved' })
         recordAudit({
@@ -581,7 +581,7 @@ export function useBoard() {
         setBoard(current)
       }
       const message =
-        result.error ||
+        (!result.ok && result.error) ||
         'Não foi possível apagar no servidor. Confira se o deploy do Node está atualizado (exclusão de arquivados).'
       setSync({ remote: result.remote, status: 'error', message })
       return { ok: false, error: message }
@@ -644,15 +644,14 @@ export function useBoard() {
     setBoard(merged)
     setSync((s) => ({ ...s, status: 'saving' }))
     const result = await saveBoard(merged, { forceRemote: true })
-    if (result.ok) {
-      snapshotBoardPedidos(merged)
+    if (result.ok && (!isRemoteSyncEnabled() || result.remote)) {
       setSync({ remote: result.remote, status: 'saved' })
       recordAudit({
         action: 'quadro.restaurado',
         summary: `Restaurou pedidos do backup do navegador para o servidor (${merged.cards.length} no quadro)`,
       })
     } else {
-      setSync({ remote: result.remote, status: 'error', message: result.error })
+      setSync({ remote: result.remote, status: 'error', message: !result.ok ? result.error : undefined })
     }
     return result
   }, [])
