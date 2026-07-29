@@ -323,6 +323,22 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   }, [view, ready, session, refreshBoardFromServer])
 
   useEffect(() => {
+    if (!ready || !isAdmin(session)) return
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return
+      if (view === 'kanban' || view === 'visao' || view === 'vendedores') {
+        void refreshBoardFromServer()
+      }
+    }
+    const id = window.setInterval(tick, 45_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [ready, session, view, refreshBoardFromServer])
+
+  useEffect(() => {
     setAuditActor(session)
   }, [session])
 

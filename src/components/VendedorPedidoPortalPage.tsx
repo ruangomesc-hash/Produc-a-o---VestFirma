@@ -18,11 +18,21 @@ type Props = {
 }
 
 export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
-  const { board, ready, addCard, addSegmento, sync, upsertVendedorFromSession } = useBoard()
+  const {
+    board,
+    ready,
+    addCard,
+    addSegmento,
+    sync,
+    localRestore,
+    syncPendingPedidosToServer,
+    upsertVendedorFromSession,
+  } = useBoard()
   const [modalOpen, setModalOpen] = useState(true)
   const [modalSession, setModalSession] = useState(0)
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [syncBusy, setSyncBusy] = useState(false)
 
   const columnId = useMemo(
     () => (ready ? colunaParaNovoPedido(board) : null),
@@ -38,6 +48,13 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
     if (!ready || !session || !canPlaceOrders(session.role)) return
     upsertVendedorFromSession(session)
   }, [ready, session, upsertVendedorFromSession])
+
+  useEffect(() => {
+    if (!ready || !session || session.role !== 'vendedor') return
+    if (!localRestore?.cards.length) return
+    setSyncBusy(true)
+    void syncPendingPedidosToServer().finally(() => setSyncBusy(false))
+  }, [ready, session, localRestore?.cards.length, syncPendingPedidosToServer])
 
   const userLabel = session?.user ?? null
 
@@ -143,6 +160,35 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
       </header>
 
       <main className="portal-pedido-main">
+        {localRestore && (localRestore.cards?.length ?? 0) > 0 ? (
+          <div className="board-restore-banner" role="alert">
+            <p>
+              <strong>
+                {localRestore.cards.length} pedido(s) neste aparelho ainda não confirmado(s) no
+                servidor.
+              </strong>{' '}
+              {syncBusy ? 'Sincronizando…' : 'Toque em sincronizar para o admin ver no painel.'}
+            </p>
+            <div className="board-restore-actions">
+              <button
+                type="button"
+                className="btn primary"
+                disabled={syncBusy}
+                onClick={() => {
+                  setSyncBusy(true)
+                  void syncPendingPedidosToServer().finally(() => setSyncBusy(false))
+                }}
+              >
+                {syncBusy ? 'Enviando…' : 'Sincronizar com o servidor'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {sync.status === 'error' && sync.message ? (
+          <p className="portal-pedido-error" role="alert">
+            {sync.message}
+          </p>
+        ) : null}
         {saveError ? (
           <p className="portal-pedido-error" role="alert">
             {saveError}

@@ -13,6 +13,7 @@ import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeCon
 import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
 import { mergeBoardLoggedInFromServer, boardTemPedidosAlemDoServidor } from './boardLoadMerge'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
+import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
@@ -277,13 +278,10 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
           richerLocal = board
         }
       } else if (loggedIn && remoteCount === 0) {
-        board =
-          mergeBoardsMaxPedidos(snapshot, local, remote) ??
-          mergeBoardPreservingPedidos(remote, local ?? remote)
-        if (snapshot && boardHasPedidos(snapshot)) {
-          board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
+        board = mergeBoardLoggedInFromServer(remote, local)
+        if (boardTemPedidosAlemDoServidor(board, remote)) {
+          richerLocal = board
         }
-        if (contagemPedidos(board) > 0) richerLocal = board
       } else {
         board =
           mergeBoardsMaxPedidos(snapshot, remote, local) ??
@@ -294,6 +292,8 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
           board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
         }
       }
+
+      board = filterBoardRemovendoExcluidos(board)
 
       const mergedCount = contagemPedidos(board)
 
@@ -313,20 +313,14 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
         richerLocal != null && !protectedServer && !loggedIn && boardHasPedidos(board)
 
       if (shouldPushMissingToServer) {
-        try {
-          await saveRemoteBoard(board)
-          snapshotBoardPedidos(board)
+        const pushResult = await saveBoard(board, { forceRemote: true })
+        if (pushResult.ok && pushResult.remote) {
           richerLocal = undefined
-        } catch {
-          /* banner / checkup / nova tentativa */
         }
       } else if (anonRicherPush) {
-        try {
-          await saveRemoteBoard(board)
-          snapshotBoardPedidos(board)
+        const pushResult = await saveBoard(board, { forceRemote: true })
+        if (pushResult.ok && pushResult.remote) {
           richerLocal = undefined
-        } catch {
-          /* banner / nova tentativa depois */
         }
       } else {
         snapshotBoardPedidos(board)
@@ -356,6 +350,7 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     if (snapshot && boardHasPedidos(snapshot)) {
       board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
     }
+    board = filterBoardRemovendoExcluidos(board)
     return { board }
   }
 }
@@ -409,7 +404,13 @@ export async function saveBoard(
     return { ok: true, remote: false }
   }
 
-  if (!options?.forceRemote && !boardHasPedidos(normalized)) {
+  const removingArchived = removeIds.length > 0
+
+  if (
+    !options?.forceRemote &&
+    !boardHasPedidos(normalized) &&
+    !removingArchived
+  ) {
     return {
       ok: false,
       error: 'Recusado: não enviar quadro vazio ao servidor (proteção de pedidos).',
@@ -419,7 +420,7 @@ export async function saveBoard(
 
   try {
     await saveRemoteBoard(normalized, {
-      force: options?.forceRemote,
+      force: options?.forceRemote || removingArchived,
       permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
     })
     snapshotBoardPedidos(normalized)

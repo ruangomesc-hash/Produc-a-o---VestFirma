@@ -74,6 +74,26 @@ test('servidor: mergeBoardAddingMissingPedidosOnly para restaurar backup', () =>
   assert.equal(countBoardCards(restored), 2)
 })
 
+test('servidor: admin pode apagar último pedido arquivado (body vazio + header)', () => {
+  const existing = {
+    columns: [{ id: col, title: 'Entrada' }],
+    vendedores: [],
+    cards: [
+      {
+        id: '9599-id',
+        columnId: col,
+        cliente: 'testando dan',
+        numeroPedido: '9599',
+        arquivadoEm: '2026-07-29T20:09:00.000Z',
+      },
+    ],
+  }
+  const incoming = { ...existing, cards: [] }
+  const removeIds = ['9599-id']
+  const merged = mergeBoardPreservingPedidos(existing, incoming, removeIds)
+  assert.equal(countBoardCards(merged), 0)
+})
+
 test('servidor: simula gravação em disco após merge', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-board-'))
   const file = path.join(dir, 'board.json')

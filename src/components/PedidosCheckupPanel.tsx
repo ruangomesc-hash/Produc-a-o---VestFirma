@@ -4,7 +4,9 @@ import {
   contagemPedidosNoSnapshot,
   previewPedidosNoSnapshot,
   clearPedidosSnapshot,
+  loadBoardPedidosSnapshot,
 } from '../boardPedidosSnapshot'
+import { loadPedidosExcluidosIds } from '../pedidosExcluidosLocal'
 import { contagemPedidos } from '../pedidosPolicy'
 import {
   fetchBoardBackups,
@@ -52,6 +54,16 @@ export function PedidosCheckupPanel({
     () => previewPedidosNoSnapshot(8),
     [snapshotRev, board.cards.length],
   )
+  const snapshotStale = useMemo(() => {
+    const snap = loadBoardPedidosSnapshot()
+    if (!snap?.cards?.length) return false
+    const excluded = loadPedidosExcluidosIds()
+    const boardIds = new Set(board.cards.map((c) => c.id))
+    const staleCards = snap.cards.filter(
+      (c) => c?.id && !boardIds.has(c.id) && !excluded.has(c.id),
+    )
+    return staleCards.length > 0
+  }, [snapshotRev, board.cards])
 
   const refreshRemote = useCallback(async () => {
     if (!isRemoteSyncEnabled()) {
@@ -209,16 +221,14 @@ export function PedidosCheckupPanel({
         </div>
       </dl>
 
-      {snapshotTotal > 0 &&
-      (remoteTotal === 0 || localTotal === 0) &&
-      remoteTotal !== null &&
-      !remoteError ? (
+      {snapshotTotal > 0 && snapshotStale && !remoteError ? (
         <div className="pedidos-checkup-alert" role="status">
           <p>
-            Este navegador guarda <strong>{snapshotTotal}</strong> pedido(s) num backup automático
-            (localStorage), mas o servidor e o quadro atual estão vazios. Isso{' '}
-            <strong>não</strong> é o pedido “ativo” — é resto de uma sessão anterior (ex.: antes de
-            apagar ou sincronizar).
+            O backup automático deste navegador ainda guarda{' '}
+            <strong>{snapshotTotal}</strong> pedido(s) que <strong>não estão</strong> no quadro
+            atual — resto de sessão antiga (ex.: pedido que você já apagou). Isso{' '}
+            <strong>não</strong> deve voltar ao kanban após atualizar; descarte a cópia se não
+            precisar mais.
           </p>
           {snapshotPreview.length > 0 ? (
             <ul className="pedidos-checkup-backup-preview">

@@ -10,13 +10,15 @@ import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
 import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
-import { mergeBoardLoggedInFromServer } from '../boardLoadMerge'
+import { boardTemPedidosAlemDoServidor, mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
   snapshotBoardPedidos,
   loadBoardPedidosSnapshot,
   contagemPedidosNoSnapshot,
   removeCardFromPedidosSnapshot,
+  purgeSnapshotPedidosExcluidos,
 } from '../boardPedidosSnapshot'
+import { recordPedidoExcluidoPermanente } from '../pedidosExcluidosLocal'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
@@ -105,17 +107,7 @@ export function useBoard() {
       .then(async (result) => {
         if (cancelled) return
         let board = result.board
-        let richer = result.richerLocal ?? null
-
-        if (contagemPedidos(board) === 0) {
-          const snapRaw = loadBoardPedidosSnapshot()
-          const snap = snapRaw ? normalizeBoard(snapRaw) : null
-          if (snap && contagemPedidos(snap) > 0) {
-            board = mergeBoardPreservingPedidos(board, snap)
-            richer = board
-            void saveBoard(board)
-          }
-        }
+        const richer = result.richerLocal ?? null
 
         const beforeVendedores = board.vendedores
         const beforeCards = board.cards
@@ -130,10 +122,30 @@ export function useBoard() {
 
         setBoard(board)
         setLocalRestore(richer)
-        setSync({
-          remote,
-          status: 'saved',
-        })
+        purgeSnapshotPedidosExcluidos()
+
+        if (richer && contagemPedidos(board) > 0 && isRemoteSyncEnabled()) {
+          void saveBoard(board, { forceRemote: true }).then((pushResult) => {
+            if (cancelled) return
+            if (pushResult.ok && pushResult.remote) {
+              setLocalRestore(null)
+              setSync({ remote: true, status: 'saved' })
+            } else if (!pushResult.ok) {
+              setSync({
+                remote: pushResult.remote,
+                status: 'error',
+                message:
+                  pushResult.error ||
+                  'Pedido(s) neste aparelho ainda não foram gravados no servidor.',
+              })
+            }
+          })
+        } else {
+          setSync({
+            remote,
+            status: 'saved',
+          })
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -408,6 +420,16 @@ export function useBoard() {
         setBoard(current)
       }
       const payload = cardFormDataParaVendedorLogado(current, data)
+      if (actor?.role === 'vendedor' && !payload.vendedorId) {
+        const fail: SaveBoardResult = {
+          ok: false,
+          error:
+            'Não foi possível vincular seu usuário ao pedido. Saia e entre de novo ou avise o administrador.',
+          remote: isRemoteSyncEnabled(),
+        }
+        setSync({ remote: fail.remote, status: 'error', message: fail.error })
+        return fail
+      }
       const now = new Date().toISOString()
       const card: OrderCard = {
         ...payload,
@@ -424,9 +446,11 @@ export function useBoard() {
       })
       setBoard(next)
       setSync((s) => ({ ...s, status: 'saving' }))
-      const result = await saveBoard(next)
+      const forceRemote = actor?.role === 'vendedor' && isRemoteSyncEnabled()
+      const result = await saveBoard(next, forceRemote ? { forceRemote: true } : undefined)
       if (result.ok) {
         if (!isRemoteSyncEnabled() || result.remote) {
+          setLocalRestore(null)
           snapshotBoardPedidos(next)
           notificarSePedidoCriado(card, next)
           recordAudit({
@@ -440,7 +464,7 @@ export function useBoard() {
         setSync({
           remote: result.remote,
           status: 'error',
-          message: result.error,
+          message: !result.ok ? result.error : undefined,
         })
       }
       return result
@@ -556,10 +580,13 @@ export function useBoard() {
       setBoard(next)
       setSync((s) => ({ ...s, status: 'saving' }))
       const result = await saveBoard(next, {
+        forceRemote: true,
         permanentlyRemoveArchivedCardIds: removeIds,
       })
       if (result.ok && (!isRemoteSyncEnabled() || result.remote)) {
+        recordPedidoExcluidoPermanente(cardId)
         removeCardFromPedidosSnapshot(cardId)
+        purgeSnapshotPedidosExcluidos()
         setSync({ remote: result.remote, status: 'saved' })
         recordAudit({
           action: 'pedido.excluido',
@@ -658,6 +685,47 @@ export function useBoard() {
 
   const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
 
+  const syncPendingPedidosToServer = useCallback(async (): Promise<SaveBoardResult> => {
+    const current = boardRef.current
+    setSync((s) => ({ ...s, status: 'saving' }))
+    try {
+      const loaded = await loadBoard()
+      const merged = mergeBoardLoggedInFromServer(loaded.board, current)
+      const unified = relinkOrphanVendedorIdsConservative(
+        unifyVendedorRowsAndRelinkCards(merged),
+      )
+      setBoard(unified)
+      if (!boardTemPedidosAlemDoServidor(unified, loaded.board)) {
+        setLocalRestore(null)
+        setSync({ remote: isRemoteSyncEnabled(), status: 'saved' })
+        return { ok: true, remote: isRemoteSyncEnabled() }
+      }
+      const result = await saveBoard(unified, { forceRemote: true })
+      if (result.ok && (!isRemoteSyncEnabled() || result.remote)) {
+        setLocalRestore(null)
+        setSync({ remote: result.remote, status: 'saved' })
+        recordAudit({
+          action: 'quadro.restaurado',
+          summary: `Sincronizou ${contagemPedidos(unified) - contagemPedidos(loaded.board)} pedido(s) pendente(s) no servidor`,
+        })
+      } else {
+        setLocalRestore(unified)
+        setSync({
+          remote: result.remote,
+          status: 'error',
+          message:
+            (!result.ok && result.error) ||
+            'Pedido(s) ainda não gravados no servidor — tente de novo.',
+        })
+      }
+      return result
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao sincronizar com o servidor'
+      setSync({ remote: isRemoteSyncEnabled(), status: 'error', message })
+      return { ok: false, error: message, remote: isRemoteSyncEnabled() }
+    }
+  }, [])
+
   const refreshBoardFromServer = useCallback(async () => {
     try {
       const result = await loadBoard()
@@ -683,6 +751,7 @@ export function useBoard() {
     restoreRicherLocalToServer,
     restoreFromPedidosSnapshot,
     dismissLocalRestore,
+    syncPendingPedidosToServer,
     refreshBoardFromServer,
     pedidosSnapshotCount: contagemPedidosNoSnapshot(),
     addColumn,

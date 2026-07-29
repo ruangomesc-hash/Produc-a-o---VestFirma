@@ -155,16 +155,20 @@ async function handleBoardApi(req, res) {
     }
 
     if (!force && existingCount > 0 && incomingCount === 0) {
-      res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(
-        JSON.stringify({
-          ok: false,
-          code: 'BOARD_WIPE_BLOCKED',
-          error: 'Recusado: salvar quadro vazio apagaria pedidos no servidor.',
-          existingCards: existingCount,
-        }),
-      )
-      return
+      const adminRemovingArchived =
+        removeArchivedIds.length > 0 && session?.role === 'admin'
+      if (!adminRemovingArchived) {
+        res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(
+          JSON.stringify({
+            ok: false,
+            code: 'BOARD_WIPE_BLOCKED',
+            error: 'Recusado: salvar quadro vazio apagaria pedidos no servidor.',
+            existingCards: existingCount,
+          }),
+        )
+        return
+      }
     }
 
     board = mergeBoardPreservingPedidos(existing, board, removeArchivedIds)

@@ -1,5 +1,6 @@
 import type { BoardState } from './types'
 import { contagemPedidos } from './pedidosPolicy'
+import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
 
 const SNAPSHOT_LS_KEY = 'vestfirma-board-pedidos-snapshot'
 
@@ -38,6 +39,20 @@ export function previewPedidosNoSnapshot(limit = 5): { numeroPedido: string; cli
     numeroPedido: c.numeroPedido,
     cliente: c.cliente,
   }))
+}
+
+/** Remove do snapshot pedidos já apagados definitivamente neste navegador. */
+export function purgeSnapshotPedidosExcluidos(): void {
+  const snap = loadBoardPedidosSnapshot()
+  if (!snap?.cards?.length) return
+  const filtered = filterBoardRemovendoExcluidos(snap)
+  if (contagemPedidos(filtered) === 0) {
+    clearPedidosSnapshot()
+    return
+  }
+  if (filtered.cards.length !== snap.cards.length) {
+    snapshotBoardPedidos(filtered)
+  }
 }
 
 export function clearPedidosSnapshot(): void {
