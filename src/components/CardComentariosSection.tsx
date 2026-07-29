@@ -38,7 +38,7 @@ export function CardComentariosSection({
   const intro = introVisibilidadeComentarios(comentarioAutor?.role)
   const placeholder = comentarioAutor
     ? placeholderNovoComentario(comentarioAutor)
-    : 'Descreva o que mudou ou o motivo do atraso…'
+    : 'Escreva aqui — atualização, atraso, dúvida ou combinação sobre este pedido…'
 
   const compose =
     podeComentar && onAdd ? (

@@ -1826,6 +1826,37 @@ textarea {
   width: 100%;
   resize: vertical;
   min-height: 4.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--vestfirma-gold) 38%, var(--border));
+  background: color-mix(in srgb, var(--vestfirma-gold) 11%, var(--surface-2));
+  color: var(--text);
+  line-height: 1.45;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.comentarios-compose textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 75%, var(--vestfirma-gold-light));
+  opacity: 1;
+}
+
+.comentarios-compose textarea:hover {
+  border-color: color-mix(in srgb, var(--vestfirma-gold) 48%, var(--border));
+  background: color-mix(in srgb, var(--vestfirma-gold) 14%, var(--surface-2));
+}
+
+.comentarios-compose textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--vestfirma-gold) 62%, var(--border));
+  background: color-mix(in srgb, var(--vestfirma-gold) 16%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vestfirma-gold) 28%, transparent);
+}
+
+.card-comentarios-aside .comentarios-compose textarea {
+  min-height: 5rem;
 }
 
 .comentarios-add-btn {

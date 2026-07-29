@@ -15,11 +15,8 @@ export function rotuloAutorComentario(c: PedidoComentario): string {
   return nome
 }
 
-export function placeholderNovoComentario(autor: ComentarioAutor): string {
-  const nome = autor.nome?.trim() || 'Você'
-  const role = autor.role ? USER_ROLE_LABELS[autor.role] : null
-  const quem = role ? `${nome} (${role})` : nome
-  return `${quem}: descreva o que mudou ou o motivo do atraso…`
+export function placeholderNovoComentario(_autor: ComentarioAutor): string {
+  return 'Escreva aqui — atualização, atraso, dúvida ou combinação sobre este pedido…'
 }
 
 export function introVisibilidadeComentarios(role: UserRole | undefined): string {
