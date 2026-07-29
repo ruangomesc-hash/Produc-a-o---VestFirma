@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ManagedUser, UserRole } from '../userRoles'
+import { canPlaceOrders } from '../userRoles'
+import type { VendedorContatoPatch } from '../vendedorUserSync'
 import { USER_ROLE_LABELS } from '../userRoles'
 import {
   CREATABLE_ROLES,
@@ -14,7 +16,7 @@ type Props = {
   open: boolean
   onClose: () => void
   onUsersLoaded?: (users: ManagedUser[]) => void
-  onUserCreated?: (user: ManagedUser) => void
+  onUserCreated?: (user: ManagedUser, contato?: VendedorContatoPatch) => void
   onUserDeleted?: (user: ManagedUser) => void
 }
 
@@ -41,6 +43,8 @@ export function UsuariosModal({
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newRole, setNewRole] = useState<UserRole>('vendedor')
+  const [newWhatsapp, setNewWhatsapp] = useState('')
+  const [newGrupoWhatsapp, setNewGrupoWhatsapp] = useState('')
   const [creating, setCreating] = useState(false)
   const [showPasswords, setShowPasswords] = useState(false)
 
@@ -74,14 +78,23 @@ export function UsuariosModal({
         role: newRole,
         name: newName.trim() || undefined,
       })
-      onUserCreated?.(created)
+      const contato: VendedorContatoPatch | undefined =
+        canPlaceOrders(roleCreated)
+          ? {
+              whatsapp: newWhatsapp.trim() || undefined,
+              grupoWhatsapp: newGrupoWhatsapp.trim() || undefined,
+            }
+          : undefined
+      onUserCreated?.(created, contato)
       setNewEmail('')
       setNewName('')
+      setNewWhatsapp('')
+      setNewGrupoWhatsapp('')
       setNewRole('vendedor')
       await reload()
       setAlertMessage(
-        roleCreated === 'vendedor'
-          ? 'Usuário criado e adicionado à lista Vendedores do quadro. Copie a senha abaixo. Configure WhatsApp em Vendedores.'
+        canPlaceOrders(roleCreated)
+          ? 'Vendedor cadastrado: login criado e já vinculado ao quadro para lançar pedidos. Copie a senha abaixo.'
           : 'Usuário criado. Copie a senha abaixo e envie para a pessoa.',
       )
     } catch (err) {
@@ -119,10 +132,10 @@ export function UsuariosModal({
 
             <div className="usuarios-body">
               <p className="usuarios-hint">
-                Cada perfil entra com <strong>e-mail</strong> e <strong>senha</strong>. Perfil{' '}
-                <strong>Vendedor</strong> ou o <strong>administrador</strong> entram na lista{' '}
-                <strong>Vendedores</strong> do quadro para lançar pedidos; WhatsApp e grupo em
-                Vendedores.
+                Cada perfil entra com <strong>e-mail</strong> e <strong>senha</strong>. Ao cadastrar{' '}
+                <strong>Vendedor</strong>, o acesso e a linha no quadro são criados juntos — os pedidos
+                ficam atrelados a essa pessoa. WhatsApp e grupo podem ser preenchidos aqui ou depois em{' '}
+                <strong>Vendedores</strong>.
               </p>
 
               <form className="usuarios-create" onSubmit={(e) => void handleCreate(e)}>
@@ -161,6 +174,35 @@ export function UsuariosModal({
                     {creating ? 'Criando…' : 'Gerar senha e cadastrar'}
                   </button>
                 </div>
+                {canPlaceOrders(newRole) ? (
+                  <div className="usuarios-vendedor-extra">
+                    <label>
+                      <span>WhatsApp (opcional)</span>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Número para marcar"
+                        value={newWhatsapp}
+                        onChange={(e) => setNewWhatsapp(e.target.value)}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label>
+                      <span>Grupo WhatsApp — ID (opcional)</span>
+                      <input
+                        type="text"
+                        placeholder="120363…@g.us"
+                        value={newGrupoWhatsapp}
+                        onChange={(e) => setNewGrupoWhatsapp(e.target.value)}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <p className="usuarios-vendedor-extra-hint">
+                      Use o ID que termina em <code>@g.us</code>, não link{' '}
+                      <code>chat.whatsapp.com/…</code>.
+                    </p>
+                  </div>
+                ) : null}
               </form>
 
               {error && <p className="usuarios-error">{error}</p>}

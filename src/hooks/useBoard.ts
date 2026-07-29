@@ -23,6 +23,7 @@ import {
   managedUserFromSession,
   mergeVendedoresFromManagedUsers,
   vendedorPodeAcessarPedido,
+  type VendedorContatoPatch,
 } from '../vendedorUserSync'
 
 export type BoardSyncState = {
@@ -93,6 +94,8 @@ export function useBoard() {
   }))
   const [localRestore, setLocalRestore] = useState<BoardState | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const boardRef = useRef(board)
+  boardRef.current = board
 
   useEffect(() => {
     let cancelled = false
@@ -286,32 +289,31 @@ export function useBoard() {
   )
 
   const upsertVendedorFromManagedUser = useCallback(
-    (user: ManagedUser) => {
+    (user: ManagedUser, contato?: VendedorContatoPatch) => {
       if (!canPlaceOrders(user.role)) return
-      const existing = findVendedorForManagedUser(board, user)
-      const next = managedUserToVendedor(user, existing)
+      const current = boardRef.current
+      const existing = findVendedorForManagedUser(current, user)
+      const next = managedUserToVendedor(user, existing, contato)
       if (existing) {
         const unchanged =
           existing.nome === next.nome &&
           existing.email === next.email &&
-          existing.userId === next.userId
+          existing.userId === next.userId &&
+          (existing.whatsapp ?? '') === (next.whatsapp ?? '') &&
+          (existing.grupoWhatsapp ?? '') === (next.grupoWhatsapp ?? '')
         if (unchanged) return
         persist({
-          ...board,
-          vendedores: board.vendedores.map((v) => (v.id === existing.id ? next : v)),
+          ...current,
+          vendedores: current.vendedores.map((v) => (v.id === existing.id ? next : v)),
         })
         return
       }
-      const nomeTaken = board.vendedores.some(
-        (v) => v.nome.trim().toLowerCase() === next.nome.trim().toLowerCase(),
-      )
-      if (nomeTaken) return
       persist({
-        ...board,
-        vendedores: [...board.vendedores, next],
+        ...current,
+        vendedores: [...current.vendedores, next],
       })
     },
-    [board, persist],
+    [persist],
   )
 
   const upsertVendedorFromSession = useCallback(
@@ -332,10 +334,11 @@ export function useBoard() {
 
   const syncVendedoresFromManagedUsers = useCallback(
     (users: ManagedUser[]) => {
-      const merged = mergeVendedoresFromManagedUsers(board, users)
-      if (merged.vendedores !== board.vendedores) persist(merged)
+      const current = boardRef.current
+      const merged = mergeVendedoresFromManagedUsers(current, users)
+      if (merged.vendedores !== current.vendedores) persist(merged)
     },
-    [board, persist],
+    [persist],
   )
 
   const addSegmento = useCallback(

@@ -62,9 +62,9 @@ export function VendedoresModal({
 
             <div className="vendedores-body">
               <p className="vendedores-hint">
-                O <strong>cadastro de vendedor</strong> (e-mail e senha de login) fica em{' '}
-                <strong>Usuários</strong>, perfil Vendedor. Aqui você só configura{' '}
-                <strong>WhatsApp</strong> e <strong>ID do grupo</strong> de cada um (termina em{' '}
+                Lista do quadro para lançar e filtrar pedidos. Novos vendedores são criados em{' '}
+                <strong>Usuários</strong> (perfil Vendedor) — entram aqui automaticamente. Nesta tela
+                você ajusta <strong>WhatsApp</strong> e <strong>ID do grupo</strong> (termina em{' '}
                 <code>@g.us</code> — não use link <code>chat.whatsapp.com/…</code>).
               </p>
 
@@ -72,20 +72,21 @@ export function VendedoresModal({
                 <div className="vendedores-usuarios-cta">
                   <button
                     type="button"
-                    className="btn primary"
+                    className="btn ghost"
                     onClick={() => {
                       onClose()
                       onOpenUsuarios()
                     }}
                   >
-                    Cadastrar vendedor em Usuários
+                    Cadastrar novo vendedor
                   </button>
                 </div>
               ) : null}
 
               {vendedores.length === 0 ? (
                 <p className="vendedores-empty">
-                  Nenhum vendedor no quadro. Cadastre em Usuários com perfil Vendedor.
+                  Nenhum vendedor no quadro. Cadastre em Usuários com perfil Vendedor — a lista
+                  atualiza sozinha.
                 </p>
               ) : (
                 <ul className="vendedores-list">

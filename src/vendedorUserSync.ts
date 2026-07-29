@@ -22,18 +22,28 @@ export function findVendedorForManagedUser(
   )
 }
 
+export type VendedorContatoPatch = {
+  whatsapp?: string
+  grupoWhatsapp?: string
+}
+
 export function managedUserToVendedor(
   user: ManagedUser,
   existing?: Vendedor | null,
+  contato?: VendedorContatoPatch,
 ): Vendedor {
   const nome = vendedorNomeFromUser(user)
+  const whatsapp =
+    contato?.whatsapp?.trim() || existing?.whatsapp
+  const grupoWhatsapp =
+    contato?.grupoWhatsapp?.trim() || existing?.grupoWhatsapp
   return {
     id: existing?.id ?? crypto.randomUUID(),
     nome,
     email: user.email,
     userId: user.id,
-    whatsapp: existing?.whatsapp,
-    grupoWhatsapp: existing?.grupoWhatsapp,
+    whatsapp: whatsapp || undefined,
+    grupoWhatsapp: grupoWhatsapp || undefined,
   }
 }
 
@@ -51,10 +61,7 @@ export function mergeVendedoresFromManagedUsers(
     if (existing) {
       vendedores = vendedores.map((v) => (v.id === existing.id ? next : v))
     } else {
-      const dupNome = vendedores.some(
-        (v) => v.nome.trim().toLowerCase() === next.nome.trim().toLowerCase() && v.id !== next.id,
-      )
-      if (!dupNome) vendedores.push(next)
+      vendedores.push(next)
     }
   }
   return { ...board, vendedores }

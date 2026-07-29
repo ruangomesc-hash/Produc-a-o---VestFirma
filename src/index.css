@@ -554,6 +554,46 @@ textarea {
   color: var(--text);
 }
 
+.usuarios-vendedor-extra {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 720px) {
+  .usuarios-vendedor-extra {
+    grid-template-columns: 1fr;
+  }
+}
+
+.usuarios-vendedor-extra label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.usuarios-vendedor-extra input {
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.usuarios-vendedor-extra-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .usuarios-error {
   white-space: pre-wrap;
   color: #fecaca;
