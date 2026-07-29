@@ -12,6 +12,7 @@ import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
 import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
+import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -117,7 +118,7 @@ export function normalizeBoard(raw: BoardState | LegacyBoardRaw | undefined | nu
 
   cards = cards.map((c) => garantirHistoricoCard(c, base))
 
-  return { ...base, cards }
+  return unifyVendedorRowsAndRelinkCards({ ...base, cards })
 }
 
 function boardHasPedidos(state: BoardState): boolean {

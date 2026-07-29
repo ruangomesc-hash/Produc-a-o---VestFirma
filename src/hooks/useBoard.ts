@@ -25,6 +25,7 @@ import {
   managedUserToVendedor,
   managedUserFromSession,
   reconcileBoardVendedoresWithUsers,
+  unifyVendedorRowsAndRelinkCards,
   vendedorPodeAcessarPedido,
   type VendedorContatoPatch,
 } from '../vendedorUserSync'
@@ -38,12 +39,16 @@ function vendedoresListChanged(before: Vendedor[], after: Vendedor[]): boolean {
   })
 }
 
+function boardAposSyncVendedores(board: BoardState, users: ManagedUser[]): BoardState {
+  return unifyVendedorRowsAndRelinkCards(reconcileBoardVendedoresWithUsers(board, users))
+}
+
 async function boardComVendedoresDosUsuarios(board: BoardState): Promise<BoardState> {
   try {
     const users = await fetchUsers()
-    return reconcileBoardVendedoresWithUsers(board, users)
+    return boardAposSyncVendedores(board, users)
   } catch {
-    return board
+    return unifyVendedorRowsAndRelinkCards(board)
   }
 }
 
@@ -110,8 +115,13 @@ export function useBoard() {
         }
 
         const beforeVendedores = board.vendedores
+        const beforeCards = board.cards
         board = await boardComVendedoresDosUsuarios(board)
-        if (vendedoresListChanged(beforeVendedores, board.vendedores)) {
+        const remapped = board.cards.some((c) => {
+          const prev = beforeCards.find((x) => x.id === c.id)
+          return prev && prev.vendedorId !== c.vendedorId
+        })
+        if (vendedoresListChanged(beforeVendedores, board.vendedores) || remapped) {
           void saveBoard(board, { immediate: true })
         }
 
@@ -346,8 +356,12 @@ export function useBoard() {
   const syncVendedoresFromManagedUsers = useCallback(
     (users: ManagedUser[]) => {
       const current = boardRef.current
-      const merged = reconcileBoardVendedoresWithUsers(current, users)
-      if (vendedoresListChanged(current.vendedores, merged.vendedores)) {
+      const merged = boardAposSyncVendedores(current, users)
+      const vendedorIdsRemapped = merged.cards.some((c) => {
+        const prev = current.cards.find((x) => x.id === c.id)
+        return prev && prev.vendedorId !== c.vendedorId
+      })
+      if (vendedoresListChanged(current.vendedores, merged.vendedores) || vendedorIdsRemapped) {
         persist(merged, { immediate: true })
       }
     },

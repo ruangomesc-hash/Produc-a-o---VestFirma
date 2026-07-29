@@ -178,23 +178,132 @@ export function vendedoresParaAtribuirPedido(
   return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
+/** Mesma pessoa no quadro (e-mail ou userId), mesmo com ids de linha diferentes. */
+export function sameVendedorPerson(a: Vendedor, b: Vendedor): boolean {
+  if (a.id === b.id) return true
+  const emA = a.email?.trim().toLowerCase()
+  const emB = b.email?.trim().toLowerCase()
+  if (emA && emB && emA === emB) return true
+  const uidA = a.userId
+  const uidB = b.userId
+  if (uidA && uidB && uidA === uidB && uidA !== 'admin-seed' && !isEmailLikeId(uidA)) return true
+  return false
+}
+
+function contagemPedidosPorVendedorId(board: BoardState, vendedorId: string): number {
+  return board.cards.filter((c) => c.vendedorId === vendedorId).length
+}
+
+/** Entre linhas duplicadas da mesma pessoa, usa o id que já tem pedidos. */
+export function findVendedorRowForSession(
+  board: BoardState,
+  session: SessionProfile | null,
+): Vendedor | null {
+  if (!session) return null
+  const candidatos: Vendedor[] = []
+  const linked = findVendedorForManagedUser(board, managedUserFromSession(session))
+  if (linked) candidatos.push(linked)
+
+  const email = session.email?.trim().toLowerCase()
+  if (email) {
+    for (const v of board.vendedores) {
+      if (v.email?.trim().toLowerCase() === email && !candidatos.some((c) => c.id === v.id)) {
+        candidatos.push(v)
+      }
+    }
+  }
+  const name = session.user?.trim().toLowerCase()
+  if (name) {
+    for (const v of board.vendedores) {
+      if (v.nome.trim().toLowerCase() === name && !candidatos.some((c) => c.id === v.id)) {
+        candidatos.push(v)
+      }
+    }
+  }
+
+  if (candidatos.length === 0) return null
+  if (candidatos.length === 1) return candidatos[0]
+
+  let best = candidatos[0]
+  let bestN = contagemPedidosPorVendedorId(board, best.id)
+  for (let i = 1; i < candidatos.length; i++) {
+    const v = candidatos[i]
+    const n = contagemPedidosPorVendedorId(board, v.id)
+    if (n > bestN) {
+      best = v
+      bestN = n
+    }
+  }
+  return best
+}
+
+export function pedidoPertenceAoVendedorSession(
+  board: BoardState,
+  card: Pick<OrderCard, 'vendedorId'>,
+  session: SessionProfile | null,
+): boolean {
+  if (!session || session.role !== 'vendedor') return true
+  const row = findVendedorRowForSession(board, session)
+  if (!row || !card.vendedorId) return false
+  if (card.vendedorId === row.id) return true
+  const cardRow = board.vendedores.find((v) => v.id === card.vendedorId)
+  if (!cardRow) return false
+  return sameVendedorPerson(cardRow, row)
+}
+
+/**
+ * Une linhas duplicadas de vendedor e remapeia pedidos — evita “sumiço” após sync de Usuários.
+ */
+export function unifyVendedorRowsAndRelinkCards(board: BoardState): BoardState {
+  const idRemap = new Map<string, string>()
+  const vendedores = [...board.vendedores]
+
+  for (let i = 0; i < vendedores.length; i++) {
+    for (let j = i + 1; j < vendedores.length; j++) {
+      const a = vendedores[i]
+      const b = vendedores[j]
+      if (!sameVendedorPerson(a, b)) continue
+      const countA = contagemPedidosPorVendedorId(board, a.id)
+      const countB = contagemPedidosPorVendedorId(board, b.id)
+      const canonical = countA >= countB ? a.id : b.id
+      const alias = canonical === a.id ? b.id : a.id
+      idRemap.set(alias, canonical)
+    }
+  }
+
+  const resolveId = (id: string): string => {
+    let cur = id
+    const seen = new Set<string>()
+    while (idRemap.has(cur) && !seen.has(cur)) {
+      seen.add(cur)
+      cur = idRemap.get(cur)!
+    }
+    return cur
+  }
+
+  if (idRemap.size === 0) return board
+
+  const cards = board.cards.map((c) => {
+    if (!c.vendedorId) return c
+    const next = resolveId(c.vendedorId)
+    return next === c.vendedorId ? c : { ...c, vendedorId: next }
+  })
+
+  const byId = new Map<string, Vendedor>()
+  for (const v of vendedores) {
+    const id = resolveId(v.id)
+    const prev = byId.get(id)
+    byId.set(id, prev ? { ...prev, ...v, id } : { ...v, id })
+  }
+
+  return { ...board, vendedores: Array.from(byId.values()), cards }
+}
+
 export function findVendedorIdForSession(
   board: BoardState,
   session: SessionProfile | null,
 ): string | null {
-  if (!session) return null
-  const linked = findVendedorForManagedUser(board, managedUserFromSession(session))
-  if (linked) return linked.id
-
-  const email = session.email?.trim().toLowerCase()
-  if (email) {
-    const byLink = board.vendedores.find((v) => v.email?.trim().toLowerCase() === email)
-    if (byLink) return byLink.id
-  }
-  const name = session.user?.trim().toLowerCase()
-  if (!name) return null
-  const byName = board.vendedores.find((v) => v.nome.trim().toLowerCase() === name)
-  return byName?.id ?? null
+  return findVendedorRowForSession(board, session)?.id ?? null
 }
 
 /** Vendedor logado só enxerga pedidos vinculados a ele; demais perfis veem o quadro inteiro. */
@@ -203,11 +312,10 @@ export function boardVisivelParaSession(
   session: SessionProfile | null,
 ): BoardState {
   if (!session || session.role !== 'vendedor') return board
-  const vendedorId = findVendedorIdForSession(board, session)
-  if (!vendedorId) return { ...board, cards: [] }
+  if (!findVendedorRowForSession(board, session)) return { ...board, cards: [] }
   return {
     ...board,
-    cards: board.cards.filter((c) => c.vendedorId === vendedorId),
+    cards: board.cards.filter((c) => pedidoPertenceAoVendedorSession(board, c, session)),
   }
 }
 
@@ -216,10 +324,7 @@ export function vendedorPodeAcessarPedido(
   session: SessionProfile | null,
   card: Pick<OrderCard, 'vendedorId'>,
 ): boolean {
-  if (!session || session.role !== 'vendedor') return true
-  const vendedorId = findVendedorIdForSession(board, session)
-  if (!vendedorId) return false
-  return card.vendedorId === vendedorId
+  return pedidoPertenceAoVendedorSession(board, card, session)
 }
 
 /** Garante linha no quadro para admin/vendedor logado. */
