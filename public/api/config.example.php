@@ -9,7 +9,7 @@ return [
     'admin_password' => 'TROQUE-ESTA-SENHA',
     // 'admin_password_hash' => '$2y$10$...',
     /** false = local / antes de publicar; true = exige login no site */
-    'require_login' => false,
+    'require_login' => true,
     'session_days' => 14,
     'data_file' => __DIR__ . '/../data/board.json',
     'sessions_file' => __DIR__ . '/../data/sessions.json',

@@ -49,41 +49,62 @@ Há duas formas de hospedar a API:
 
 2. Na pasta **`api/`** do servidor:
    - Copie `config.example.php` → **`config.php`**
-   - Defina usuário e senha de acesso:
+   - Ative login e multiusuário (ajuste senhas no servidor, não no React):
 
    ```php
-   'admin_user' => 'vestfirma',
-   'admin_password' => 'SUA-SENHA-FORTE',
+   'require_login' => true,
+   'seed_admin_email' => 'ruan.gomesc@gmail.com',
+   'seed_admin_name' => 'Administrador',
+   // opcional na 1ª vez: 'seed_admin_password' => 'senha-inicial',
+   'users_file' => __DIR__ . '/../data/users.json',
+   'sessions_file' => __DIR__ . '/../data/sessions.json',
    ```
 
-   Opcional (mais seguro): use hash em vez de senha em texto:
+   Campos legados (`admin_user` / `admin_password`) ainda funcionam na migração; o admin principal passa a ser o e-mail em `users.json`.
+
+3. Crie a pasta **`data/`** com permissão de escrita (grava `board.json`, `sessions.json` e **`users.json`**).
+
+4. **Envie estes arquivos da API** (além do que já tinha). Se faltar algum, login/admin não funciona no ar:
+   - `api/login.php`, `api/logout.php`, `api/session.php`
+   - **`api/users.php`**
+   - `api/lib/auth.php`, **`api/lib/users.php`**
+   - `assets/index-*.js` e `assets/index-*.css` **novos** (build com login ligado)
+
+5. No Mac, **antes de enviar o `dist/`**:
 
    ```bash
-   php -r "echo password_hash('SUA-SENHA', PASSWORD_DEFAULT);"
+   npm run build:publicar
    ```
 
-   No `config.php`:
+   Isso usa `.env.production` (`VITE_REQUIRE_LOGIN=true`). Build só com `.env` e `false` **não mostra** tela de login nem botão **Usuários** — mesmo com PHP certo.
 
-   ```php
-   'admin_password_hash' => '$2y$10$...',
-   // remova ou deixe vazio admin_password
-   ```
-
-3. Crie a pasta **`data/`** com permissão de escrita (grava `board.json` e `sessions.json`).
-
-4. No painel PHP, se o quadro for grande (muitas logos), aumente se necessário:
+6. No painel PHP, se o quadro for grande (muitas logos), aumente se necessário:
    - `upload_max_filesize` / `post_max_size` → **64M** ou mais
 
-5. Acesse pelo HTTPS. A **tela de login** aparece antes do kanban. O mesmo usuário/senha vale em qualquer aparelho.
+5. Acesse pelo HTTPS. A **tela de login (e-mail + senha)** aparece antes do kanban. Admin geral: botão **Usuários** no header para criar Gerente, Expedição, Impressão, Vendedor e copiar senhas.
 
-**Segurança:** HTTPS obrigatório; senha forte em `config.php` / `ADMIN_PASSWORD`. Quem não estiver logado **não lê nem grava** o quadro (API retorna 401).
+**Segurança:** HTTPS obrigatório; `data/users.json` contém senhas em texto (para você copiar e enviar) — proteja a pasta `data/`. Quem não estiver logado **não lê nem grava** o quadro (API retorna 401).
 
 ---
 
-## Login
+## Login e perfis (admin)
+
+| Onde | O que ligar |
+|------|-------------|
+| Build (`npm run build:publicar`) | `VITE_REQUIRE_LOGIN=true` em `.env.production` |
+| PHP `config.php` | `'require_login' => true` + `users_file` / `seed_admin_email` |
+| Node | `REQUIRE_LOGIN=true` + `SEED_ADMIN_EMAIL=ruan.gomesc@gmail.com` |
+
+**Primeiro acesso admin:** se `data/users.json` ainda não existir, o servidor cria `ruan.gomesc@gmail.com` com senha aleatória ou a de `seed_admin_password` / `admin_password` legado. Veja a senha em **Usuários** (logado como admin) ou no arquivo `users.json` no servidor.
+
+**Atualizar só o front:** reenvie `index.html`, `assets/*` e confira se `api/users.php` e `api/lib/users.php` já estão no FTP.
+
+---
+
+## Login (resumo)
 
 - **Antes de publicar (Mac):** deixe `VITE_REQUIRE_LOGIN=false` no build e `REQUIRE_LOGIN=false` no Node (ou `require_login => false` no PHP). O kanban abre **sem tela de login**, mas continua salvando no servidor se a API estiver ativa.
-- **Ao publicar:** no `.env` do build, `VITE_REQUIRE_LOGIN=true`; no servidor PHP `require_login => true` em `config.php`; no Node `REQUIRE_LOGIN=true`.
+- **Ao publicar:** `npm run build:publicar` (ou `.env.production` com `VITE_REQUIRE_LOGIN=true`); no servidor PHP `require_login => true` em `config.php`; no Node `REQUIRE_LOGIN=true`.
 - **Sem `VITE_API_BASE`:** só dados no navegador — login desligado.
 - Sessão: **14 dias** (`session_days` / `SESSION_DAYS`). Botão **Sair** quando login estiver ativo.
 
@@ -157,10 +178,10 @@ Na **primeira** vez que abrir o site **já configurado** com API:
 ## 7. Atualizar o site
 
 ```bash
-npm run build
+npm run build:publicar
 ```
 
-Envie de novo os arquivos de **`dist/`** (mantenha `data/board.json` e `api/config.php` no servidor — **não apague**).
+Envie de novo os arquivos de **`dist/`** (mantenha `data/board.json`, `data/users.json` e `api/config.php` no servidor — **não apague**).
 
 ---
 
