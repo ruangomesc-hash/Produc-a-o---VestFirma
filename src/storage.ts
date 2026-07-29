@@ -261,6 +261,7 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       const snapshotRaw = loadBoardPedidosSnapshot()
       const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
       let board =
+        mergeBoardsMaxPedidos(snapshot, remote, local) ??
         mergeBoardsMaxPedidos(remote, local, snapshot) ??
         (local ? mergeBoardPreservingPedidos(remote, local) : remote)
 
@@ -268,19 +269,26 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
         board = mergeBoardPreservingPedidos(board, snapshot)
       }
 
+      let richerLocal: BoardState | undefined
+      const remoteCount = contagemPedidos(remote)
+      const mergedCount = contagemPedidos(board)
+
+      if (mergedCount > remoteCount) {
+        richerLocal = board
+      } else if (mergedCount === 0 && snapshot && boardHasPedidos(snapshot)) {
+        board = mergeBoardPreservingPedidos(remote, snapshot)
+        richerLocal = board
+      }
+
       await saveBoardToIdb(board)
       snapshotBoardPedidos(board)
 
-      let richerLocal: BoardState | undefined
-      if (contagemPedidos(board) > contagemPedidos(remote)) {
-        richerLocal = board
-        if (!protectedServer) {
-          try {
-            await saveRemoteBoard(board)
-            richerLocal = undefined
-          } catch {
-            /* banner / nova tentativa depois */
-          }
+      if (richerLocal && !protectedServer && boardHasPedidos(board)) {
+        try {
+          await saveRemoteBoard(board)
+          richerLocal = undefined
+        } catch {
+          /* banner / nova tentativa depois */
         }
       }
       return { board, richerLocal }

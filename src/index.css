@@ -2732,6 +2732,14 @@ textarea {
   color: var(--muted);
 }
 
+.storage-meter-bar-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  opacity: 0.92;
+  line-height: 1.35;
+}
+
 .storage-meter-breakdown {
   list-style: none;
   margin: 0;
@@ -4221,6 +4229,102 @@ textarea {
 
 .visao-card--extra {
   background: linear-gradient(145deg, #475569, #64748b);
+}
+
+.visao-equipe-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.88;
+  max-width: 28rem;
+  line-height: 1.4;
+}
+
+.visao-equipe-top {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.visao-equipe-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.visao-equipe-total {
+  color: #fde68a;
+  border-color: rgba(232, 185, 35, 0.55);
+  background: rgba(232, 185, 35, 0.15);
+}
+
+.visao-equipe-error {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.15);
+  color: #fecaca;
+  font-size: 0.88rem;
+}
+
+.visao-equipe-grid .visao-card {
+  min-height: 11rem;
+}
+
+.visao-equipe-list {
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  text-align: left;
+  width: 100%;
+}
+
+.visao-equipe-list li {
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+  margin-bottom: 0.35rem;
+}
+
+.visao-equipe-nome {
+  display: block;
+  font-weight: 600;
+}
+
+.visao-equipe-email {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  opacity: 0.9;
+  word-break: break-all;
+}
+
+.visao-equipe-vazio {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.visao-card--equipe-admin {
+  background: linear-gradient(145deg, #92400e, #e8b923);
+  color: #1a1200;
+}
+
+.visao-card--equipe-admin .visao-metric-label,
+.visao-card--equipe-admin .visao-equipe-vazio {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.visao-card--equipe-gerente {
+  background: linear-gradient(145deg, #4c1d95, #7c3aed);
+}
+
+.visao-card--equipe-vendedor {
+  background: linear-gradient(145deg, #0f766e, #2dd4bf);
 }
 
 @keyframes visao-logistica-glow {

@@ -19,6 +19,7 @@ import { LoginPage } from './components/LoginPage'
 import { VendedoresModal } from './components/VendedoresModal'
 import { WhatsAppNotifyModal } from './components/WhatsAppNotifyModal'
 import { VisaoGeralPanel } from './components/VisaoGeralPanel'
+import { VisaoEquipePanel } from './components/VisaoEquipePanel'
 import { SystemStatusPanel } from './components/SystemStatusPanel'
 import { VendedoresOverviewPanel } from './components/VendedoresOverviewPanel'
 import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
@@ -29,7 +30,7 @@ import { HistoricoAuditoriaPanel } from './components/HistoricoAuditoriaPanel'
 import { setAuditActor } from './auditContext'
 import { recordAudit } from './auditLog'
 import { useBoard } from './hooks/useBoard'
-import { pedidoVisivelNoKanban } from './pedidosPolicy'
+import { contagemPedidos, pedidoVisivelNoKanban } from './pedidosPolicy'
 import type { OrderCard } from './types'
 
 type AuthState = 'boot' | 'checking' | 'login' | 'ok'
@@ -137,7 +138,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     sync,
     localRestore,
     restoreRicherLocalToServer,
+    restoreFromPedidosSnapshot,
     dismissLocalRestore,
+    pedidosSnapshotCount,
     addColumn,
     removeColumn,
     updateVendedorContato,
@@ -228,14 +231,17 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     [board, session],
   )
 
-  const [view, setView] = useState<'kanban' | 'visao' | 'status' | 'vendedores' | 'historico'>(() => {
+  const [view, setView] = useState<
+    'kanban' | 'visao' | 'status' | 'vendedores' | 'historico' | 'equipe'
+  >(() => {
     const hash = window.location.hash.replace(/^#/, '')
     if (
       hash === 'status' ||
       hash === 'visao' ||
       hash === 'kanban' ||
       hash === 'vendedores' ||
-      hash === 'historico'
+      hash === 'historico' ||
+      hash === 'equipe'
     ) {
       return hash
     }
@@ -244,7 +250,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [visaoTvMode, setVisaoTvMode] = useState(false)
 
   useEffect(() => {
-    if (view === 'historico' && !isAdmin(session)) {
+    if ((view === 'historico' || view === 'equipe') && !isAdmin(session)) {
       setView('kanban')
     }
   }, [view, session])
@@ -360,6 +366,19 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 <button
                   type="button"
                   role="tab"
+                  id="tab-equipe"
+                  aria-selected={view === 'equipe'}
+                  aria-controls="panel-equipe"
+                  className={`nav-tab ${view === 'equipe' ? 'active' : ''}`}
+                  onClick={() => setView('equipe')}
+                >
+                  Equipe
+                </button>
+              ) : null}
+              {isAdmin(session) ? (
+                <button
+                  type="button"
+                  role="tab"
                   id="tab-historico"
                   aria-selected={view === 'historico'}
                   aria-controls="panel-historico"
@@ -386,7 +405,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                     ? 'Desempenho por vendedor'
                     : view === 'historico'
                       ? 'Histórico de ações no app'
-                      : 'Kanban de uniformes personalizados'}
+                      : view === 'equipe'
+                        ? 'Visão da equipe por setor'
+                        : 'Kanban de uniformes personalizados'}
             </p>
           </div>
           <div className="header-actions">
@@ -435,6 +456,29 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 neste navegador — use <strong>Restaurar pedidos no servidor</strong> abaixo ou
                 recarregue após corrigir a conexão.
               </p>
+            </div>
+          ) : null}
+          {ready &&
+          contagemPedidos(board) === 0 &&
+          (pedidosSnapshotCount > 0 || (localRestore?.cards.length ?? 0) > 0) ? (
+            <div className="board-restore-banner" role="alert">
+              <p>
+                <strong>O quadro aparece vazio</strong>, mas há backup neste navegador (
+                {pedidosSnapshotCount || localRestore?.cards.length} pedido(s)). Use o botão para
+                recuperar e gravar no servidor.
+              </p>
+              <div className="board-restore-actions">
+                {pedidosSnapshotCount > 0 ? (
+                  <button type="button" className="btn primary" onClick={restoreFromPedidosSnapshot}>
+                    Recuperar pedidos do backup
+                  </button>
+                ) : null}
+                {localRestore && localRestore.cards.length > 0 ? (
+                  <button type="button" className="btn primary" onClick={restoreRicherLocalToServer}>
+                    Restaurar pedidos no servidor
+                  </button>
+                ) : null}
+              </div>
             </div>
           ) : null}
           {pedidosVisiveisNoKanban === 0 &&
@@ -494,6 +538,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       ) : view === 'historico' ? (
         <div id="panel-historico" className="app-panel" role="tabpanel" aria-labelledby="tab-historico">
           <HistoricoAuditoriaPanel />
+        </div>
+      ) : view === 'equipe' ? (
+        <div id="panel-equipe" className="app-panel" role="tabpanel" aria-labelledby="tab-equipe">
+          <VisaoEquipePanel />
         </div>
       ) : (
         <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">

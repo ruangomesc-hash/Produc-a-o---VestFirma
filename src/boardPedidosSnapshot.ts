@@ -21,3 +21,8 @@ export function loadBoardPedidosSnapshot(): BoardState | null {
     return null
   }
 }
+
+export function contagemPedidosNoSnapshot(): number {
+  const snap = loadBoardPedidosSnapshot()
+  return snap ? contagemPedidos(snap) : 0
+}

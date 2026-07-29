@@ -1,8 +1,23 @@
 import { normalizeBoard } from './storage'
 import type { BoardState, OrderCard } from './types'
 
-/** Limite típico de body em funções Vercel (Hobby) — referência visual. */
+/** Padrão do servidor Node (MAX_BODY_MB) — Render e uso local. */
+export const DEFAULT_SAVE_LIMIT_BYTES = 80 * 1024 * 1024
+
+/** @deprecated Referência antiga Vercel Hobby — não usar na UI. */
 export const VERCEL_SAVE_LIMIT_BYTES = 4.5 * 1024 * 1024
+
+export type SaveLimitInfo = {
+  limitBytes: number
+  label: string
+  detail: string
+}
+
+export const DEFAULT_SAVE_LIMIT_INFO: SaveLimitInfo = {
+  limitBytes: DEFAULT_SAVE_LIMIT_BYTES,
+  label: 'Render / Node',
+  detail: 'Até 80 MB por salvamento (padrão MAX_BODY_MB no servidor).',
+}
 
 export type CardStorageRow = {
   id: string
@@ -20,7 +35,7 @@ export type BoardStorageStats = {
   pedidosMetaBytes: number
   structureBytes: number
   topCards: CardStorageRow[]
-  vercelLimitBytes: number
+  saveLimitBytes: number
 }
 
 function utf8ByteLength(text: string): number {
@@ -64,7 +79,10 @@ export function storageUsageLevel(
   return 'ok'
 }
 
-export function measureBoardStorage(board: BoardState): BoardStorageStats {
+export function measureBoardStorage(
+  board: BoardState,
+  saveLimitBytes = DEFAULT_SAVE_LIMIT_BYTES,
+): BoardStorageStats {
   const normalized = normalizeBoard(board)
   const totalJson = JSON.stringify(normalized)
   const totalBytes = utf8ByteLength(totalJson)
@@ -106,7 +124,7 @@ export function measureBoardStorage(board: BoardState): BoardStorageStats {
     pedidosMetaBytes,
     structureBytes,
     topCards: topCards.slice(0, 8),
-    vercelLimitBytes: VERCEL_SAVE_LIMIT_BYTES,
+    saveLimitBytes,
   }
 }
 

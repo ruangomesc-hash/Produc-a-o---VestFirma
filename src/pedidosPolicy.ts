@@ -41,19 +41,21 @@ export function contagemPedidos(state: BoardState | null | undefined): number {
   return Array.isArray(state?.cards) ? state!.cards.length : 0
 }
 
-/** Une pedidos de duas fontes (servidor, IDB, etc.) sem remover ids existentes. */
+/** Une pedidos de várias fontes (servidor, IDB, snapshot) sem remover ids existentes. */
 export function mergeBoardsMaxPedidos(
   ...boards: (BoardState | null | undefined)[]
 ): BoardState | null {
-  let acc: BoardState | null = null
-  for (const b of boards) {
-    if (!b?.columns?.length) continue
-    const norm = b
-    if (!acc) {
-      acc = { ...norm, cards: [...(norm.cards ?? [])] }
-      continue
-    }
-    acc = mergeBoardPreservingPedidos(acc, norm)
+  const valid = boards.filter((b): b is BoardState => Boolean(b?.columns?.length))
+  if (valid.length === 0) return null
+
+  valid.sort((a, b) => contagemPedidos(b) - contagemPedidos(a))
+  let acc: BoardState = {
+    ...valid[0],
+    cards: [...(valid[0].cards ?? [])],
+    vendedores: [...(valid[0].vendedores ?? [])],
+  }
+  for (let i = 1; i < valid.length; i++) {
+    acc = mergeBoardPreservingPedidos(acc, valid[i])
   }
   return acc
 }

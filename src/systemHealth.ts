@@ -1,5 +1,6 @@
 import { requiresLogin, verifySession } from './authSession'
 import { isRemoteSyncEnabled } from './remoteBoard'
+import { DEFAULT_SAVE_LIMIT_INFO, type SaveLimitInfo } from './boardStorageStats'
 import type { BoardState } from './types'
 import { getWhatsappNotifyMode, whatsappNotifyEnabled } from './whatsappNotify'
 
@@ -19,6 +20,39 @@ type ServerHealth = {
   whatsappWebhookConfigured?: boolean
   boardDataConfigured?: boolean
   timestamp?: string
+  maxSaveBodyMb?: number
+  onRender?: boolean
+  storage?: string
+  logosExternal?: boolean
+}
+
+export type ServerSaveLimitInfo = SaveLimitInfo
+
+function saveLimitFromHealth(payload: ServerHealth | null): SaveLimitInfo {
+  if (!payload?.maxSaveBodyMb || payload.maxSaveBodyMb <= 0) {
+    return DEFAULT_SAVE_LIMIT_INFO
+  }
+  const mb = payload.maxSaveBodyMb
+  const onRender = payload.onRender === true
+  return {
+    limitBytes: mb * 1024 * 1024,
+    label: onRender ? 'Render' : 'API Node (VestFirma)',
+    detail: onRender
+      ? `Até ${mb} MB por salvamento (limite configurado no serviço Render).`
+      : `Até ${mb} MB por requisição (MAX_BODY_MB no servidor).`,
+  }
+}
+
+export async function fetchServerSaveLimit(): Promise<SaveLimitInfo> {
+  const hUrl = healthUrl()
+  if (!isRemoteSyncEnabled() || !hUrl) {
+    return DEFAULT_SAVE_LIMIT_INFO
+  }
+  const h = await fetchJson(hUrl)
+  if (h.ok && h.data && typeof h.data === 'object') {
+    return saveLimitFromHealth(h.data as ServerHealth)
+  }
+  return DEFAULT_SAVE_LIMIT_INFO
 }
 
 function apiBase(): string | null {
@@ -123,10 +157,19 @@ export async function runSystemHealthChecks(board: BoardState): Promise<HealthCh
         id: 'server-health',
         title: 'Servidor VestFirma',
         status: 'ok',
-        summary: 'Respondendo (/api/health)',
-        detail: serverHealth.timestamp
-          ? `Última resposta: ${new Date(serverHealth.timestamp).toLocaleString('pt-BR')}`
-          : undefined,
+        summary: serverHealth.onRender
+          ? 'Respondendo na Render (/api/health)'
+          : 'Respondendo (/api/health)',
+        detail: [
+          serverHealth.timestamp
+            ? `Última resposta: ${new Date(serverHealth.timestamp).toLocaleString('pt-BR')}`
+            : null,
+          serverHealth.maxSaveBodyMb
+            ? `Limite de salvamento: ${serverHealth.maxSaveBodyMb} MB por requisição.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
       })
     } else {
       checks.push({

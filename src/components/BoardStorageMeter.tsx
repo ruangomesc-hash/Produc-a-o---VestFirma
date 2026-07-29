@@ -1,10 +1,13 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  DEFAULT_SAVE_LIMIT_INFO,
   formatStorageBytes,
   measureBoardStorage,
   storagePercent,
   storageUsageLevel,
+  type SaveLimitInfo,
 } from '../boardStorageStats'
+import { fetchServerSaveLimit } from '../systemHealth'
 import type { BoardState } from '../types'
 
 type Props = {
@@ -12,9 +15,24 @@ type Props = {
 }
 
 export function BoardStorageMeter({ board }: Props) {
-  const stats = useMemo(() => measureBoardStorage(board), [board])
-  const level = storageUsageLevel(stats.totalBytes, stats.vercelLimitBytes)
-  const pct = storagePercent(stats.totalBytes, stats.vercelLimitBytes)
+  const [saveLimit, setSaveLimit] = useState<SaveLimitInfo>(DEFAULT_SAVE_LIMIT_INFO)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchServerSaveLimit().then((info) => {
+      if (!cancelled) setSaveLimit(info)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const stats = useMemo(
+    () => measureBoardStorage(board, saveLimit.limitBytes),
+    [board, saveLimit.limitBytes],
+  )
+  const level = storageUsageLevel(stats.totalBytes, stats.saveLimitBytes)
+  const pct = storagePercent(stats.totalBytes, stats.saveLimitBytes)
   const logosPct =
     stats.totalBytes > 0 ? Math.round((stats.logoBytes / stats.totalBytes) * 100) : 0
 
@@ -27,7 +45,7 @@ export function BoardStorageMeter({ board }: Props) {
           </h2>
           <p className="storage-meter-sub">
             Tamanho do quadro completo ao salvar no servidor (pedidos + logos + colunas). Logos
-            comprimidas entram na conta.
+            externas (Render) entram só como referência leve no JSON.
           </p>
         </div>
         <div className={`storage-meter-total storage-meter-${level}`}>
@@ -45,14 +63,15 @@ export function BoardStorageMeter({ board }: Props) {
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Uso em relação ao limite de envio na Vercel: ${pct}%`}
+          aria-label={`Uso em relação ao limite de salvamento no ${saveLimit.label}: ${pct}%`}
         >
           <div className="storage-meter-bar-fill" style={{ width: `${pct}%` }} />
         </div>
         <p className="storage-meter-bar-caption">
-          {pct}% do limite de referência para envio ({formatStorageBytes(stats.vercelLimitBytes)} —
-          Vercel Hobby)
+          {pct}% do limite para envio ao servidor ({formatStorageBytes(stats.saveLimitBytes)} —{' '}
+          {saveLimit.label})
         </p>
+        <p className="storage-meter-bar-hint">{saveLimit.detail}</p>
       </div>
 
       <ul className="storage-meter-breakdown">
@@ -76,7 +95,7 @@ export function BoardStorageMeter({ board }: Props) {
       {level !== 'ok' && (
         <p className={`storage-meter-alert storage-meter-alert-${level}`}>
           {level === 'error'
-            ? 'Quadro muito grande: o salvamento na Vercel pode falhar. Remova logos antigas ou arquive pedidos.'
+            ? 'Quadro muito grande: o salvamento no servidor (Render) pode falhar. Remova logos antigas ou arquive pedidos.'
             : 'O quadro está ficando pesado. Considere limpar logos duplicadas ou pedidos muito antigos.'}
         </p>
       )}

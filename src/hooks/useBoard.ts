@@ -9,8 +9,12 @@ import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
-import { mergeBoardPreservingPedidos } from '../pedidosPolicy'
-import { snapshotBoardPedidos } from '../boardPedidosSnapshot'
+import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
+import {
+  snapshotBoardPedidos,
+  loadBoardPedidosSnapshot,
+  contagemPedidosNoSnapshot,
+} from '../boardPedidosSnapshot'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
@@ -73,8 +77,21 @@ export function useBoard() {
     loadBoard({ signal: abort.signal })
       .then((result) => {
         if (!cancelled) {
-          setBoard(result.board)
-          setLocalRestore(result.richerLocal ?? null)
+          let board = result.board
+          let richer = result.richerLocal ?? null
+
+          if (contagemPedidos(board) === 0) {
+            const snapRaw = loadBoardPedidosSnapshot()
+            const snap = snapRaw ? normalizeBoard(snapRaw) : null
+            if (snap && contagemPedidos(snap) > 0) {
+              board = mergeBoardPreservingPedidos(board, snap)
+              richer = board
+              void saveBoard(board)
+            }
+          }
+
+          setBoard(board)
+          setLocalRestore(richer)
           setSync({
             remote,
             status: 'saved',
@@ -479,6 +496,20 @@ export function useBoard() {
     })
   }, [localRestore, board.vendedores, persist])
 
+  const restoreFromPedidosSnapshot = useCallback(() => {
+    const snapRaw = loadBoardPedidosSnapshot()
+    if (!snapRaw) return
+    const snap = normalizeBoard(snapRaw)
+    if (contagemPedidos(snap) === 0) return
+    const merged = mergeBoardPreservingPedidos(boardRef.current, snap)
+    setLocalRestore(null)
+    persist(merged, { forceRemote: true })
+    recordAudit({
+      action: 'quadro.restaurado',
+      summary: `Restaurou ${merged.cards.length} pedido(s) do backup do navegador`,
+    })
+  }, [persist])
+
   const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
 
   return {
@@ -487,7 +518,9 @@ export function useBoard() {
     sync,
     localRestore,
     restoreRicherLocalToServer,
+    restoreFromPedidosSnapshot,
     dismissLocalRestore,
+    pedidosSnapshotCount: contagemPedidosNoSnapshot(),
     addColumn,
     removeColumn,
     addVendedor,
