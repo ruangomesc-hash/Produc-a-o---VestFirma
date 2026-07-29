@@ -104,27 +104,31 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
           aria-expanded={false}
           aria-label={`Expandir pedido ${card.numeroPedido} de ${card.cliente}`}
         >
-          <CardLogoBlock
-            label="Logo enviada pelo cliente"
-            src={card.logoEnviadaCliente}
-            emptyText="Sem logo do cliente"
-          />
-          <p className="card-collapsed-caption">
-            <strong>{card.cliente}</strong>
-            <span className="card-collapsed-sep">·</span>
-            Pedido {card.numeroPedido}
-            <span className="card-collapsed-sep">·</span>
-            {card.quantidade} peças
-            {qtdComentarios > 0 ? (
-              <>
+          <div className="card-collapsed-preview">
+            <CardLogoBlock
+              label="Logo enviada pelo cliente"
+              src={card.logoEnviadaCliente}
+              emptyText="Sem logo do cliente"
+            />
+            <div className="card-collapsed-summary">
+              <p className="card-collapsed-caption">
+                <strong>{card.cliente}</strong>
                 <span className="card-collapsed-sep">·</span>
-                <span className="card-comentarios-tag card-comentarios-tag--inline">
-                  Comentário{qtdComentarios === 1 ? '' : 's'}
-                </span>
-              </>
-            ) : null}
-          </p>
-          <span className="card-collapsed-cta">Toque para expandir</span>
+                Pedido {card.numeroPedido}
+                <span className="card-collapsed-sep">·</span>
+                {card.quantidade} peças
+                {qtdComentarios > 0 ? (
+                  <>
+                    <span className="card-collapsed-sep">·</span>
+                    <span className="card-comentarios-tag card-comentarios-tag--inline">
+                      Comentário{qtdComentarios === 1 ? '' : 's'}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+              <span className="card-collapsed-cta">Toque para expandir</span>
+            </div>
+          </div>
         </button>
       ) : (
         <>

@@ -926,34 +926,95 @@ textarea {
   border-bottom: none;
 }
 
-.kanban-card--collapsed .card-logo {
-  height: 4.75rem;
+.card-collapsed-preview {
+  position: relative;
+  overflow: hidden;
+  background: #0c1016;
+}
+
+.kanban-card--collapsed .card-collapsed-preview .card-logo-label {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.62rem;
+  background: linear-gradient(180deg, rgba(12, 16, 22, 0.82) 0%, rgba(12, 16, 22, 0) 100%);
+  pointer-events: none;
+}
+
+.kanban-card--collapsed .card-collapsed-preview .card-logo {
+  height: 6.5rem;
+  min-height: 6.5rem;
+  max-height: 6.5rem;
+  padding-bottom: 3.35rem;
+  box-sizing: border-box;
+}
+
+.card-collapsed-summary {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 0.45rem 0.65rem 0.5rem;
+  background: linear-gradient(
+    180deg,
+    rgba(12, 16, 22, 0.55) 0%,
+    rgba(12, 16, 22, 0.94) 35%,
+    rgba(8, 10, 14, 0.98) 100%
+  );
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 -10px 24px rgba(0, 0, 0, 0.55),
+    0 -1px 0 rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.card-collapsed-hit:hover .card-collapsed-summary,
+.card-collapsed-hit:focus-visible .card-collapsed-summary {
+  background: linear-gradient(
+    180deg,
+    rgba(12, 16, 22, 0.65) 0%,
+    rgba(12, 16, 22, 0.97) 35%,
+    rgba(8, 10, 14, 1) 100%
+  );
 }
 
 .card-collapsed-caption {
   margin: 0;
-  padding: 0.45rem 0.65rem 0.15rem;
+  padding: 0;
   font-size: 0.76rem;
   line-height: 1.35;
-  color: var(--text);
+  color: #f1f5f9;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 12px rgba(0, 0, 0, 0.65);
 }
 
 .card-collapsed-caption strong {
   font-weight: 700;
+  color: #fff;
 }
 
 .card-collapsed-sep {
   margin: 0 0.2rem;
-  color: var(--muted);
+  color: rgba(226, 232, 240, 0.75);
   font-weight: 500;
 }
 
 .card-collapsed-cta {
   display: block;
-  padding: 0 0.65rem 0.55rem;
+  margin-top: 0.2rem;
+  padding: 0;
   font-size: 0.68rem;
   font-weight: 600;
-  color: var(--accent);
+  color: #5eead4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.kanban-card--collapsed .card-collapsed-summary .card-comentarios-tag--inline {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .kanban-card--expanded {
