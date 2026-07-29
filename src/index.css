@@ -1914,6 +1914,184 @@ textarea {
   color: rgba(26, 20, 4, 0.65);
 }
 
+.storage-meter {
+  margin: 1.25rem 0 1.5rem;
+  padding: 1.1rem 1.15rem;
+  background: rgba(26, 34, 45, 0.92);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.storage-meter-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.storage-meter-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.storage-meter-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.storage-meter-total {
+  text-align: right;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.storage-meter-total-value {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.storage-meter-total-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.storage-meter-ok .storage-meter-total-value {
+  color: var(--logistica-light);
+}
+
+.storage-meter-warn .storage-meter-total-value {
+  color: var(--vestfirma-gold-light);
+}
+
+.storage-meter-error .storage-meter-total-value {
+  color: #fca5a5;
+}
+
+.storage-meter-bar-wrap {
+  margin-bottom: 0.85rem;
+}
+
+.storage-meter-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.storage-meter-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.storage-meter-bar-ok .storage-meter-bar-fill {
+  background: linear-gradient(90deg, var(--logistica-dark), var(--logistica-light));
+}
+
+.storage-meter-bar-warn .storage-meter-bar-fill {
+  background: linear-gradient(90deg, #b45309, var(--vestfirma-gold-light));
+}
+
+.storage-meter-bar-error .storage-meter-bar-fill {
+  background: linear-gradient(90deg, #b91c1c, #f87171);
+}
+
+.storage-meter-bar-caption {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.storage-meter-breakdown {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+}
+
+.storage-meter-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.storage-meter-breakdown li span {
+  color: var(--muted);
+}
+
+.storage-meter-alert {
+  margin: 0.85rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.storage-meter-alert-warn {
+  background: rgba(232, 185, 35, 0.12);
+  border: 1px solid rgba(232, 185, 35, 0.35);
+  color: #fde68a;
+}
+
+.storage-meter-alert-error {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.storage-meter-top {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.storage-meter-top-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.storage-meter-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.storage-meter-table th,
+.storage-meter-table td {
+  text-align: left;
+  padding: 0.4rem 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.storage-meter-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.storage-meter-order {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 /* —— Por vendedor —— */
 .vendedor-overview {
   flex: 1;

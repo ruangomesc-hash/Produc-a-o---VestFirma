@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { countByStatus, runSystemHealthChecks, type HealthCheck } from '../systemHealth'
+import { BoardStorageMeter } from './BoardStorageMeter'
 import type { BoardState } from '../types'
 
 type Props = {
@@ -80,6 +81,8 @@ export function SystemStatusPanel({ board }: Props) {
             Última verificação: {lastRun.toLocaleString('pt-BR')}
           </p>
         )}
+
+        <BoardStorageMeter board={board} />
 
         <ul className="system-status-list">
           {(checks ?? []).map((check) => (
