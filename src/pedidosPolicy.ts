@@ -5,9 +5,35 @@ export function pedidoVisivelNoKanban(card: OrderCard): boolean {
   return !card.arquivadoEm
 }
 
+/** Momento da última mudança relevante no pedido (movimento, criação, etc.). */
+export function pedidoRevisionMs(card: OrderCard): number {
+  let max = 0
+  for (const e of card.historicoEtapa ?? []) {
+    if (e?.at) {
+      const t = Date.parse(e.at)
+      if (!Number.isNaN(t)) max = Math.max(max, t)
+    }
+  }
+  for (const iso of [card.etapaDesde, card.createdAt, card.arquivadoEm]) {
+    if (iso) {
+      const t = Date.parse(iso)
+      if (!Number.isNaN(t)) max = Math.max(max, t)
+    }
+  }
+  return max
+}
+
+function mergeOrderCard(existing: OrderCard, incoming: OrderCard): OrderCard {
+  const tExist = pedidoRevisionMs(existing)
+  const tIn = pedidoRevisionMs(incoming)
+  if (tIn >= tExist) return { ...existing, ...incoming }
+  return { ...incoming, ...existing }
+}
+
 /**
  * Regra máxima VestFirma: o servidor nunca perde pedidos por PUT parcial.
  * Une por id — existentes que não vieram no payload são mantidos.
+ * Em conflito de etapa, vence a versão mais recente (histórico / etapaDesde).
  */
 export function mergeBoardPreservingPedidos(
   existing: BoardState | null | undefined,
@@ -24,13 +50,31 @@ export function mergeBoardPreservingPedidos(
   for (const c of incoming.cards ?? []) {
     if (!c?.id) continue
     const prev = byId.get(c.id)
-    byId.set(c.id, prev ? { ...prev, ...c } : c)
+    byId.set(c.id, prev ? mergeOrderCard(prev, c) : c)
   }
 
   return {
     ...incoming,
     cards: [...legacy, ...Array.from(byId.values())],
   }
+}
+
+/** Só inclui pedidos que faltam em `primary` — não sobrescreve dados atuais. */
+export function mergeBoardAddingMissingPedidosOnly(
+  primary: BoardState,
+  secondary: BoardState | null | undefined,
+): BoardState {
+  if (!secondary?.cards?.length) return primary
+  const byId = new Map(primary.cards.map((c) => [c.id, c]))
+  let added = false
+  for (const c of secondary.cards) {
+    if (c?.id && !byId.has(c.id)) {
+      byId.set(c.id, c)
+      added = true
+    }
+  }
+  if (!added) return primary
+  return { ...primary, cards: [...byId.values()] }
 }
 
 export function boardTemPedidos(state: BoardState): boolean {

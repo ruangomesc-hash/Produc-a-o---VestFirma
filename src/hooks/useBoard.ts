@@ -469,7 +469,7 @@ export function useBoard() {
         ...board,
         cards: board.cards.map((c) => (c.id === cardId ? updated : c)),
       }
-      persist(nextBoard)
+      persist(nextBoard, { immediate: true })
       notificarSePedidoMovido(updated, nextBoard, fromColumnId, columnId)
       recordAudit({
         action: 'pedido.movido',

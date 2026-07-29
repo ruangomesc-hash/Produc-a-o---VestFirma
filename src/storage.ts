@@ -10,7 +10,7 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
-import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos } from './pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
@@ -266,7 +266,7 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
         (local ? mergeBoardPreservingPedidos(remote, local) : remote)
 
       if (!boardHasPedidos(board) && snapshot && boardHasPedidos(snapshot)) {
-        board = mergeBoardPreservingPedidos(board, snapshot)
+        board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
       }
 
       let richerLocal: BoardState | undefined
@@ -276,7 +276,7 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       if (mergedCount > remoteCount) {
         richerLocal = board
       } else if (mergedCount === 0 && snapshot && boardHasPedidos(snapshot)) {
-        board = mergeBoardPreservingPedidos(remote, snapshot)
+        board = mergeBoardAddingMissingPedidosOnly(remote, snapshot)
         richerLocal = board
       }
 
@@ -314,7 +314,7 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     const snapshotRaw = loadBoardPedidosSnapshot()
     const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
     if (snapshot && boardHasPedidos(snapshot)) {
-      board = mergeBoardPreservingPedidos(board, snapshot)
+      board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
     }
     return { board }
   }
@@ -354,12 +354,6 @@ export async function saveBoard(
     !boardHasPedidos(normalized)
   ) {
     normalized = mergeBoardPreservingPedidos(normalized, idbUsable)
-  }
-
-  const snapshotRaw = loadBoardPedidosSnapshot()
-  const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
-  if (snapshot && boardHasPedidos(snapshot)) {
-    normalized = mergeBoardPreservingPedidos(normalized, snapshot)
   }
 
   try {

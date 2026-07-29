@@ -16,6 +16,30 @@ export async function readExistingBoard(DATA_FILE) {
 }
 
 /** Nunca remove pedidos já gravados — só adiciona ou atualiza por id. */
+function pedidoRevisionMs(card) {
+  let max = 0
+  for (const e of card?.historicoEtapa ?? []) {
+    if (e?.at) {
+      const t = Date.parse(e.at)
+      if (!Number.isNaN(t)) max = Math.max(max, t)
+    }
+  }
+  for (const iso of [card?.etapaDesde, card?.createdAt, card?.arquivadoEm]) {
+    if (iso) {
+      const t = Date.parse(iso)
+      if (!Number.isNaN(t)) max = Math.max(max, t)
+    }
+  }
+  return max
+}
+
+function mergeOrderCard(existing, incoming) {
+  const tExist = pedidoRevisionMs(existing)
+  const tIn = pedidoRevisionMs(incoming)
+  if (tIn >= tExist) return { ...existing, ...incoming }
+  return { ...incoming, ...existing }
+}
+
 export function mergeBoardPreservingPedidos(existing, incoming) {
   if (!existing?.cards?.length) return incoming
 
@@ -28,7 +52,7 @@ export function mergeBoardPreservingPedidos(existing, incoming) {
   for (const c of incoming.cards ?? []) {
     if (!c?.id) continue
     const prev = byId.get(c.id)
-    byId.set(c.id, prev ? { ...prev, ...c } : c)
+    byId.set(c.id, prev ? mergeOrderCard(prev, c) : c)
   }
 
   return {
