@@ -648,6 +648,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onClose={() => setUsuariosOpen(false)}
         vendedores={board.vendedores}
         seedUsers={managedUsers}
+        canDeleteUsers={isAdmin(session)}
         onUsersLoaded={handleUsersLoaded}
         onUserCreated={handleUserCreated}
         onEnsureVendedor={upsertVendedorFromManagedUser}

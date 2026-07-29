@@ -79,7 +79,7 @@ try {
             echo json_encode(['error' => 'id obrigatório']);
             exit;
         }
-        vestfirma_users_delete($config, $id, (string) ($session['userId'] ?? ''));
+        vestfirma_users_delete($config, $id, (string) ($session['userId'] ?? ''), (string) ($session['role'] ?? ''));
         echo json_encode(['ok' => true]);
         exit;
     }

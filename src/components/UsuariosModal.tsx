@@ -26,6 +26,8 @@ type Props = {
   onEnsureVendedor?: (user: ManagedUser, contato?: VendedorContatoPatch) => void
   /** Lista já carregada no app — evita tela vazia e fetch duplicado ao abrir. */
   seedUsers?: ManagedUser[]
+  /** Só administrador pode excluir acessos (botão e ação). */
+  canDeleteUsers?: boolean
 }
 
 const USERS_LOAD_TIMEOUT_MS = 45_000
@@ -73,6 +75,7 @@ export function UsuariosModal({
   onUpdateVendedorContato,
   onEnsureVendedor,
   seedUsers,
+  canDeleteUsers = false,
 }: Props) {
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [loading, setLoading] = useState(false)
@@ -143,6 +146,7 @@ export function UsuariosModal({
                 Cadastro único: <strong>e-mail</strong>, <strong>senha</strong>, perfil e, para{' '}
                 <strong>vendedor</strong>, <strong>WhatsApp</strong> e <strong>grupo</strong>. Quem
                 lança pedidos entra automaticamente no quadro — os pedidos ficam atrelados à pessoa.
+                Exclusão de acesso: <strong>somente administrador geral</strong>.
               </p>
 
               <NovoUsuarioForm
@@ -201,6 +205,7 @@ export function UsuariosModal({
                           user={u}
                           vendedor={findVendedorForManagedUser(lookupBoard, u)}
                           showPassword={showPasswords}
+                          canDeleteUsers={canDeleteUsers}
                           onChanged={reload}
                           onAlert={setAlertMessage}
                           onError={setError}
@@ -236,6 +241,7 @@ function UsuarioRow({
   user,
   vendedor,
   showPassword,
+  canDeleteUsers,
   onChanged,
   onAlert,
   onError,
@@ -246,6 +252,7 @@ function UsuarioRow({
   user: ManagedUser
   vendedor: Vendedor | null
   showPassword: boolean
+  canDeleteUsers: boolean
   onChanged: () => Promise<void>
   onAlert: (msg: string) => void
   onError: (msg: string | null) => void
@@ -315,6 +322,10 @@ function UsuarioRow({
   }
 
   const remove = async () => {
+    if (!canDeleteUsers) {
+      onError('Apenas o administrador geral pode excluir usuários.')
+      return
+    }
     if (!window.confirm(`Excluir acesso de ${user.email}?`)) return
     onError(null)
     try {
@@ -403,7 +414,7 @@ function UsuarioRow({
             Salvo
           </span>
         ) : null}
-        {!isAdmin ? (
+        {!isAdmin && canDeleteUsers ? (
           <button type="button" className="btn ghost btn-xs danger-text" onClick={() => void remove()}>
             Excluir
           </button>

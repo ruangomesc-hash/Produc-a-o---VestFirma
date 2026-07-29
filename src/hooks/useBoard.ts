@@ -288,6 +288,7 @@ export function useBoard() {
 
   const removeVendedor = useCallback(
     (vendedorId: string) => {
+      if (getAuditActor()?.role !== 'admin') return
       persist({
         ...board,
         vendedores: board.vendedores.filter((v) => v.id !== vendedorId),
@@ -343,6 +344,7 @@ export function useBoard() {
 
   const removeVendedorForManagedUser = useCallback(
     (userId: string) => {
+      if (getAuditActor()?.role !== 'admin') return
       const linked = board.vendedores.find((v) => v.userId === userId)
       if (linked) removeVendedor(linked.id)
     },

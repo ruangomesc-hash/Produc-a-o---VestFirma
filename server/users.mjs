@@ -131,7 +131,10 @@ export async function updateUser(id, { email, role, name, regeneratePassword }) 
   return user
 }
 
-export async function deleteUser(id, currentUserId) {
+export async function deleteUser(id, currentUserId, session) {
+  if (!session || session.role !== 'admin') {
+    throw new Error('Apenas o administrador pode excluir usuários')
+  }
   const data = await loadRaw()
   const idx = data.users.findIndex((u) => u.id === id)
   if (idx < 0) throw new Error('Usuário não encontrado')
@@ -230,7 +233,7 @@ export async function handleUsersApi(req, res, readBody, requireSession, corsHea
     if (req.method === 'DELETE') {
       const url = new URL(req.url || '/', `http://${req.headers.host}`)
       const id = url.searchParams.get('id') || ''
-      await deleteUser(id, session.userId || '')
+      await deleteUser(id, session.userId || '', session)
       res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ ok: true }))
       return true

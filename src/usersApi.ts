@@ -9,8 +9,18 @@ import {
   handleAuthResponse,
 } from './authSession'
 import { getApiBase } from './runtimeConfig'
+import { getAuditActor } from './auditContext'
 
 export { CREATABLE_ROLES }
+
+const ADMIN_USERS_ONLY_MSG =
+  'Apenas o administrador geral pode cadastrar, alterar ou excluir usuários.'
+
+function requireAdminActor(): void {
+  if (!isAdmin(getAuditActor())) {
+    throw new Error(ADMIN_USERS_ONLY_MSG)
+  }
+}
 
 function apiPath(segment: string): string {
   const clean = segment.replace(/\.php$/i, '').replace(/^\//, '')
@@ -38,6 +48,7 @@ export async function createManagedUser(input: {
   role: UserRole
   name?: string
 }): Promise<ManagedUser> {
+  requireAdminActor()
   await ensureAuthConfigReady()
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
@@ -76,6 +87,7 @@ export async function updateManagedUser(input: {
   name?: string
   regeneratePassword?: boolean
 }): Promise<ManagedUser> {
+  requireAdminActor()
   await ensureAuthConfigReady()
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
@@ -100,6 +112,7 @@ export async function updateManagedUser(input: {
 }
 
 export async function deleteManagedUser(id: string): Promise<void> {
+  requireAdminActor()
   await ensureAuthConfigReady()
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')

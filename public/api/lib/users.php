@@ -262,7 +262,10 @@ function vestfirma_users_update(
     throw new RuntimeException('Falha ao atualizar');
 }
 
-function vestfirma_users_delete(array $config, string $id, string $currentUserId): void {
+function vestfirma_users_delete(array $config, string $id, string $currentUserId, string $actorRole = ''): void {
+    if ($actorRole !== '' && $actorRole !== 'admin') {
+        throw new InvalidArgumentException('Apenas o administrador pode excluir usuários');
+    }
     $path = vestfirma_users_path($config);
     $data = vestfirma_users_load_raw($path);
     $next = [];
