@@ -120,8 +120,9 @@ export function UsuariosModal({
             <div className="usuarios-body">
               <p className="usuarios-hint">
                 Cada perfil entra com <strong>e-mail</strong> e <strong>senha</strong>. Perfil{' '}
-                <strong>Vendedor</strong> também entra na lista <strong>Vendedores</strong> do quadro
-                (login + pedidos); WhatsApp e grupo você configura em Vendedores.
+                <strong>Vendedor</strong> ou o <strong>administrador</strong> entram na lista{' '}
+                <strong>Vendedores</strong> do quadro para lançar pedidos; WhatsApp e grupo em
+                Vendedores.
               </p>
 
               <form className="usuarios-create" onSubmit={(e) => void handleCreate(e)}>

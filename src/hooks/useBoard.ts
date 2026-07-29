@@ -8,10 +8,12 @@ import { mesclarSegmentos } from '../segmentosEmpresa'
 import { notifyUnauthorized } from '../authSession'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import type { BoardState, CardFormData, OrderCard } from '../types'
-import type { ManagedUser } from '../userRoles'
+import type { ManagedUser, SessionProfile } from '../userRoles'
+import { canPlaceOrders } from '../userRoles'
 import {
   findVendedorForManagedUser,
   managedUserToVendedor,
+  managedUserFromSession,
   mergeVendedoresFromManagedUsers,
 } from '../vendedorUserSync'
 
@@ -218,10 +220,15 @@ export function useBoard() {
 
   const upsertVendedorFromManagedUser = useCallback(
     (user: ManagedUser) => {
-      if (user.role !== 'vendedor') return
+      if (!canPlaceOrders(user.role)) return
       const existing = findVendedorForManagedUser(board, user)
       const next = managedUserToVendedor(user, existing)
       if (existing) {
+        const unchanged =
+          existing.nome === next.nome &&
+          existing.email === next.email &&
+          existing.userId === next.userId
+        if (unchanged) return
         persist({
           ...board,
           vendedores: board.vendedores.map((v) => (v.id === existing.id ? next : v)),
@@ -238,6 +245,14 @@ export function useBoard() {
       })
     },
     [board, persist],
+  )
+
+  const upsertVendedorFromSession = useCallback(
+    (profile: SessionProfile) => {
+      if (!canPlaceOrders(profile.role)) return
+      upsertVendedorFromManagedUser(managedUserFromSession(profile))
+    },
+    [upsertVendedorFromManagedUser],
   )
 
   const removeVendedorForManagedUser = useCallback(
@@ -365,6 +380,7 @@ export function useBoard() {
     updateVendedorContato,
     removeVendedor,
     upsertVendedorFromManagedUser,
+    upsertVendedorFromSession,
     removeVendedorForManagedUser,
     syncVendedoresFromManagedUsers,
     addSegmento,

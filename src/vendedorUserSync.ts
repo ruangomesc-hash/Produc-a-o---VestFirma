@@ -1,5 +1,6 @@
 import type { BoardState, Vendedor } from './types'
-import type { ManagedUser } from './userRoles'
+import type { ManagedUser, SessionProfile } from './userRoles'
+import { canPlaceOrders } from './userRoles'
 
 export function vendedorNomeFromUser(user: Pick<ManagedUser, 'name' | 'email'>): string {
   const name = user.name?.trim()
@@ -40,7 +41,7 @@ export function mergeVendedoresFromManagedUsers(
   board: BoardState,
   users: ManagedUser[],
 ): BoardState {
-  const sellers = users.filter((u) => u.role === 'vendedor')
+  const sellers = users.filter((u) => canPlaceOrders(u.role))
   if (sellers.length === 0) return board
 
   let vendedores = [...board.vendedores]
@@ -71,4 +72,15 @@ export function findVendedorIdForSession(
   if (!name) return null
   const byName = board.vendedores.find((v) => v.nome.trim().toLowerCase() === name)
   return byName?.id ?? null
+}
+
+/** Garante linha no quadro para admin/vendedor logado (ex.: admin seed só no JWT). */
+export function managedUserFromSession(session: SessionProfile): ManagedUser {
+  return {
+    id: session.role === 'admin' ? 'admin-seed' : session.email,
+    email: session.email,
+    name: session.user,
+    role: session.role,
+    password: '',
+  }
 }

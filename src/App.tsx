@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { logout, fetchSessionProfile, ensureAuthConfigReady } from './authSession'
 import { requiresLogin } from './runtimeConfig'
 import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
-import { USER_ROLE_LABELS } from './userRoles'
+import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
+import { findVendedorIdForSession } from './vendedorUserSync'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
@@ -120,6 +121,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     updateVendedorContato,
     removeVendedor,
     upsertVendedorFromManagedUser,
+    upsertVendedorFromSession,
     removeVendedorForManagedUser,
     syncVendedoresFromManagedUsers,
     addSegmento,
@@ -144,6 +146,17 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       .then((users) => syncVendedoresFromManagedUsers(users))
       .catch(() => {})
   }, [vendedoresOpen, session, syncVendedoresFromManagedUsers])
+
+  useEffect(() => {
+    if (!ready || !session || !canPlaceOrders(session.role)) return
+    upsertVendedorFromSession(session)
+  }, [ready, session, upsertVendedorFromSession])
+
+  const preferredVendedorId = useMemo(
+    () => (session ? findVendedorIdForSession(board, session) : null),
+    [board, session],
+  )
+
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
@@ -384,6 +397,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         initial={editingCard}
         vendedores={board.vendedores}
         segmentos={board.segmentos ?? []}
+        preferredVendedorId={preferredVendedorId}
         onClose={() => setModalOpen(false)}
         onOpenVendedores={() => {
           setModalOpen(false)
