@@ -11,7 +11,8 @@ import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import { fetchRemoteBoard } from '../remoteBoard'
-import { contagemPedidos } from '../pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
+import { snapshotBoardPedidos } from '../boardPedidosSnapshot'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
@@ -140,26 +141,37 @@ export function useBoard() {
   }, [])
 
   const persist = useCallback(
-    (next: BoardState, opts?: { forceRemote?: boolean; skipRemote?: boolean }) => {
-    setBoard(next)
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      setSync((s) => ({ ...s, status: 'saving' }))
-      void saveBoard(next, {
-        forceRemote: opts?.forceRemote,
-        skipRemote: opts?.skipRemote,
-      }).then((result) => {
-        if (result.ok) {
-          setSync({ remote: result.remote, status: 'saved' })
-        } else {
-          setSync({
-            remote: result.remote,
-            status: 'error',
-            message: result.error,
+    (
+      next: BoardState,
+      opts?: { forceRemote?: boolean; skipRemote?: boolean; immediate?: boolean },
+    ) => {
+      setBoard((prev) => {
+        const safe =
+          next.demo && opts?.skipRemote
+            ? next
+            : mergeBoardPreservingPedidos(prev, next)
+        const delay = opts?.immediate ? 0 : 400
+        if (saveTimer.current) clearTimeout(saveTimer.current)
+        saveTimer.current = setTimeout(() => {
+          setSync((s) => ({ ...s, status: 'saving' }))
+          void saveBoard(safe, {
+            forceRemote: opts?.forceRemote,
+            skipRemote: opts?.skipRemote,
+          }).then((result) => {
+            if (result.ok) {
+              snapshotBoardPedidos(safe)
+              setSync({ remote: result.remote, status: 'saved' })
+            } else {
+              setSync({
+                remote: result.remote,
+                status: 'error',
+                message: result.error,
+              })
+            }
           })
-        }
+        }, delay)
+        return safe
       })
-    }, 400)
     },
     [],
   )
@@ -359,7 +371,7 @@ export function useBoard() {
         historicoEtapa: registrarCriacaoPedido(board, columnId, now),
         comentarios: [],
       }
-      persist({ ...board, cards: [...board.cards, card] })
+      persist({ ...board, cards: [...board.cards, card] }, { immediate: true })
       notificarSePedidoCriado(card, { ...board, cards: [...board.cards, card] })
       recordAudit({
         action: 'pedido.criado',
@@ -433,6 +445,26 @@ export function useBoard() {
       recordAudit({
         action: 'pedido.arquivado',
         summary: `Arquivou pedido ${alvo.numeroPedido} — ${alvo.cliente}`,
+        meta: { cardId },
+      })
+    },
+    [board, persist],
+  )
+
+  const restoreArchivedCard = useCallback(
+    (cardId: string) => {
+      if (getAuditActor()?.role !== 'admin') return
+      const alvo = board.cards.find((c) => c.id === cardId)
+      if (!alvo?.arquivadoEm) return
+      persist({
+        ...board,
+        cards: board.cards.map((c) =>
+          c.id === cardId ? { ...c, arquivadoEm: null } : c,
+        ),
+      })
+      recordAudit({
+        action: 'pedido.restaurado',
+        summary: `Restaurou pedido ${alvo.numeroPedido} — ${alvo.cliente} no kanban`,
         meta: { cardId },
       })
     },
@@ -546,6 +578,7 @@ export function useBoard() {
     updateCard,
     addPedidoComentario,
     archiveCard,
+    restoreArchivedCard,
     moveCard,
     loadDemo,
     exitDemo,

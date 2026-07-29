@@ -2495,6 +2495,60 @@ textarea {
   color: rgba(26, 20, 4, 0.65);
 }
 
+.pedidos-arquivados {
+  margin: 0 0 1.5rem;
+  padding: 1.1rem 1.15rem;
+  background: rgba(26, 34, 45, 0.92);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.pedidos-arquivados-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.pedidos-arquivados-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.pedidos-arquivados-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pedidos-arquivados-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.pedidos-arquivados-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pedidos-arquivados-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .storage-meter {
   margin: 1.25rem 0 1.5rem;
   padding: 1.1rem 1.15rem;

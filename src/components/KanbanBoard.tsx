@@ -18,7 +18,7 @@ type Props = {
   onMoveCard: (cardId: string, columnId: string) => void
   onAddCard: (columnId: string) => void
   onEditCard: (card: OrderCard) => void
-  onArchiveCard: (id: string) => void
+  onRequestArchiveCard: (card: OrderCard) => void
   canArchivePedidos?: boolean
   canManageColumns?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
@@ -31,7 +31,7 @@ export function KanbanBoard({
   onMoveCard,
   onAddCard,
   onEditCard,
-  onArchiveCard,
+  onRequestArchiveCard,
   canArchivePedidos = false,
   canManageColumns = false,
   onDeleteColumn,
@@ -116,7 +116,7 @@ export function KanbanBoard({
               canDelete={canManageColumns && board.columns.length > 1}
               onAddCard={() => onAddCard(column.id)}
               onEditCard={onEditCard}
-              onArchiveCard={onArchiveCard}
+              onRequestArchiveCard={onRequestArchiveCard}
               canArchivePedidos={canArchivePedidos}
               onDeleteColumn={onDeleteColumn}
             />

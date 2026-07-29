@@ -10,7 +10,8 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
-import { mergeBoardPreservingPedidos, contagemPedidos } from './pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos } from './pedidosPolicy'
+import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -19,6 +20,7 @@ const DB_NAME = 'vestfirma-kanban'
 const DB_VERSION = 1
 const STORE = 'board'
 const KEY = 'state'
+const KEY_DEMO = 'state-demo'
 
 type LegacyCard = Omit<OrderCard, 'historicoEtapa' | 'comentarios'> & {
   historicoEtapa?: OrderCard['historicoEtapa']
@@ -136,13 +138,13 @@ function openDb(): Promise<IDBDatabase> {
   })
 }
 
-async function loadBoardFromIdb(): Promise<BoardState | null> {
+async function loadBoardFromIdb(storeKey: string = KEY): Promise<BoardState | null> {
   try {
     const db = await openDb()
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readonly')
       const store = tx.objectStore(STORE)
-      const request = store.get(KEY)
+      const request = store.get(storeKey)
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const value = request.result as BoardState | undefined
@@ -154,12 +156,12 @@ async function loadBoardFromIdb(): Promise<BoardState | null> {
   }
 }
 
-async function saveBoardToIdb(state: BoardState): Promise<void> {
+async function saveBoardToIdb(state: BoardState, storeKey: string = KEY): Promise<void> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite')
     const store = tx.objectStore(STORE)
-    const request = store.put(state, KEY)
+    const request = store.put(state, storeKey)
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve()
   })
@@ -170,6 +172,8 @@ export type SaveBoardOptions = {
   forceRemote?: boolean
   /** Não gravar no servidor (ex.: modo demo). */
   skipRemote?: boolean
+  /** Grava imediatamente (ex.: novo pedido). */
+  immediate?: boolean
 }
 
 export type LoadBoardResult = {
@@ -205,12 +209,31 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     if (remoteRaw) {
       const remote = normalizeBoard(remoteRaw)
       const localProd = localUsavelParaProducao(local)
-      const board = localProd
-        ? mergeBoardPreservingPedidos(remote, localProd)
-        : remote
+      const snapshotRaw = loadBoardPedidosSnapshot()
+      const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
+      let board =
+        mergeBoardsMaxPedidos(remote, localProd, snapshot) ??
+        (localProd ? mergeBoardPreservingPedidos(remote, localProd) : remote)
+
+      if (!boardHasPedidos(board) && snapshot && boardHasPedidos(snapshot)) {
+        board = mergeBoardPreservingPedidos(board, snapshot)
+      }
+
       await saveBoardToIdb(board)
-      const richerLocal =
-        contagemPedidos(board) > contagemPedidos(remote) ? board : undefined
+      snapshotBoardPedidos(board)
+
+      let richerLocal: BoardState | undefined
+      if (contagemPedidos(board) > contagemPedidos(remote)) {
+        richerLocal = board
+        if (!protectedServer && !board.demo) {
+          try {
+            await saveRemoteBoard(board)
+            richerLocal = undefined
+          } catch {
+            /* banner / nova tentativa depois */
+          }
+        }
+      }
       return { board, richerLocal }
     }
 
@@ -230,7 +253,12 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       throw err
     }
     console.warn('VestFirma: falha ao carregar do servidor, usando cópia local.', err)
-    const board = local ?? structuredClone(DEFAULT_BOARD)
+    let board = local ?? structuredClone(DEFAULT_BOARD)
+    const snapshotRaw = loadBoardPedidosSnapshot()
+    const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
+    if (snapshot && boardHasPedidos(snapshot)) {
+      board = mergeBoardPreservingPedidos(board, snapshot)
+    }
     return { board }
   }
 }
@@ -252,7 +280,7 @@ export async function saveBoard(
   if (normalized.demo) {
     if (options?.skipRemote) {
       try {
-        await saveBoardToIdb(normalized)
+        await saveBoardToIdb(normalized, KEY_DEMO)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Falha ao salvar no navegador'
         return { ok: false, error: message, remote: isRemoteSyncEnabled() }
@@ -285,8 +313,15 @@ export async function saveBoard(
     normalized = mergeBoardPreservingPedidos(normalized, idbProd)
   }
 
+  const snapshotRaw = loadBoardPedidosSnapshot()
+  const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
+  if (snapshot && boardHasPedidos(snapshot)) {
+    normalized = mergeBoardPreservingPedidos(normalized, snapshot)
+  }
+
   try {
     await saveBoardToIdb(normalized)
+    snapshotBoardPedidos(normalized)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao salvar no navegador'
     return { ok: false, error: message, remote: isRemoteSyncEnabled() }

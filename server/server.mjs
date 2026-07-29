@@ -30,6 +30,7 @@ const {
   countBoardCards,
   mergeBoardPreservingPedidos,
   readExistingBoard,
+  readBoardWithRecovery,
 } = await import('./boardPersist.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -77,7 +78,8 @@ async function handleBoardApi(req, res) {
   if (req.method === 'GET') {
     const DATA_FILE = boardFilePath()
     try {
-      const raw = await fs.readFile(DATA_FILE, 'utf8')
+      const data = await readBoardWithRecovery(DATA_FILE)
+      const raw = data ? JSON.stringify(data) : 'null'
       res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(raw)
     } catch (err) {

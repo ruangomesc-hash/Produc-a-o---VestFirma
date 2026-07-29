@@ -29,6 +29,7 @@ import { HistoricoAuditoriaPanel } from './components/HistoricoAuditoriaPanel'
 import { setAuditActor } from './auditContext'
 import { recordAudit } from './auditLog'
 import { useBoard } from './hooks/useBoard'
+import { pedidoVisivelNoKanban } from './pedidosPolicy'
 import type { OrderCard } from './types'
 
 type AuthState = 'boot' | 'checking' | 'login' | 'ok'
@@ -150,6 +151,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     updateCard,
     addPedidoComentario,
     archiveCard,
+    restoreArchivedCard,
     moveCard,
     loadDemo,
     exitDemo,
@@ -161,6 +163,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [vendedoresOpen, setVendedoresOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [usuariosOpen, setUsuariosOpen] = useState(false)
+  const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
 
   useEffect(() => {
     if (!vendedoresOpen || !isAdmin(session)) return
@@ -185,6 +188,16 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const boardForSession = useMemo(
     () => boardVisivelParaSession(board, session),
     [board, session],
+  )
+
+  const pedidosVisiveisNoKanban = useMemo(
+    () => boardForSession.cards.filter(pedidoVisivelNoKanban).length,
+    [boardForSession.cards],
+  )
+
+  const pedidosArquivadosTotal = useMemo(
+    () => board.cards.filter((c) => c.arquivadoEm).length,
+    [board.cards],
   )
 
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
@@ -454,6 +467,32 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               </p>
             </div>
           ) : null}
+          {sync.status === 'error' && sync.message ? (
+            <div className="board-restore-banner board-sync-error-banner" role="alert">
+              <p>
+                <strong>Falha ao salvar no servidor:</strong> {sync.message}. Seus pedidos continuam
+                neste navegador — use <strong>Restaurar pedidos no servidor</strong> abaixo ou
+                recarregue após corrigir a conexão.
+              </p>
+            </div>
+          ) : null}
+          {!board.demo &&
+          pedidosVisiveisNoKanban === 0 &&
+          pedidosArquivadosTotal > 0 &&
+          isAdmin(session) ? (
+            <div className="board-restore-banner" role="status">
+              <p>
+                Há <strong>{pedidosArquivadosTotal}</strong> pedido(s){' '}
+                <strong>arquivados</strong> (ocultos do kanban, não apagados). Restaure em{' '}
+                <strong>Status → Pedidos arquivados</strong>.
+              </p>
+              <div className="board-restore-actions">
+                <button type="button" className="btn primary" onClick={() => setView('status')}>
+                  Abrir Status
+                </button>
+              </div>
+            </div>
+          ) : null}
           {localRestore && localRestore.cards.length > board.cards.length ? (
             <div className="board-restore-banner" role="status">
               <p>
@@ -477,7 +516,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
-          onArchiveCard={archiveCard}
+          onRequestArchiveCard={(card) => setArchiveConfirm(card)}
           canArchivePedidos={isAdmin(session)}
           canManageColumns={isAdmin(session)}
           onDeleteColumn={removeColumn}
@@ -498,7 +537,11 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         </div>
       ) : (
         <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">
-          <SystemStatusPanel board={boardForSession} />
+          <SystemStatusPanel
+            board={board}
+            showArchived={isAdmin(session)}
+            onRestoreArchived={restoreArchivedCard}
+          />
         </div>
       )}
 
@@ -581,6 +624,23 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onConfirm={() => {
           setDemoConfirm(null)
           loadDemo()
+        }}
+      />
+
+      <ConfirmModal
+        open={!!archiveConfirm}
+        title="Arquivar pedido?"
+        message={
+          archiveConfirm
+            ? `Pedido ${archiveConfirm.numeroPedido} (${archiveConfirm.cliente}) será ocultado do kanban. Não muda de coluna nem é apagado — os dados ficam no servidor. Como administrador, você encontra e restaura em Status → Pedidos arquivados.`
+            : ''
+        }
+        confirmLabel="Sim, arquivar"
+        cancelLabel="Cancelar"
+        onCancel={() => setArchiveConfirm(null)}
+        onConfirm={() => {
+          if (archiveConfirm) archiveCard(archiveConfirm.id)
+          setArchiveConfirm(null)
         }}
       />
 

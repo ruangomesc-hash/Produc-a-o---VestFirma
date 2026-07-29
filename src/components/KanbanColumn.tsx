@@ -13,7 +13,7 @@ type Props = {
   canDelete: boolean
   onAddCard: () => void
   onEditCard: (card: OrderCard) => void
-  onArchiveCard: (id: string) => void
+  onRequestArchiveCard: (card: OrderCard) => void
   canArchivePedidos?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
 }
@@ -25,7 +25,7 @@ export function KanbanColumn({
   canDelete,
   onAddCard,
   onEditCard,
-  onArchiveCard,
+  onRequestArchiveCard,
   canArchivePedidos = false,
   onDeleteColumn,
 }: Props) {
@@ -108,17 +108,7 @@ export function KanbanColumn({
             columnTitle={column.title}
             onEdit={() => onEditCard(card)}
             onArchive={
-              canArchivePedidos
-                ? () => {
-                    if (
-                      window.confirm(
-                        `Arquivar pedido ${card.numeroPedido} (${card.cliente})? Ele sai do quadro, mas permanece guardado no sistema.`,
-                      )
-                    ) {
-                      onArchiveCard(card.id)
-                    }
-                  }
-                : undefined
+              canArchivePedidos ? () => onRequestArchiveCard(card) : undefined
             }
           />
         ))}

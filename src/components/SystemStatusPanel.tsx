@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { countByStatus, runSystemHealthChecks, type HealthCheck } from '../systemHealth'
 import { BoardStorageMeter } from './BoardStorageMeter'
+import { PedidosArquivadosPanel } from './PedidosArquivadosPanel'
 import type { BoardState } from '../types'
 
 type Props = {
   board: BoardState
+  showArchived?: boolean
+  onRestoreArchived?: (cardId: string) => void
 }
 
 function statusLabel(status: HealthCheck['status']) {
@@ -20,7 +23,7 @@ function statusLabel(status: HealthCheck['status']) {
   }
 }
 
-export function SystemStatusPanel({ board }: Props) {
+export function SystemStatusPanel({ board, showArchived = false, onRestoreArchived }: Props) {
   const [checks, setChecks] = useState<HealthCheck[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastRun, setLastRun] = useState<Date | null>(null)
@@ -83,6 +86,10 @@ export function SystemStatusPanel({ board }: Props) {
         )}
 
         <BoardStorageMeter board={board} />
+
+        {showArchived && onRestoreArchived ? (
+          <PedidosArquivadosPanel board={board} onRestore={onRestoreArchived} />
+        ) : null}
 
         <ul className="system-status-list">
           {(checks ?? []).map((check) => (
