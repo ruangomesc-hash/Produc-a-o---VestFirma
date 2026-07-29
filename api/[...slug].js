@@ -88,6 +88,41 @@ async function parseJsonBody(req) {
   return {}
 }
 
+function verifyAdmin(username, password) {
+  const email = String(username || '').trim().toLowerCase()
+  const pwd = String(password || '')
+  if (email === ADMIN_EMAIL && pwd === ADMIN_PASSWORD) {
+    return { id: 'admin', email: ADMIN_EMAIL, name: ADMIN_NAME, role: 'admin' }
+  }
+  return null
+}
+
+async function blobReadText(name) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null
+  try {
+    const { head } = await import('@vercel/blob')
+    const meta = await head(`${BLOB_PREFIX}${name}`)
+    const res = await fetch(meta.url)
+    if (!res.ok) return null
+    return await res.text()
+  } catch {
+    return null
+  }
+}
+
+async function blobWriteText(name, text) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error('Blob não configurado na Vercel (Storage → Blob)')
+  }
+  const { put } = await import('@vercel/blob')
+  await put(`${BLOB_PREFIX}${name}`, text, {
+    access: 'private',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: 'application/json',
+  })
+}
+
 async function blobReadJson(name) {
   const raw = await blobReadText(name)
   if (!raw?.trim()) return null
@@ -139,32 +174,6 @@ async function verifyLoginUser(username, password) {
   const found = users.find((u) => String(u.email).toLowerCase() === email)
   if (found && String(found.password) === pwd) return found
   return null
-}
-
-async function blobReadText(name) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null
-  try {
-    const { head } = await import('@vercel/blob')
-    const meta = await head(`${BLOB_PREFIX}${name}`)
-    const res = await fetch(meta.url)
-    if (!res.ok) return null
-    return await res.text()
-  } catch {
-    return null
-  }
-}
-
-async function blobWriteText(name, text) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error('Blob não configurado na Vercel (Storage → Blob)')
-  }
-  const { put } = await import('@vercel/blob')
-  await put(`${BLOB_PREFIX}${name}`, text, {
-    access: 'private',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: 'application/json',
-  })
 }
 
 export default async function handler(req, res) {

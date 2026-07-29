@@ -10,6 +10,7 @@
     { "source": "/api/health.php", "destination": "/api/health" },
     { "source": "/api/users.php", "destination": "/api/users" },
     { "source": "/api/ping.php", "destination": "/api/ping" },
+    { "source": "/api/:path*.php", "destination": "/api/:path*" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
