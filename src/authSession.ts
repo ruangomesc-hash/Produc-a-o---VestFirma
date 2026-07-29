@@ -13,6 +13,12 @@ import {
 
 const TOKEN_KEY = 'vestfirma_auth_token'
 
+/** Cópia em memória — evita race entre login e primeiro GET /board se sessionStorage atrasar. */
+let memoryToken: string | null = null
+
+/** Após login, ignorar logout automático por 401 “fantasma” (remount / requisição antiga). */
+let authGraceUntil = 0
+
 /** Incrementa a cada login/logout para ignorar 401 de requisições antigas (Strict Mode / remount). */
 let authGeneration = 0
 
@@ -42,7 +48,12 @@ export async function ensureAuthConfigReady(): Promise<void> {
   await initRuntimeConfig()
 }
 
+export function markLoginGrace(ms = 10_000): void {
+  authGraceUntil = Date.now() + ms
+}
+
 export function getSessionToken(): string | null {
+  if (memoryToken) return memoryToken
   try {
     return sessionStorage.getItem(TOKEN_KEY)
   } catch {
@@ -51,12 +62,24 @@ export function getSessionToken(): string | null {
 }
 
 export function setSessionToken(token: string): void {
-  sessionStorage.setItem(TOKEN_KEY, token)
+  const trimmed = token.trim()
+  memoryToken = trimmed
+  try {
+    sessionStorage.setItem(TOKEN_KEY, trimmed)
+  } catch {
+    /* memória ainda vale nesta aba */
+  }
   bumpAuthGeneration()
+  markLoginGrace()
 }
 
 export function clearSessionToken(): void {
-  sessionStorage.removeItem(TOKEN_KEY)
+  memoryToken = null
+  try {
+    sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 export function authHeaders(): Record<string, string> {
@@ -65,9 +88,49 @@ export function authHeaders(): Record<string, string> {
 }
 
 export function notifyUnauthorized(): void {
+  if (Date.now() < authGraceUntil) return
   clearSessionToken()
   bumpAuthGeneration()
   window.dispatchEvent(new CustomEvent('vestfirma:unauthorized'))
+}
+
+/** GET /session sem deslogar — usado para confirmar 401 antes de expulsar o usuário. */
+export async function probeSessionProfile(): Promise<SessionProfile | null> {
+  await initRuntimeConfig()
+  const base = getApiBase()
+  const token = getSessionToken()
+  if (!base || !token) return null
+
+  try {
+    const res = await fetch(`${base}${apiPath('session')}`, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { ok?: boolean; user?: string; email?: string; role?: string }
+    if (!data.ok) return null
+    return parseProfile(data)
+  } catch {
+    return null
+  }
+}
+
+let logoutConfirmQueue: Promise<void> | null = null
+
+/** Só desloga se /api/session também não reconhecer o token. */
+export function requestAuthFailureLogout(_reason?: string): void {
+  if (Date.now() < authGraceUntil) return
+  if (logoutConfirmQueue) return
+  logoutConfirmQueue = (async () => {
+    try {
+      const still = await probeSessionProfile()
+      if (still) return
+      notifyUnauthorized()
+    } finally {
+      logoutConfirmQueue = null
+    }
+  })()
 }
 
 function parseProfile(data: {
@@ -188,7 +251,10 @@ export async function fetchSessionProfile(): Promise<SessionProfile | null> {
       headers: { Accept: 'application/json', ...authHeaders() },
     })
     if (res.status === 401) {
-      handleAuthResponse(401, authGen)
+      if (authGen === getAuthGeneration()) {
+        clearSessionToken()
+        bumpAuthGeneration()
+      }
       return null
     }
     if (!res.ok) return null
@@ -209,7 +275,7 @@ export function handleAuthResponse(status: number, requestGeneration?: number): 
   if (status !== 401) return
   if (requestGeneration != null && requestGeneration !== getAuthGeneration()) return
   if (!getSessionToken()) return
-  notifyUnauthorized()
+  requestAuthFailureLogout('api-401')
 }
 
 /** Erros que indicam sessão inválida — não confundir com falha 500/rede ao carregar o quadro. */

@@ -6,7 +6,7 @@ import { registrarCriacaoPedido, registrarMudancaEtapa } from '../historicoEtapa
 import { isRemoteSyncEnabled } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
-import { isAuthSessionError, notifyUnauthorized } from '../authSession'
+import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
@@ -89,7 +89,7 @@ export function useBoard() {
         if (cancelled) return
         if (err instanceof DOMException && err.name === 'AbortError') return
         if (isAuthSessionError(err)) {
-          notifyUnauthorized()
+          requestAuthFailureLogout('load-board')
           return
         }
         const message = err instanceof Error ? err.message : 'Falha ao carregar o quadro'

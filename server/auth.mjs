@@ -90,8 +90,10 @@ export async function revokeSession(token) {
 }
 
 export function readBearer(req) {
-  const header = req.headers.authorization || ''
-  return header.startsWith('Bearer ') ? header.slice(7).trim() : ''
+  const header = req.headers.authorization || req.headers.Authorization || ''
+  const h = String(header).trim()
+  if (!h.toLowerCase().startsWith('bearer ')) return ''
+  return h.slice(7).trim()
 }
 
 export function corsHeaders() {

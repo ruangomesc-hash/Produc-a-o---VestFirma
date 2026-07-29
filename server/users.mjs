@@ -7,8 +7,11 @@ const USERS_STORE = 'users.json'
 
 const SEED_ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'ruan.gomesc@gmail.com').toLowerCase().trim()
 const SEED_ADMIN_NAME = process.env.SEED_ADMIN_NAME || 'Administrador'
-const SEED_ADMIN_PASSWORD =
-  process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '@Vestfirma26!'
+const SEED_ADMIN_PASSWORD = (
+  process.env.SEED_ADMIN_PASSWORD ||
+  process.env.ADMIN_PASSWORD ||
+  '@Vestfirma26!'
+).trim()
 
 function randomPassword(length = 12) {
   const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -140,7 +143,7 @@ export async function deleteUser(id, currentUserId) {
 
 export async function verifyUserPassword(email, password) {
   const norm = normalizeEmail(email)
-  const pwd = String(password)
+  const pwd = String(password).trim()
 
   if (SEED_ADMIN_PASSWORD && norm === SEED_ADMIN_EMAIL && pwd === SEED_ADMIN_PASSWORD) {
     return {

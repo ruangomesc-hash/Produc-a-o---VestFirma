@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { logout, fetchSessionProfile, ensureAuthConfigReady } from './authSession'
+import {
+  logout,
+  fetchSessionProfile,
+  ensureAuthConfigReady,
+  markLoginGrace,
+} from './authSession'
 import { requiresLogin } from './runtimeConfig'
 import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
@@ -71,6 +76,7 @@ export default function App() {
     return (
       <LoginPage
         onSuccess={(profile) => {
+          markLoginGrace()
           setSession(profile)
           setAuthState('ok')
         }}
@@ -152,6 +158,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   useEffect(() => {
     if (!ready || !session || !canPlaceOrders(session.role)) return
     if (sync.remote && sync.status === 'error') return
+    if (sync.remote && sync.status !== 'saved') return
     upsertVendedorFromSession(session)
   }, [ready, session, sync.remote, sync.status, upsertVendedorFromSession])
 

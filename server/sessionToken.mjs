@@ -3,12 +3,12 @@ import crypto from 'node:crypto'
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14)
 
 function sessionSecret() {
-  return (
+  const raw =
     process.env.SESSION_SECRET ||
     process.env.SEED_ADMIN_PASSWORD ||
     process.env.ADMIN_PASSWORD ||
     'vestfirma-session-secret'
-  )
+  return String(raw).trim()
 }
 
 /** Sessão stateless — Vercel/Render (sem sessions.json). */
