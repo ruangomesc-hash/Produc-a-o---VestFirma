@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { login } from '../authSession'
+import type { SessionProfile } from '../authSession'
 
 type Props = {
-  onSuccess: (user: string) => void
+  onSuccess: (profile: SessionProfile) => void
 }
 
 export function LoginPage({ onSuccess }: Props) {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -15,10 +16,10 @@ export function LoginPage({ onSuccess }: Props) {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const result = await login(username, password)
+    const result = await login(email, password)
     setLoading(false)
     if (result.ok) {
-      onSuccess(result.user)
+      onSuccess(result.profile)
     } else {
       setError(result.error)
     }
@@ -37,12 +38,12 @@ export function LoginPage({ onSuccess }: Props) {
 
         <form className="login-form" onSubmit={submit}>
           <label className="login-field">
-            <span>Usuário</span>
+            <span>E-mail</span>
             <input
-              type="text"
+              type="email"
               autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </label>

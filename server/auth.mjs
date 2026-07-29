@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { ensureUsersSeeded, verifyUserPassword } from './users.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -9,8 +10,6 @@ const ROOT = path.join(__dirname, '..')
 const SESSIONS_FILE =
   process.env.SESSIONS_FILE || path.join(ROOT, 'data', 'sessions.json')
 
-const ADMIN_USER = process.env.ADMIN_USER || 'vestfirma'
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'vestfirma-dev-change-me'
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14)
 
 async function loadSessions() {
@@ -40,20 +39,28 @@ function purgeExpired(sessions) {
   }
 }
 
-export function verifyCredentials(username, password) {
-  return username === ADMIN_USER && password === ADMIN_PASSWORD
+export async function verifyCredentials(username, password) {
+  return verifyUserPassword(username, password)
 }
 
-export async function createSession() {
+export async function createSession(user) {
   const sessions = await loadSessions()
   purgeExpired(sessions)
   const token = crypto.randomBytes(32).toString('hex')
   const expires = Date.now() + SESSION_DAYS * 86400000
-  sessions[token] = { user: ADMIN_USER, expires }
+  sessions[token] = {
+    user: user.name || user.email,
+    email: user.email,
+    role: user.role,
+    userId: user.id,
+    expires,
+  }
   await saveSessions(sessions)
   return {
     token,
-    user: ADMIN_USER,
+    user: user.name || user.email,
+    email: user.email,
+    role: user.role,
     expiresAt: new Date(expires).toISOString(),
   }
 }
@@ -146,13 +153,14 @@ export async function handleLoginApi(req, res, readBody) {
     return true
   }
 
-  if (!verifyCredentials(username, password)) {
+  const user = await verifyCredentials(username, password)
+  if (!user) {
     res.writeHead(401, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ error: 'Usuário ou senha incorretos' }))
     return true
   }
 
-  const session = await createSession()
+  const session = await createSession(user)
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(session))
   return true
@@ -179,7 +187,7 @@ export async function handleSessionApi(req, res) {
   }
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify({ ok: true, user: row.user }))
+  res.end(JSON.stringify({ ok: true, user: row.user, email: row.email || '', role: row.role || '' }))
   return true
 }
 

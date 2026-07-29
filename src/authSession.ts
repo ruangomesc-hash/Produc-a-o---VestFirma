@@ -1,7 +1,9 @@
+import type { SessionProfile } from './userRoles'
+
 const TOKEN_KEY = 'vestfirma_auth_token'
 
 export type LoginResult =
-  | { ok: true; user: string }
+  | { ok: true; profile: SessionProfile }
   | { ok: false; error: string }
 
 function apiBase(): string | null {
@@ -46,27 +48,43 @@ export function notifyUnauthorized(): void {
   window.dispatchEvent(new CustomEvent('vestfirma:unauthorized'))
 }
 
-export async function login(username: string, password: string): Promise<LoginResult> {
+function parseProfile(data: {
+  user?: string
+  email?: string
+  role?: string
+}): SessionProfile {
+  return {
+    user: data.user || data.email || 'Usuário',
+    email: data.email || '',
+    role: (data.role as SessionProfile['role']) || 'vendedor',
+  }
+}
+
+export async function login(email: string, password: string): Promise<LoginResult> {
   const base = apiBase()
   if (!base) {
     return { ok: false, error: 'API não configurada' }
   }
 
+  const loginId = email.trim()
+
   try {
     const res = await fetch(`${base}${apiPath('login.php')}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ username: username.trim(), password }),
+      body: JSON.stringify({ username: loginId, password }),
     })
 
     const data = (await res.json().catch(() => ({}))) as {
       token?: string
       user?: string
+      email?: string
+      role?: string
       error?: string
     }
 
     if (!res.ok) {
-      return { ok: false, error: data.error || 'Usuário ou senha incorretos' }
+      return { ok: false, error: data.error || 'E-mail ou senha incorretos' }
     }
 
     if (!data.token) {
@@ -74,7 +92,7 @@ export async function login(username: string, password: string): Promise<LoginRe
     }
 
     setSessionToken(data.token)
-    return { ok: true, user: data.user || username.trim() }
+    return { ok: true, profile: parseProfile(data) }
   } catch {
     return { ok: false, error: 'Não foi possível conectar ao servidor' }
   }
@@ -96,11 +114,11 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function verifySession(): Promise<boolean> {
-  if (!requiresLogin()) return true
+export async function fetchSessionProfile(): Promise<SessionProfile | null> {
+  if (!requiresLogin()) return null
   const base = apiBase()
   const token = getSessionToken()
-  if (!base || !token) return false
+  if (!base || !token) return null
 
   try {
     const res = await fetch(`${base}${apiPath('session.php')}`, {
@@ -110,16 +128,24 @@ export async function verifySession(): Promise<boolean> {
     })
     if (res.status === 401) {
       clearSessionToken()
-      return false
+      return null
     }
-    if (!res.ok) return false
-    const data = (await res.json()) as { ok?: boolean }
-    return Boolean(data.ok)
+    if (!res.ok) return null
+    const data = (await res.json()) as { ok?: boolean; user?: string; email?: string; role?: string }
+    if (!data.ok) return null
+    return parseProfile(data)
   } catch {
-    return false
+    return null
   }
+}
+
+export async function verifySession(): Promise<boolean> {
+  const profile = await fetchSessionProfile()
+  return profile !== null
 }
 
 export function handleAuthResponse(status: number): void {
   if (status === 401) notifyUnauthorized()
 }
+
+export type { SessionProfile }

@@ -43,7 +43,7 @@ if (!vestfirma_verify_credentials($config, $username, $password)) {
 }
 
 try {
-    echo json_encode(vestfirma_create_session($config));
+    echo json_encode(vestfirma_create_session($config, $username));
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Falha ao iniciar sessão']);

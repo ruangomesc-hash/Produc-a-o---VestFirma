@@ -81,35 +81,60 @@ function vestfirma_session_ttl_seconds(array $config): int {
     return $days * 86400;
 }
 
+require __DIR__ . '/users.php';
+
 function vestfirma_verify_credentials(array $config, string $username, string $password): bool {
-    $expectedUser = (string) ($config['admin_user'] ?? '');
-    if ($expectedUser === '' || $username !== $expectedUser) {
+    vestfirma_users_ensure_seeded($config);
+    $user = vestfirma_user_find_by_email($config, $username);
+    if ($user === null) {
+        $legacyUser = (string) ($config['admin_user'] ?? '');
+        if ($legacyUser !== '' && ($username === $legacyUser || vestfirma_normalize_email($username) === vestfirma_normalize_email($legacyUser))) {
+            $plain = (string) ($config['admin_password'] ?? '');
+            if ($plain !== '' && hash_equals($plain, $password)) {
+                return true;
+            }
+            if (isset($config['admin_password_hash']) && is_string($config['admin_password_hash']) && $config['admin_password_hash'] !== '') {
+                return password_verify($password, $config['admin_password_hash']);
+            }
+        }
         return false;
     }
-
-    if (isset($config['admin_password_hash']) && is_string($config['admin_password_hash']) && $config['admin_password_hash'] !== '') {
-        return password_verify($password, $config['admin_password_hash']);
-    }
-
-    $plain = (string) ($config['admin_password'] ?? '');
-    return $plain !== '' && hash_equals($plain, $password);
+    return vestfirma_verify_user_password($user, $password);
 }
 
-function vestfirma_create_session(array $config): array {
+function vestfirma_create_session(array $config, string $loginIdentifier): array {
+    vestfirma_users_ensure_seeded($config);
+    $user = vestfirma_user_find_by_email($config, $loginIdentifier);
+    if ($user === null) {
+        $user = [
+            'id' => 'legacy',
+            'email' => trim($loginIdentifier),
+            'name' => (string) ($config['admin_user'] ?? $loginIdentifier),
+            'role' => 'admin',
+        ];
+    }
+
     $path = vestfirma_sessions_path($config);
     $sessions = vestfirma_sessions_load($path);
     vestfirma_purge_expired($sessions);
 
     $token = bin2hex(random_bytes(32));
     $expires = time() + vestfirma_session_ttl_seconds($config);
-    $user = (string) $config['admin_user'];
-    $sessions[$token] = ['user' => $user, 'expires' => $expires];
+    $sessions[$token] = [
+        'user' => (string) ($user['name'] ?? $user['email']),
+        'email' => (string) ($user['email'] ?? ''),
+        'role' => (string) ($user['role'] ?? 'vendedor'),
+        'userId' => (string) ($user['id'] ?? ''),
+        'expires' => $expires,
+    ];
     vestfirma_sessions_save($path, $sessions);
 
     return [
         'token' => $token,
         'expiresAt' => gmdate('c', $expires),
-        'user' => $user,
+        'user' => (string) ($user['name'] ?? $user['email']),
+        'email' => (string) ($user['email'] ?? ''),
+        'role' => (string) ($user['role'] ?? 'vendedor'),
     ];
 }
 

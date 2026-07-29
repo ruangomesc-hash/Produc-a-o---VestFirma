@@ -21,7 +21,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         echo json_encode(['ok' => false]);
         exit;
     }
-    echo json_encode(['ok' => true, 'user' => $row['user']]);
+    echo json_encode([
+        'ok' => true,
+        'user' => $row['user'],
+        'email' => $row['email'] ?? '',
+        'role' => $row['role'] ?? '',
+    ]);
     exit;
 }
 

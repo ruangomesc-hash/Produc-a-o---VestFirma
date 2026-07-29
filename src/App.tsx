@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { logout, requiresLogin, verifySession } from './authSession'
+import { logout, requiresLogin, fetchSessionProfile } from './authSession'
+import type { SessionProfile } from './authSession'
+import { UsuariosModal } from './components/UsuariosModal'
+import { isAdmin } from './usersApi'
+import { USER_ROLE_LABELS } from './userRoles'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
@@ -22,14 +26,17 @@ export default function App() {
   const [authState, setAuthState] = useState<AuthState>(() =>
     requiresLogin() ? 'checking' : 'ok',
   )
-  const [user, setUser] = useState<string | null>(null)
+  const [session, setSession] = useState<SessionProfile | null>(null)
 
   useEffect(() => {
     if (!requiresLogin()) return
 
     let cancelled = false
-    verifySession().then((ok) => {
-      if (!cancelled) setAuthState(ok ? 'ok' : 'login')
+    fetchSessionProfile().then((profile) => {
+      if (!cancelled) {
+        setSession(profile)
+        setAuthState(profile ? 'ok' : 'login')
+      }
     })
 
     return () => {
@@ -39,7 +46,7 @@ export default function App() {
 
   useEffect(() => {
     const onUnauthorized = () => {
-      setUser(null)
+      setSession(null)
       setAuthState(requiresLogin() ? 'login' : 'ok')
     }
     window.addEventListener('vestfirma:unauthorized', onUnauthorized)
@@ -57,8 +64,8 @@ export default function App() {
   if (authState === 'login') {
     return (
       <LoginPage
-        onSuccess={(loggedUser) => {
-          setUser(loggedUser)
+        onSuccess={(profile) => {
+          setSession(profile)
           setAuthState('ok')
         }}
       />
@@ -67,10 +74,10 @@ export default function App() {
 
   return (
     <AuthenticatedRoot
-      user={user}
+      session={session}
       onLogout={async () => {
         await logout()
-        setUser(null)
+        setSession(null)
         setAuthState(requiresLogin() ? 'login' : 'ok')
       }}
     />
@@ -78,27 +85,28 @@ export default function App() {
 }
 
 function AuthenticatedRoot({
-  user,
+  session,
   onLogout,
 }: {
-  user: string | null
+  session: SessionProfile | null
   onLogout: () => void | Promise<void>
 }) {
+  const userLabel = session?.user ?? null
   if (isPortalFestaPreviewRoute()) {
-    return <PortalFestaPreviewPage user={user} onLogout={onLogout} />
+    return <PortalFestaPreviewPage user={userLabel} onLogout={onLogout} />
   }
   if (isPortalPedidoRoute()) {
-    return <VendedorPedidoPortalPage user={user} onLogout={onLogout} />
+    return <VendedorPedidoPortalPage user={userLabel} onLogout={onLogout} />
   }
-  return <AuthenticatedApp user={user} onLogout={onLogout} />
+  return <AuthenticatedApp session={session} onLogout={onLogout} />
 }
 
 type AuthenticatedProps = {
-  user: string | null
+  session: SessionProfile | null
   onLogout: () => void | Promise<void>
 }
 
-function AuthenticatedApp({ user, onLogout }: AuthenticatedProps) {
+function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const {
     board,
     ready,
@@ -121,6 +129,7 @@ function AuthenticatedApp({ user, onLogout }: AuthenticatedProps) {
   const [modalSession, setModalSession] = useState(0)
   const [vendedoresOpen, setVendedoresOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
+  const [usuariosOpen, setUsuariosOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
@@ -263,7 +272,12 @@ function AuthenticatedApp({ user, onLogout }: AuthenticatedProps) {
             </p>
           </div>
           <div className="header-actions">
-            {user && <span className="stat-pill">{user}</span>}
+            {session && (
+              <span className="stat-pill" title={session.email}>
+                {session.user}
+                {session.role ? ` · ${USER_ROLE_LABELS[session.role]}` : ''}
+              </span>
+            )}
             {board.demo ? (
               <button
                 type="button"
@@ -291,6 +305,11 @@ function AuthenticatedApp({ user, onLogout }: AuthenticatedProps) {
             >
               Modo demo
             </button>
+            {isAdmin(session) && (
+              <button type="button" className="btn ghost" onClick={() => setUsuariosOpen(true)}>
+                Usuários
+              </button>
+            )}
             <button type="button" className="btn ghost" onClick={() => setVendedoresOpen(true)}>
               Vendedores ({board.vendedores.length})
             </button>
@@ -379,6 +398,8 @@ function AuthenticatedApp({ user, onLogout }: AuthenticatedProps) {
         open={whatsappNotifyOpen}
         onClose={() => setWhatsappNotifyOpen(false)}
       />
+
+      <UsuariosModal open={usuariosOpen} onClose={() => setUsuariosOpen(false)} />
 
       <ConfirmModal
         open={demoConfirm === 'load'}

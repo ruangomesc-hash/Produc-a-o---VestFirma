@@ -18,6 +18,7 @@ import {
 } from './auth.mjs'
 import { handleNotifyApi } from './notify.mjs'
 import { handleHealthApi } from './health.mjs'
+import { handleUsersApi } from './users.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -179,6 +180,11 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/health' || url.pathname === '/api/health.php') {
       handleHealthApi(req, res, corsHeaders)
+      return
+    }
+
+    if (url.pathname === '/api/users' || url.pathname === '/api/users.php') {
+      await handleUsersApi(req, res, readBody, requireSession, corsHeaders)
       return
     }
 

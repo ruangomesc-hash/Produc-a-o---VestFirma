@@ -336,6 +336,120 @@ textarea {
   margin-top: 0.25rem;
 }
 
+.usuarios-modal.modal-wide {
+  width: min(920px, 96vw);
+  max-height: min(90vh, 900px);
+}
+
+.usuarios-body {
+  padding: 0 1.25rem 1.25rem;
+  overflow: auto;
+  max-height: calc(min(90vh, 900px) - 4rem);
+}
+
+.usuarios-hint {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.usuarios-subtitle {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+}
+
+.usuarios-create {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.usuarios-create-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+@media (max-width: 720px) {
+  .usuarios-create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.usuarios-create-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.usuarios-create-grid input,
+.usuarios-create-grid select {
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.usuarios-error {
+  color: #fecaca;
+  font-size: 0.85rem;
+}
+
+.usuarios-table-wrap {
+  overflow-x: auto;
+}
+
+.usuarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.usuarios-table th,
+.usuarios-table td {
+  text-align: left;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.usuarios-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.usuarios-email {
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.usuarios-password {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+.usuarios-password-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.btn-xs {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
 .board-scroll {
   flex: 1;
   overflow: auto;

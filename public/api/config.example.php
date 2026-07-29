@@ -13,6 +13,10 @@ return [
     'session_days' => 14,
     'data_file' => __DIR__ . '/../data/board.json',
     'sessions_file' => __DIR__ . '/../data/sessions.json',
+    'users_file' => __DIR__ . '/../data/users.json',
+    'seed_admin_email' => 'ruan.gomesc@gmail.com',
+    'seed_admin_name' => 'Administrador',
+    // 'seed_admin_password' => 'defina-só-na-primeira-instalação-se-quiser',
     /** URL do n8n / WhatsApp Business — recebe POST JSON do kanban */
     'whatsapp_webhook_url' => '',
 ];

@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "id": "a589ddb47e90b6bc",
+      "email": "ruan.gomesc@gmail.com",
+      "name": "Administrador",
+      "role": "admin",
+      "password": "vestfirma-dev-change-me",
+      "createdAt": "2026-07-29T01:30:14.182Z"
+    }
+  ]
+}

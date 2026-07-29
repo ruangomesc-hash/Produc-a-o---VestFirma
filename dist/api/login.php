@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/lib/auth.php';
+require __DIR__ . '/lib/users.php';
 
 header('Content-Type: application/json; charset=utf-8');
 vestfirma_cors();
@@ -43,7 +44,7 @@ if (!vestfirma_verify_credentials($config, $username, $password)) {
 }
 
 try {
-    echo json_encode(vestfirma_create_session($config));
+    echo json_encode(vestfirma_create_session($config, $username));
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Falha ao iniciar sessão']);
