@@ -1,6 +1,20 @@
 import { COLUNA_NOVO_PEDIDO_ID } from './defaultBoard'
 import type { BoardState, HistoricoEtapaEntry, OrderCard } from './types'
 
+/** Quando o pedido entrou na coluna atual (histórico ou etapaDesde). */
+export function inicioContagemEtapa(
+  card: Pick<OrderCard, 'columnId' | 'etapaDesde' | 'historicoEtapa'>,
+): string {
+  const historico = card.historicoEtapa ?? []
+  for (let i = historico.length - 1; i >= 0; i--) {
+    const entry = historico[i]
+    if (entry.columnId === card.columnId && entry.at) {
+      return entry.at
+    }
+  }
+  return card.etapaDesde
+}
+
 export function tituloColuna(board: BoardState, columnId: string): string {
   return board.columns.find((c) => c.id === columnId)?.title ?? 'Etapa'
 }

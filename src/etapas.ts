@@ -1,3 +1,6 @@
+import { inicioContagemEtapa } from './historicoEtapa'
+import type { OrderCard } from './types'
+
 /** Prazo máximo na etapa (horas). null = sem contagem. */
 const SLA_HORAS_POR_ID: Record<string, number> = {
   'logos-recebidas': 24,
@@ -38,8 +41,17 @@ export function etapaDevePiscar(columnId: string, columnTitle: string): boolean 
   return tituloChave(columnTitle) === PISCAR_TITULO_CHAVE
 }
 
+function parseInstanteEtapa(iso: string): number {
+  const trimmed = iso.trim()
+  if (!trimmed) return NaN
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return new Date(`${trimmed}T12:00:00`).getTime()
+  }
+  return new Date(trimmed).getTime()
+}
+
 function formatRestante(ms: number): string {
-  const totalMin = Math.ceil(ms / 60_000)
+  const totalMin = Math.max(0, Math.floor(ms / 60_000))
   if (totalMin < 60) {
     return `${totalMin} min restante${totalMin === 1 ? '' : 's'}`
   }
@@ -49,15 +61,12 @@ function formatRestante(ms: number): string {
   return `${h}h ${m}min restantes`
 }
 
-export type EtapaPrazoUi =
-  | { tipo: 'nenhum' }
-  | { tipo: 'prazo'; atrasado: boolean; texto: string }
-  | { tipo: 'logistica' }
+export type EtapaPrazoCardRef = Pick<OrderCard, 'columnId' | 'etapaDesde' | 'historicoEtapa'>
 
 export function calcularEtapaPrazo(
   columnId: string,
   columnTitle: string,
-  etapaDesde: string,
+  card: EtapaPrazoCardRef,
   agora = Date.now(),
 ): EtapaPrazoUi {
   if (etapaDevePiscar(columnId, columnTitle)) {
@@ -67,7 +76,8 @@ export function calcularEtapaPrazo(
   const horas = slaHorasEtapa(columnId, columnTitle)
   if (!horas) return { tipo: 'nenhum' }
 
-  const inicio = new Date(etapaDesde).getTime()
+  const etapaDesde = inicioContagemEtapa({ ...card, columnId })
+  const inicio = parseInstanteEtapa(etapaDesde)
   if (Number.isNaN(inicio)) return { tipo: 'nenhum' }
 
   const limite = inicio + horas * 3_600_000
@@ -83,6 +93,11 @@ export function calcularEtapaPrazo(
     texto: formatRestante(restante),
   }
 }
+
+export type EtapaPrazoUi =
+  | { tipo: 'nenhum' }
+  | { tipo: 'prazo'; atrasado: boolean; texto: string }
+  | { tipo: 'logistica' }
 
 export type ResumoPrazosColuna = {
   temContagemPrazo: boolean
