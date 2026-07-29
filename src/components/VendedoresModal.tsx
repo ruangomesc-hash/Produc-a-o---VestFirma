@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertModal } from './AlertModal'
 
 type VendedorRow = {
@@ -103,45 +103,12 @@ export function VendedoresModal({
           ) : (
             <ul className="vendedores-list">
               {vendedores.map((v) => (
-                <li key={v.id} className="vendedores-list-item">
-                  <div className="vendedor-row-main">
-                    <span className="vendedor-nome">{v.nome}</span>
-                    <label className="vendedor-wa-edit">
-                      <span className="vendedor-field-label">WhatsApp</span>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Número para marcar"
-                        defaultValue={v.whatsapp ?? ''}
-                        onBlur={(e) =>
-                          onUpdateContato(v.id, { whatsapp: e.target.value })
-                        }
-                      />
-                    </label>
-                    <label className="vendedor-wa-edit">
-                      <span className="vendedor-field-label">Grupo WhatsApp (ID)</span>
-                      <input
-                        type="text"
-                        placeholder="120363…@g.us"
-                        defaultValue={v.grupoWhatsapp ?? ''}
-                        onBlur={(e) =>
-                          onUpdateContato(v.id, { grupoWhatsapp: e.target.value })
-                        }
-                      />
-                    </label>
-                  </div>
-                  <button
-                    type="button"
-                    className="link-btn danger"
-                    onClick={() => {
-                      if (confirm('Excluir ' + v.nome + '? Pedidos ficam sem vendedor.')) {
-                        onRemove(v.id)
-                      }
-                    }}
-                  >
-                    Excluir
-                  </button>
-                </li>
+                <VendedorContatoEditor
+                  key={v.id}
+                  vendedor={v}
+                  onSave={onUpdateContato}
+                  onRemove={onRemove}
+                />
               ))}
             </ul>
           )}
@@ -156,5 +123,92 @@ export function VendedoresModal({
         onClose={() => setAlertMessage(null)}
       />
     </>
+  )
+}
+
+function VendedorContatoEditor({
+  vendedor,
+  onSave,
+  onRemove,
+}: {
+  vendedor: VendedorRow
+  onSave: Props['onUpdateContato']
+  onRemove: Props['onRemove']
+}) {
+  const [whatsapp, setWhatsapp] = useState(vendedor.whatsapp ?? '')
+  const [grupoWhatsapp, setGrupoWhatsapp] = useState(vendedor.grupoWhatsapp ?? '')
+  const [savedHint, setSavedHint] = useState(false)
+
+  useEffect(() => {
+    setWhatsapp(vendedor.whatsapp ?? '')
+    setGrupoWhatsapp(vendedor.grupoWhatsapp ?? '')
+  }, [vendedor.id, vendedor.whatsapp, vendedor.grupoWhatsapp])
+
+  const savedWhatsapp = (vendedor.whatsapp ?? '').trim()
+  const savedGrupo = (vendedor.grupoWhatsapp ?? '').trim()
+  const dirty =
+    whatsapp.trim() !== savedWhatsapp || grupoWhatsapp.trim() !== savedGrupo
+
+  const handleSave = () => {
+    onSave(vendedor.id, { whatsapp, grupoWhatsapp })
+    setSavedHint(true)
+    window.setTimeout(() => setSavedHint(false), 2200)
+  }
+
+  useEffect(() => {
+    if (dirty) setSavedHint(false)
+  }, [dirty])
+
+  return (
+    <li className="vendedores-list-item">
+      <div className="vendedor-row-main">
+        <span className="vendedor-nome">{vendedor.nome}</span>
+        <label className="vendedor-wa-edit">
+          <span className="vendedor-field-label">WhatsApp</span>
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="Número para marcar"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+          />
+        </label>
+        <label className="vendedor-wa-edit">
+          <span className="vendedor-field-label">Grupo WhatsApp (ID)</span>
+          <input
+            type="text"
+            placeholder="120363…@g.us"
+            value={grupoWhatsapp}
+            onChange={(e) => setGrupoWhatsapp(e.target.value)}
+          />
+        </label>
+      </div>
+      <div className="vendedor-row-actions">
+        <button
+          type="button"
+          className="btn primary btn-sm"
+          disabled={!dirty}
+          onClick={handleSave}
+        >
+          Salvar
+        </button>
+        {savedHint ? (
+          <span className="vendedor-saved-hint" aria-live="polite">
+            Salvo
+          </span>
+        ) : null}
+        <button
+          type="button"
+          className="link-btn danger"
+          onClick={() => {
+            if (confirm('Excluir ' + vendedor.nome + '? Pedidos ficam sem vendedor.')) {
+              onRemove(vendedor.id)
+            }
+          }}
+        >
+          Excluir
+        </button>
+      </div>
+    </li>
   )
 }

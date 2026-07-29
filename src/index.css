@@ -1615,6 +1615,27 @@ textarea {
   gap: 0.25rem;
 }
 
+.vendedor-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+.vendedor-saved-hint {
+  font-size: 0.78rem;
+  color: var(--logistica-light);
+  font-weight: 600;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
 .vendedor-wa-edit input {
   width: 100%;
   padding: 0.45rem 0.55rem;

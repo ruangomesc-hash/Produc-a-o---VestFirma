@@ -1,0 +1,16 @@
+---
+description: Preservar funcionalidades existentes ao implementar novos pedidos
+alwaysApply: true
+---
+
+# Alterações incrementais (VestFirma)
+
+Ao implementar um pedido novo do usuário:
+
+- **Não remover, desativar nem simplificar** funcionalidades, telas, APIs ou fluxos que já existiam no projeto, **a menos que o usuário peça explicitamente** (ex.: “remove X”, “desliga Y”, “refaz do zero”).
+- Tratar cada pedido como **acréscimo ou ajuste pontual**: diff mínimo, sem “limpar” código antigo por conveniência.
+- Antes de apagar arquivos, rotas, botões, modais, sons, login, deploy, etc., **confirmar** que o pedido atual pede remoção — se for ambíguo, **manter** o que já está feito.
+- Refatorações só quando necessárias para o pedido; não trocar comportamento já entregue sem avisar.
+- Se uma mudança conflitar com algo anterior, **estender** o existente (novo botão, flag, rota) em vez de substituir, salvo pedido contrário.
+
+Exemplos do que **preservar** salvo pedido explícito: kanban/portal/festa/sino, login multiusuário e painel Usuários, vendedores com Salvar, WhatsApp, demo, visão geral, deploy PHP/Node.

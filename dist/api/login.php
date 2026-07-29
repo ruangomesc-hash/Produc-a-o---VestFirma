@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 require __DIR__ . '/lib/auth.php';
-require __DIR__ . '/lib/users.php';
 
 header('Content-Type: application/json; charset=utf-8');
 vestfirma_cors();
