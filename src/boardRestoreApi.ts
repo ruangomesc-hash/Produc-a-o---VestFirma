@@ -25,13 +25,18 @@ export type BoardBackupsList = {
 function backupsEndpoint(): string {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
-  return `${base}/board/backups`
+  return `${base.replace(/\/$/, '')}/board/backups`
+}
+
+function backupsRequestUrl(query?: string): string {
+  const path = backupsEndpoint()
+  const q = query?.trim()
+  if (!q) return path
+  return `${path}?q=${encodeURIComponent(q)}`
 }
 
 export async function fetchBoardBackups(query?: string): Promise<BoardBackupsList> {
-  const url = new URL(backupsEndpoint())
-  if (query?.trim()) url.searchParams.set('q', query.trim())
-  const res = await fetch(url.toString(), {
+  const res = await fetch(backupsRequestUrl(query), {
     cache: 'no-store',
     headers: { Accept: 'application/json', ...authHeaders() },
   })
