@@ -6,6 +6,7 @@ import {
 } from '../boardChartsMetrics'
 import { agregarPorEstado } from '../pedidoLocalidade'
 import type { BoardState } from '../types'
+import type { ManagedUser } from '../userRoles'
 import { agregarPorVendedor } from '../vendedorMetrics'
 import { BrazilOrdersMap } from './charts/BrazilOrdersMap'
 import { EstadosList } from './charts/EstadosList'
@@ -14,10 +15,14 @@ import { PieChart } from './charts/PieChart'
 
 type Props = {
   board: BoardState
+  managedVendedores?: ManagedUser[]
 }
 
-export function VendedoresAnalyticsAside({ board }: Props) {
-  const { linhas } = useMemo(() => agregarPorVendedor(board), [board])
+export function VendedoresAnalyticsAside({ board, managedVendedores }: Props) {
+  const { linhas } = useMemo(
+    () => agregarPorVendedor(board, { managedVendedores }),
+    [board, managedVendedores],
+  )
   const fatiasPedidos = useMemo(() => fatiasVendedorPedidos(linhas), [linhas])
   const fatiasPecas = useMemo(() => fatiasVendedorPecas(linhas), [linhas])
   const segmentos = useMemo(() => topSegmentosPorPedido(board), [board])

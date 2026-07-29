@@ -148,6 +148,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     restoreRicherLocalToServer,
     restoreFromPedidosSnapshot,
     dismissLocalRestore,
+    refreshBoardFromServer,
     pedidosSnapshotCount,
     addColumn,
     removeColumn,
@@ -243,6 +244,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     [boardForSession.cards],
   )
 
+  const vendedoresCadastrados = useMemo(
+    () => managedUsers.filter((u) => u.role === 'vendedor'),
+    [managedUsers],
+  )
+
+  const boardPainelAdmin = board
+
   const pedidosArquivadosTotal = useMemo(
     () => board.cards.filter((c) => c.arquivadoEm).length,
     [board.cards],
@@ -302,6 +310,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       setView('kanban')
     }
   }, [view, session])
+
+  useEffect(() => {
+    if (!ready || !isAdmin(session)) return
+    if (view === 'vendedores' || view === 'kanban' || view === 'visao') {
+      void refreshBoardFromServer()
+    }
+  }, [view, ready, session, refreshBoardFromServer])
 
   useEffect(() => {
     setAuditActor(session)
@@ -384,7 +399,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 onClick={() => setView('kanban')}
               >
                 Meus pedidos
-                {board.cards.length > 0 ? ` (${board.cards.length})` : ''}
+                {pedidosVisiveisNoKanban > 0 ? ` (${pedidosVisiveisNoKanban})` : ''}
               </button>
               <button
                 type="button"
@@ -570,7 +585,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             </div>
           ) : null}
         <KanbanBoard
-          board={boardForSession}
+          board={isAdmin(session) ? boardPainelAdmin : boardForSession}
           dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}
@@ -590,7 +605,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           aria-labelledby="tab-visao-geral"
         >
           <VisaoGeralPanel
-            board={boardForSession}
+            board={isAdmin(session) ? boardPainelAdmin : boardForSession}
             session={session}
             tvMode={visaoTvMode}
             onExitTv={sairModoTv}
@@ -598,7 +613,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         </div>
       ) : view === 'vendedores' ? (
         <div id="panel-vendedores" className="app-panel" role="tabpanel" aria-labelledby="tab-vendedores">
-          <VendedoresOverviewPanel board={boardForSession} />
+          <VendedoresOverviewPanel
+            board={isAdmin(session) ? boardPainelAdmin : boardForSession}
+            managedVendedores={isAdmin(session) ? vendedoresCadastrados : undefined}
+          />
         </div>
       ) : view === 'historico' ? (
         <div id="panel-historico" className="app-panel" role="tabpanel" aria-labelledby="tab-historico">

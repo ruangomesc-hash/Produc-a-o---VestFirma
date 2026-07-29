@@ -1,5 +1,7 @@
 import type { BoardState } from './types'
 import { nomeVendedor } from './types'
+import type { ManagedUser } from './userRoles'
+import { pedidoVisivelNoKanban } from './pedidosPolicy'
 
 export type VendedorResumo = {
   vendedorId: string | null
@@ -16,27 +18,76 @@ export type TotaisVendedores = {
   vendedoresComPedido: number
 }
 
-export function agregarPorVendedor(board: BoardState): {
+function canonicalVendedorKey(board: BoardState, vendedorId: string | null): string {
+  if (!vendedorId) return '__sem__'
+  const row = board.vendedores.find((v) => v.id === vendedorId)
+  if (!row) return `orphan:${vendedorId}`
+  const em = row.email?.trim().toLowerCase()
+  if (em) return `em:${em}`
+  if (row.userId && row.userId !== 'admin-seed') return `uid:${row.userId}`
+  return `id:${row.id}`
+}
+
+function nomeParaChave(board: BoardState, key: string, sampleVendedorId: string | null): string {
+  if (key === '__sem__') return 'Sem vendedor'
+  for (const v of board.vendedores) {
+    if (canonicalVendedorKey(board, v.id) === key) return v.nome
+  }
+  if (sampleVendedorId) {
+    return nomeVendedor(board, sampleVendedorId) ?? 'Vendedor (legado)'
+  }
+  return 'Vendedor'
+}
+
+function vendedorIdPreferido(board: BoardState, key: string): string | null {
+  if (key === '__sem__') return null
+  let chosen: string | null = null
+  let best = -1
+  for (const v of board.vendedores) {
+    if (canonicalVendedorKey(board, v.id) !== key) continue
+    const n = board.cards.filter((c) => c.vendedorId === v.id && pedidoVisivelNoKanban(c)).length
+    if (n > best) {
+      best = n
+      chosen = v.id
+    }
+  }
+  if (chosen) return chosen
+  if (key.startsWith('orphan:')) return key.slice('orphan:'.length) || null
+  return null
+}
+
+/** Agrega pedidos ativos no kanban (sem arquivados), unindo ids duplicados do mesmo vendedor. */
+export function agregarPorVendedor(
+  board: BoardState,
+  opts?: { managedVendedores?: ManagedUser[] },
+): {
   linhas: VendedorResumo[]
   totais: TotaisVendedores
 } {
-  const porId = new Map<string, { pedidos: number; pecas: number }>()
+  const cardsAtivos = board.cards.filter(pedidoVisivelNoKanban)
+  const porChave = new Map<string, { pedidos: number; pecas: number; sampleId: string | null }>()
 
-  for (const card of board.cards) {
-    const key = card.vendedorId ?? '__sem__'
-    const cur = porId.get(key) ?? { pedidos: 0, pecas: 0 }
+  for (const card of cardsAtivos) {
+    const key = canonicalVendedorKey(board, card.vendedorId)
+    const cur = porChave.get(key) ?? { pedidos: 0, pecas: 0, sampleId: card.vendedorId }
     cur.pedidos += 1
     cur.pecas += card.quantidade
-    porId.set(key, cur)
+    if (!cur.sampleId && card.vendedorId) cur.sampleId = card.vendedorId
+    porChave.set(key, cur)
   }
 
   const linhas: VendedorResumo[] = []
+  const chavesVistas = new Set<string>()
 
   for (const v of board.vendedores) {
-    const stats = porId.get(v.id) ?? { pedidos: 0, pecas: 0 }
-    porId.delete(v.id)
+    if (v.userId === 'admin-seed' || v.managedRole === 'admin') continue
+    const key = canonicalVendedorKey(board, v.id)
+    if (chavesVistas.has(key)) continue
+    chavesVistas.add(key)
+    const stats = porChave.get(key) ?? { pedidos: 0, pecas: 0, sampleId: v.id }
+    porChave.delete(key)
     linhas.push({
-      vendedorId: v.id,
+      vendedorId: vendedorIdPreferido(board, key) ?? v.id,
       nome: v.nome,
       pedidos: stats.pedidos,
       pecas: stats.pecas,
@@ -45,27 +96,39 @@ export function agregarPorVendedor(board: BoardState): {
     })
   }
 
-  for (const [key, stats] of porId) {
-    if (key === '__sem__') {
-      linhas.push({
-        vendedorId: null,
-        nome: 'Sem vendedor',
-        pedidos: stats.pedidos,
-        pecas: stats.pecas,
-      })
-    } else {
-      linhas.push({
-        vendedorId: key,
-        nome: nomeVendedor(board, key) ?? 'Vendedor removido',
-        pedidos: stats.pedidos,
-        pecas: stats.pecas,
-      })
-    }
+  for (const user of opts?.managedVendedores ?? []) {
+    if (user.role !== 'vendedor') continue
+    const em = user.email.trim().toLowerCase()
+    const key = `em:${em}`
+    if (chavesVistas.has(key)) continue
+    chavesVistas.add(key)
+    const stats = porChave.get(key) ?? { pedidos: 0, pecas: 0, sampleId: null }
+    porChave.delete(key)
+    const row = board.vendedores.find(
+      (v) => v.email?.trim().toLowerCase() === em || v.userId === user.id,
+    )
+    linhas.push({
+      vendedorId: row?.id ?? vendedorIdPreferido(board, key),
+      nome: user.name?.trim() || user.email,
+      pedidos: stats.pedidos,
+      pecas: stats.pecas,
+      whatsapp: row?.whatsapp,
+      grupoWhatsapp: row?.grupoWhatsapp,
+    })
+  }
+
+  for (const [key, stats] of porChave) {
+    linhas.push({
+      vendedorId: vendedorIdPreferido(board, key) ?? stats.sampleId,
+      nome: nomeParaChave(board, key, stats.sampleId),
+      pedidos: stats.pedidos,
+      pecas: stats.pecas,
+    })
   }
 
   const totais: TotaisVendedores = {
-    pedidos: board.cards.length,
-    pecas: board.cards.reduce((s, c) => s + c.quantidade, 0),
+    pedidos: cardsAtivos.length,
+    pecas: cardsAtivos.reduce((s, c) => s + c.quantidade, 0),
     vendedoresComPedido: linhas.filter((l) => l.pedidos > 0 && l.vendedorId).length,
   }
 

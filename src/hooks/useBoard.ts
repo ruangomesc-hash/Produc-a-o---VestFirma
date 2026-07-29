@@ -562,6 +562,21 @@ export function useBoard() {
 
   const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
 
+  const refreshBoardFromServer = useCallback(async () => {
+    try {
+      const result = await loadBoard()
+      const merged = mergeBoardPreservingPedidos(boardRef.current, result.board)
+      const unified = unifyVendedorRowsAndRelinkCards(merged)
+      setBoard(unified)
+      if (result.richerLocal) setLocalRestore(result.richerLocal)
+      if (contagemPedidos(unified) > contagemPedidos(result.board)) {
+        void saveBoard(unified, { immediate: true })
+      }
+    } catch {
+      /* mantém quadro atual */
+    }
+  }, [])
+
   return {
     board,
     ready,
@@ -570,6 +585,7 @@ export function useBoard() {
     restoreRicherLocalToServer,
     restoreFromPedidosSnapshot,
     dismissLocalRestore,
+    refreshBoardFromServer,
     pedidosSnapshotCount: contagemPedidosNoSnapshot(),
     addColumn,
     removeColumn,

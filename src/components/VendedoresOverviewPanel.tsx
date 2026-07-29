@@ -8,8 +8,11 @@ import {
 import type { BoardState } from '../types'
 import { VendedoresAnalyticsAside } from './VendedoresAnalyticsAside'
 
+import type { ManagedUser } from '../userRoles'
+
 type Props = {
   board: BoardState
+  managedVendedores?: ManagedUser[]
 }
 
 type RankingProps = {
@@ -82,8 +85,11 @@ function RankingVendedores({ titulo, criterio, linhas, totais }: RankingProps) {
   )
 }
 
-export function VendedoresOverviewPanel({ board }: Props) {
-  const { linhas, totais } = useMemo(() => agregarPorVendedor(board), [board])
+export function VendedoresOverviewPanel({ board, managedVendedores }: Props) {
+  const { linhas, totais } = useMemo(
+    () => agregarPorVendedor(board, { managedVendedores }),
+    [board, managedVendedores],
+  )
   const porPedidos = useMemo(() => rankingPorPedidos(linhas), [linhas])
   const porPecas = useMemo(() => rankingPorPecas(linhas), [linhas])
 
@@ -138,7 +144,7 @@ export function VendedoresOverviewPanel({ board }: Props) {
           </div>
         </div>
         <aside className="vendedor-overview-aside" aria-label="Gráficos e análises">
-          <VendedoresAnalyticsAside board={board} />
+          <VendedoresAnalyticsAside board={board} managedVendedores={managedVendedores} />
         </aside>
       </div>
     </div>

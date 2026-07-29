@@ -31,6 +31,7 @@ export function fatiasVendedorPecas(linhas: VendedorResumo[]): FatiaGrafico[] {
 export function topSegmentosPorPedido(board: BoardState, limit = 8) {
   const map = new Map<string, number>()
   for (const card of board.cards) {
+    if (card.arquivadoEm) continue
     const nome = nomeSegmento(board, card.segmentoId) ?? 'Sem segmento'
     map.set(nome, (map.get(nome) ?? 0) + 1)
   }
