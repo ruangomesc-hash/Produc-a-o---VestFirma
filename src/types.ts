@@ -80,8 +80,6 @@ export interface BoardState {
   vendedores: Vendedor[]
   /** Segmentos de empresa (padrão + personalizados) */
   segmentos?: SegmentoEmpresa[]
-  /** Quadro carregado pelo modo demonstração */
-  demo?: boolean
 }
 
 export type CardFormData = Omit<

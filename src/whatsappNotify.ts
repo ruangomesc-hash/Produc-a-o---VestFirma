@@ -219,7 +219,6 @@ export async function enviarNotificacaoWhatsApp(payload: WhatsAppNotifyPayload):
 }
 
 export function notificarSePedidoCriado(card: OrderCard, board: BoardState) {
-  if (board.demo) return
   void enviarNotificacaoWhatsApp(montarMensagemPedidoCriado(card, board))
 }
 
@@ -229,7 +228,6 @@ export function notificarSePedidoMovido(
   fromColumnId: string,
   toColumnId: string,
 ) {
-  if (board.demo) return
   if (fromColumnId === toColumnId) return
   void enviarNotificacaoWhatsApp(
     montarMensagemPedidoMovido(card, board, fromColumnId, toColumnId),

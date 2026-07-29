@@ -13,4 +13,4 @@ Ao implementar um pedido novo do usuário:
 - Refatorações só quando necessárias para o pedido; não trocar comportamento já entregue sem avisar.
 - Se uma mudança conflitar com algo anterior, **estender** o existente (novo botão, flag, rota) em vez de substituir, salvo pedido contrário.
 
-Exemplos do que **preservar** salvo pedido explícito: kanban/portal/festa/sino, login multiusuário e painel Usuários, vendedores com Salvar, WhatsApp, demo, visão geral, deploy PHP/Node.
+Exemplos do que **preservar** salvo pedido explícito: kanban/portal/festa/sino, login multiusuário e painel Usuários, vendedores com Salvar, WhatsApp, visão geral, deploy PHP/Node.

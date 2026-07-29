@@ -153,12 +153,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     archiveCard,
     restoreArchivedCard,
     moveCard,
-    loadDemo,
-    exitDemo,
   } = useBoard()
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [demoConfirm, setDemoConfirm] = useState<'load' | 'exit' | null>(null)
   const [modalSession, setModalSession] = useState(0)
   const [vendedoresOpen, setVendedoresOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
@@ -399,33 +396,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 {session.role ? ` · ${USER_ROLE_LABELS[session.role]}` : ''}
               </span>
             )}
-            {board.demo ? (
-              <button
-                type="button"
-                className="stat-pill demo-pill stat-pill-btn"
-                title="Voltar aos seus pedidos reais"
-                onClick={() => setDemoConfirm('exit')}
-              >
-                Modo demo — sair
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={() => {
-                if (board.demo) {
-                  loadDemo()
-                  return
-                }
-                if (board.cards.length > 0) {
-                  setDemoConfirm('load')
-                  return
-                }
-                loadDemo()
-              }}
-            >
-              Modo demo
-            </button>
             {isAdmin(session) && (
               <button type="button" className="btn ghost" onClick={() => setUsuariosOpen(true)}>
                 Usuários
@@ -458,15 +428,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
       {view === 'kanban' ? (
         <div id="panel-kanban" className="app-panel" role="tabpanel" aria-labelledby="tab-meus-pedidos">
-          {board.demo ? (
-            <div className="board-restore-banner board-demo-banner" role="status">
-              <p>
-                <strong>Modo demonstração</strong> — os pedidos reais <em>não foram apagados</em>.
-                Eles ficam guardados neste navegador e no servidor. Clique em{' '}
-                <strong>Modo demo — sair</strong> no topo para voltar ao seu quadro.
-              </p>
-            </div>
-          ) : null}
           {sync.status === 'error' && sync.message ? (
             <div className="board-restore-banner board-sync-error-banner" role="alert">
               <p>
@@ -476,8 +437,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               </p>
             </div>
           ) : null}
-          {!board.demo &&
-          pedidosVisiveisNoKanban === 0 &&
+          {pedidosVisiveisNoKanban === 0 &&
           pedidosArquivadosTotal > 0 &&
           isAdmin(session) ? (
             <div className="board-restore-banner" role="status">
@@ -616,18 +576,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       />
 
       <ConfirmModal
-        open={demoConfirm === 'load'}
-        title="Carregar demonstração?"
-        message="Os pedidos atuais serão guardados neste navegador e substituídos por exemplos em todas as etapas. Use “Modo demo — sair” para voltar."
-        confirmLabel="Carregar demo"
-        onCancel={() => setDemoConfirm(null)}
-        onConfirm={() => {
-          setDemoConfirm(null)
-          loadDemo()
-        }}
-      />
-
-      <ConfirmModal
         open={!!archiveConfirm}
         title="Arquivar pedido?"
         message={
@@ -641,19 +589,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onConfirm={() => {
           if (archiveConfirm) archiveCard(archiveConfirm.id)
           setArchiveConfirm(null)
-        }}
-      />
-
-      <ConfirmModal
-        open={demoConfirm === 'exit'}
-        title="Sair do modo demo?"
-        message="Voltamos ao quadro com os seus pedidos de antes de carregar a demonstração."
-        confirmLabel="Voltar aos meus pedidos"
-        onCancel={() => setDemoConfirm(null)}
-        onConfirm={() => {
-          setDemoConfirm(null)
-          exitDemo()
-          setView('kanban')
         }}
       />
 

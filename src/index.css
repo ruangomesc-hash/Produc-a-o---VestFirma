@@ -98,15 +98,6 @@ textarea {
   margin: 0 0 0.65rem;
 }
 
-.board-demo-banner {
-  border-color: color-mix(in srgb, var(--vestfirma-gold) 50%, var(--border));
-  background: color-mix(in srgb, var(--vestfirma-gold) 12%, var(--surface));
-}
-
-.board-demo-banner p {
-  margin: 0;
-}
-
 .board-restore-actions {
   display: flex;
   flex-wrap: wrap;
@@ -340,12 +331,6 @@ textarea {
   color: var(--text);
   border-color: rgba(232, 185, 35, 0.65);
   background: rgba(232, 185, 35, 0.12);
-}
-
-.demo-pill {
-  color: #fde68a;
-  border-color: #ca8a04;
-  background: rgba(202, 138, 4, 0.15);
 }
 
 .sync-ok {
@@ -4405,7 +4390,7 @@ textarea {
     gap: 0.35rem;
   }
 
-  .header-actions .stat-pill:not(.demo-pill):not(.stat-pill-btn) {
+  .header-actions .stat-pill:not(.stat-pill-btn) {
     display: none;
   }
 

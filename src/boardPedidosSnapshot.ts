@@ -3,9 +3,8 @@ import { contagemPedidos } from './pedidosPolicy'
 
 const SNAPSHOT_LS_KEY = 'vestfirma-board-pedidos-snapshot'
 
-/** Cópia de segurança no navegador — nunca substituída por modo demo. */
 export function snapshotBoardPedidos(board: BoardState): void {
-  if (board.demo || contagemPedidos(board) === 0) return
+  if (contagemPedidos(board) === 0) return
   try {
     localStorage.setItem(SNAPSHOT_LS_KEY, JSON.stringify(board))
   } catch {

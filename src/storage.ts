@@ -20,7 +20,11 @@ const DB_NAME = 'vestfirma-kanban'
 const DB_VERSION = 1
 const STORE = 'board'
 const KEY = 'state'
-const KEY_DEMO = 'state-demo'
+
+/** Cópia guardada ao entrar no antigo modo demo — usada só na migração. */
+const LEGACY_PRE_DEMO_SESSION = 'vestfirma-pre-demo-board'
+const LEGACY_PRE_DEMO_LS = 'vestfirma-pre-demo-board-ls'
+const LEGACY_DEMO_IDB_KEY = 'state-demo'
 
 type LegacyCard = Omit<OrderCard, 'historicoEtapa' | 'comentarios'> & {
   historicoEtapa?: OrderCard['historicoEtapa']
@@ -29,6 +33,8 @@ type LegacyCard = Omit<OrderCard, 'historicoEtapa' | 'comentarios'> & {
   segmento?: string
   logoDataUrl?: string | null
 }
+
+type LegacyBoardRaw = BoardState & { demo?: boolean }
 
 function normalizeCard(
   raw: LegacyCard,
@@ -85,7 +91,7 @@ function normalizeCard(
   }
 }
 
-export function normalizeBoard(raw: BoardState | undefined | null): BoardState {
+export function normalizeBoard(raw: BoardState | LegacyBoardRaw | undefined | null): BoardState {
   if (!raw?.columns?.length) return structuredClone(DEFAULT_BOARD)
 
   const vendedores = [...(raw.vendedores ?? [])].map((v) => ({
@@ -106,7 +112,6 @@ export function normalizeBoard(raw: BoardState | undefined | null): BoardState {
     cards,
     vendedores,
     segmentos,
-    demo: raw.demo ?? false,
   }
 
   cards = cards.map((c) => garantirHistoricoCard(c, base))
@@ -118,10 +123,41 @@ function boardHasPedidos(state: BoardState): boolean {
   return contagemPedidos(state) > 0
 }
 
-function localUsavelParaProducao(local: BoardState | null): BoardState | null {
-  if (!local?.columns?.length) return null
-  if (local.demo) return null
-  return local
+function readLegacyPreDemoBoard(): BoardState | null {
+  try {
+    const raw =
+      sessionStorage.getItem(LEGACY_PRE_DEMO_SESSION) ??
+      localStorage.getItem(LEGACY_PRE_DEMO_LS)
+    if (!raw) return null
+    const parsed = normalizeBoard(JSON.parse(raw) as LegacyBoardRaw)
+    return boardHasPedidos(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function clearLegacyDemoClientStorage(): void {
+  try {
+    sessionStorage.removeItem(LEGACY_PRE_DEMO_SESSION)
+    localStorage.removeItem(LEGACY_PRE_DEMO_LS)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** IndexedDB com flag demo antiga — ignorar e tentar restaurar quadro real. */
+async function resolveLocalBoardFromIdb(): Promise<BoardState | null> {
+  const localRaw = await loadBoardFromIdb(KEY)
+  if (!localRaw) return null
+  const legacy = localRaw as LegacyBoardRaw
+  if (!legacy.demo) {
+    return normalizeBoard(localRaw)
+  }
+  const rescued = readLegacyPreDemoBoard()
+  clearLegacyDemoClientStorage()
+  void deleteIdbKey(LEGACY_DEMO_IDB_KEY)
+  if (rescued) return rescued
+  return null
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -156,6 +192,21 @@ async function loadBoardFromIdb(storeKey: string = KEY): Promise<BoardState | nu
   }
 }
 
+async function deleteIdbKey(storeKey: string): Promise<void> {
+  try {
+    const db = await openDb()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite')
+      const store = tx.objectStore(STORE)
+      const request = store.delete(storeKey)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  } catch {
+    /* ignore */
+  }
+}
+
 async function saveBoardToIdb(state: BoardState, storeKey: string = KEY): Promise<void> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
@@ -170,7 +221,7 @@ async function saveBoardToIdb(state: BoardState, storeKey: string = KEY): Promis
 export type SaveBoardOptions = {
   /** Restauração manual — servidor exige header force. */
   forceRemote?: boolean
-  /** Não gravar no servidor (ex.: modo demo). */
+  /** Não gravar no servidor (uso interno raro). */
   skipRemote?: boolean
   /** Grava imediatamente (ex.: novo pedido). */
   immediate?: boolean
@@ -187,14 +238,13 @@ export type LoadBoardOptions = {
 }
 
 export async function loadBoardFromBrowserCache(): Promise<BoardState | null> {
-  const localRaw = await loadBoardFromIdb()
-  return localRaw ? normalizeBoard(localRaw) : null
+  const local = await resolveLocalBoardFromIdb()
+  return local
 }
 
 export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardResult> {
   await initRuntimeConfig()
-  const localRaw = await loadBoardFromIdb()
-  const local = localRaw ? normalizeBoard(localRaw) : null
+  const local = await resolveLocalBoardFromIdb()
 
   if (!isRemoteSyncEnabled()) {
     const board = local ?? structuredClone(DEFAULT_BOARD)
@@ -208,12 +258,11 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     const remoteRaw = await fetchRemoteBoard({ signal: options?.signal })
     if (remoteRaw) {
       const remote = normalizeBoard(remoteRaw)
-      const localProd = localUsavelParaProducao(local)
       const snapshotRaw = loadBoardPedidosSnapshot()
       const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
       let board =
-        mergeBoardsMaxPedidos(remote, localProd, snapshot) ??
-        (localProd ? mergeBoardPreservingPedidos(remote, localProd) : remote)
+        mergeBoardsMaxPedidos(remote, local, snapshot) ??
+        (local ? mergeBoardPreservingPedidos(remote, local) : remote)
 
       if (!boardHasPedidos(board) && snapshot && boardHasPedidos(snapshot)) {
         board = mergeBoardPreservingPedidos(board, snapshot)
@@ -225,7 +274,7 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       let richerLocal: BoardState | undefined
       if (contagemPedidos(board) > contagemPedidos(remote)) {
         richerLocal = board
-        if (!protectedServer && !board.demo) {
+        if (!protectedServer) {
           try {
             await saveRemoteBoard(board)
             richerLocal = undefined
@@ -269,26 +318,13 @@ export async function saveBoard(
 ): Promise<SaveBoardResult> {
   let normalized = normalizeBoard(state)
 
-  if (normalized.demo && !options?.skipRemote && !options?.forceRemote) {
-    options = { ...options, skipRemote: true }
-  }
-
   const idbRaw = await loadBoardFromIdb()
-  const idb = idbRaw ? normalizeBoard(idbRaw) : null
-  const idbProd = localUsavelParaProducao(idb)
+  const idb = idbRaw ? normalizeBoard(idbRaw as LegacyBoardRaw) : null
+  const idbLegacy = idbRaw as LegacyBoardRaw | null
+  const idbUsable = idb && !idbLegacy?.demo ? idb : null
 
-  if (normalized.demo) {
-    if (options?.skipRemote) {
-      try {
-        await saveBoardToIdb(normalized, KEY_DEMO)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Falha ao salvar no navegador'
-        return { ok: false, error: message, remote: isRemoteSyncEnabled() }
-      }
-      return { ok: true, remote: false }
-    }
-  } else if (idbProd) {
-    normalized = mergeBoardPreservingPedidos(idbProd, normalized)
+  if (idbUsable) {
+    normalized = mergeBoardPreservingPedidos(idbUsable, normalized)
   }
 
   if (isRemoteSyncEnabled() && !options?.skipRemote && !options?.forceRemote) {
@@ -304,13 +340,12 @@ export async function saveBoard(
   }
 
   if (
-    !normalized.demo &&
     !options?.forceRemote &&
-    idbProd &&
-    boardHasPedidos(idbProd) &&
+    idbUsable &&
+    boardHasPedidos(idbUsable) &&
     !boardHasPedidos(normalized)
   ) {
-    normalized = mergeBoardPreservingPedidos(normalized, idbProd)
+    normalized = mergeBoardPreservingPedidos(normalized, idbUsable)
   }
 
   const snapshotRaw = loadBoardPedidosSnapshot()

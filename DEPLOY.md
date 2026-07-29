@@ -186,7 +186,6 @@ O `.env.development` já aponta `VITE_API_BASE=/api` e o Vite faz proxy para a p
   2. **Arquivo no servidor** — fonte compartilhada entre todos
 - Logos continuam **comprimidas** (até 1200 px, JPEG) antes de ir para o JSON.
 - Se o servidor falhar, aparece **“Erro ao salvar”**; a cópia local no navegador ainda existe neste aparelho.
-- **Modo demo** substitui tudo (pede confirmação) — evite em produção.
 
 ---
 

@@ -268,16 +268,6 @@ export async function runSystemHealthChecks(board: BoardState): Promise<HealthCh
     })
   }
 
-  if (board.demo) {
-    checks.push({
-      id: 'demo',
-      title: 'Modo demo',
-      status: 'warn',
-      summary: 'Quadro de demonstração',
-      detail: 'Avisos WhatsApp não são enviados no modo demo.',
-    })
-  }
-
   return checks
 }
 

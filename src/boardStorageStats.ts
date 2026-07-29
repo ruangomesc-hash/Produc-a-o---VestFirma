@@ -95,7 +95,6 @@ export function measureBoardStorage(board: BoardState): BoardStorageStats {
     columns: normalized.columns,
     vendedores: normalized.vendedores,
     segmentos: normalized.segmentos ?? [],
-    demo: normalized.demo ?? false,
   })
   const structureBytes = utf8ByteLength(structureJson)
 
