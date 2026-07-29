@@ -1,0 +1,37 @@
+{
+  "name": "vestfirma-kanban",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "npm run sync:sino && tsc -b && vite build",
+    "sync:sino": "cp sino.mp3 src/assets/sino.mp3 2>/dev/null || cp public/sino.mp3 src/assets/sino.mp3 2>/dev/null || true",
+    "preview": "vite preview",
+    "view": "npm run build && node server/server.mjs",
+    "preserver": "npm run build",
+    "server": "node --env-file=.env server/server.mjs",
+    "server:api": "API_ONLY=1 PORT=8787 node --env-file=.env server/server.mjs",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@svg-maps/brazil": "^2.0.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  }
+}

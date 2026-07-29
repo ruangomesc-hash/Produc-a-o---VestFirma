@@ -1,0 +1,42 @@
+COMO VER O SITE NO SEU MAC
+==========================
+
+PROBLEMA COMUM: a porta 5173 estava ocupada por outro programa
+e o Kanban não abria (tela em branco ou erro).
+
+USE ESTE ATALHO (recomendado)
+-----------------------------
+Dois cliques em:
+
+  Iniciar Kanban.command
+
+Ele faz o build e abre:  http://127.0.0.1:4199
+
+Deixe a janela do Terminal aberta enquanto usar.
+
+
+DESENVOLVIMENTO (se for editar código)
+--------------------------------------
+  Iniciar-Desenvolvimento.command
+
+Abre:  http://127.0.0.1:5199
+
+
+PELO TERMINAL (Cursor)
+----------------------
+  cd "/Volumes/GTX ONE/Produção - VestFirma"
+  npm install
+  npm run view
+
+Abre http://127.0.0.1:4199
+
+
+SE AINDA NÃO ABRIR
+------------------
+1. Feche outras janelas do Kanban / Vite.
+2. Tente no Chrome ou Safari digitando manualmente:
+   http://127.0.0.1:4199
+3. Se aparecer erro no Terminal, copie a mensagem.
+
+Quando for publicar no servidor: npm run build e envie a pasta dist/
+(veja DEPLOY.md)

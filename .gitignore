@@ -1,0 +1,6 @@
+data/board.json
+data/sessions.json
+public/api/config.php
+.env
+.env.local
+.env.production

@@ -1,0 +1,411 @@
+import { useCallback, useEffect, useState } from 'react'
+import { logout, requiresLogin, verifySession } from './authSession'
+import { ConfirmModal } from './components/ConfirmModal'
+import { CardModal } from './components/CardModal'
+import { KanbanBoard } from './components/KanbanBoard'
+import { LoginPage } from './components/LoginPage'
+import { VendedoresModal } from './components/VendedoresModal'
+import { WhatsAppNotifyModal } from './components/WhatsAppNotifyModal'
+import { VisaoGeralPanel } from './components/VisaoGeralPanel'
+import { SystemStatusPanel } from './components/SystemStatusPanel'
+import { VendedoresOverviewPanel } from './components/VendedoresOverviewPanel'
+import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
+import { PortalFestaPreviewPage } from './components/PortalFestaPreviewPage'
+import { PortalPedidoQuickLink } from './components/PortalPedidoQuickLink'
+import { isPortalFestaPreviewRoute, isPortalPedidoRoute } from './portalPedidoRoute'
+import { useBoard } from './hooks/useBoard'
+import type { OrderCard } from './types'
+
+type AuthState = 'checking' | 'login' | 'ok'
+
+export default function App() {
+  const [authState, setAuthState] = useState<AuthState>(() =>
+    requiresLogin() ? 'checking' : 'ok',
+  )
+  const [user, setUser] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!requiresLogin()) return
+
+    let cancelled = false
+    verifySession().then((ok) => {
+      if (!cancelled) setAuthState(ok ? 'ok' : 'login')
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setUser(null)
+      setAuthState(requiresLogin() ? 'login' : 'ok')
+    }
+    window.addEventListener('vestfirma:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('vestfirma:unauthorized', onUnauthorized)
+  }, [])
+
+  if (authState === 'checking') {
+    return (
+      <div className="app-loading">
+        <p>Verificando acesso…</p>
+      </div>
+    )
+  }
+
+  if (authState === 'login') {
+    return (
+      <LoginPage
+        onSuccess={(loggedUser) => {
+          setUser(loggedUser)
+          setAuthState('ok')
+        }}
+      />
+    )
+  }
+
+  return (
+    <AuthenticatedRoot
+      user={user}
+      onLogout={async () => {
+        await logout()
+        setUser(null)
+        setAuthState(requiresLogin() ? 'login' : 'ok')
+      }}
+    />
+  )
+}
+
+function AuthenticatedRoot({
+  user,
+  onLogout,
+}: {
+  user: string | null
+  onLogout: () => void | Promise<void>
+}) {
+  if (isPortalFestaPreviewRoute()) {
+    return <PortalFestaPreviewPage user={user} onLogout={onLogout} />
+  }
+  if (isPortalPedidoRoute()) {
+    return <VendedorPedidoPortalPage user={user} onLogout={onLogout} />
+  }
+  return <AuthenticatedApp user={user} onLogout={onLogout} />
+}
+
+type AuthenticatedProps = {
+  user: string | null
+  onLogout: () => void | Promise<void>
+}
+
+function AuthenticatedApp({ user, onLogout }: AuthenticatedProps) {
+  const {
+    board,
+    ready,
+    addColumn,
+    removeColumn,
+    addVendedor,
+    updateVendedorContato,
+    removeVendedor,
+    addSegmento,
+    addCard,
+    updateCard,
+    deleteCard,
+    moveCard,
+    loadDemo,
+    exitDemo,
+  } = useBoard()
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [demoConfirm, setDemoConfirm] = useState<'load' | 'exit' | null>(null)
+  const [modalSession, setModalSession] = useState(0)
+  const [vendedoresOpen, setVendedoresOpen] = useState(false)
+  const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
+  const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
+  const [view, setView] = useState<'kanban' | 'visao' | 'status' | 'vendedores'>(() => {
+    const hash = window.location.hash.replace(/^#/, '')
+    if (hash === 'status' || hash === 'visao' || hash === 'kanban' || hash === 'vendedores') {
+      return hash
+    }
+    return 'kanban'
+  })
+  const [visaoTvMode, setVisaoTvMode] = useState(false)
+
+  useEffect(() => {
+    const want = view === 'kanban' ? '' : `#${view}`
+    if (window.location.hash !== want) {
+      window.history.replaceState(null, '', want || `${window.location.pathname}${window.location.search}`)
+    }
+  }, [view])
+
+  const sairModoTv = useCallback(() => {
+    setVisaoTvMode(false)
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {})
+    }
+  }, [])
+
+  const entrarModoTv = useCallback(() => {
+    setView('visao')
+    setVisaoTvMode(true)
+    void document.documentElement.requestFullscreen?.().catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement && visaoTvMode) {
+        setVisaoTvMode(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [visaoTvMode])
+
+  useEffect(() => {
+    if (view !== 'visao' && visaoTvMode) {
+      sairModoTv()
+    }
+  }, [view, visaoTvMode, sairModoTv])
+
+  const openCreate = (columnId: string) => {
+    setModalSession((n) => n + 1)
+    setModalMode('create')
+    setActiveColumnId(columnId)
+    setEditingCard(undefined)
+    setModalOpen(true)
+  }
+
+  const openEdit = (card: OrderCard) => {
+    setModalSession((n) => n + 1)
+    setModalMode('edit')
+    setEditingCard(card)
+    setActiveColumnId(card.columnId)
+    setModalOpen(true)
+  }
+
+  if (!ready) {
+    return (
+      <div className="app-loading">
+        <p>Carregando produção VestFirma…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`app ${visaoTvMode ? 'app-visao-tv' : ''}`}>
+      {!visaoTvMode && (
+        <header className="app-header">
+          <nav className="header-nav" aria-label="Navegação principal">
+            <div className="nav-tabs" role="tablist" aria-label="Telas">
+              <button
+                type="button"
+                role="tab"
+                id="tab-meus-pedidos"
+                aria-selected={view === 'kanban'}
+                aria-controls="panel-kanban"
+                className={`nav-tab ${view === 'kanban' ? 'active' : ''}`}
+                onClick={() => setView('kanban')}
+              >
+                Meus pedidos
+                {board.cards.length > 0 ? ` (${board.cards.length})` : ''}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="tab-visao-geral"
+                aria-selected={view === 'visao'}
+                aria-controls="panel-visao"
+                className={`nav-tab ${view === 'visao' ? 'active' : ''}`}
+                onClick={() => setView('visao')}
+              >
+                Visão geral
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="tab-vendedores"
+                aria-selected={view === 'vendedores'}
+                aria-controls="panel-vendedores"
+                className={`nav-tab ${view === 'vendedores' ? 'active' : ''}`}
+                onClick={() => setView('vendedores')}
+              >
+                Por vendedor
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="tab-status"
+                aria-selected={view === 'status'}
+                aria-controls="panel-status"
+                className={`nav-tab ${view === 'status' ? 'active' : ''}`}
+                onClick={() => setView('status')}
+              >
+                Status
+              </button>
+            </div>
+          </nav>
+          <div className="brand brand-center">
+            <img
+              src={`${import.meta.env.BASE_URL}vestfirma-logo.png`}
+              alt="VestFirma"
+              className="brand-logo"
+            />
+            <p className="subtitle">
+              {view === 'visao'
+                ? 'Painel de produção'
+                : view === 'status'
+                  ? 'Diagnóstico do kanban'
+                  : view === 'vendedores'
+                    ? 'Desempenho por vendedor'
+                    : 'Kanban de uniformes personalizados'}
+            </p>
+          </div>
+          <div className="header-actions">
+            {user && <span className="stat-pill">{user}</span>}
+            {board.demo ? (
+              <button
+                type="button"
+                className="stat-pill demo-pill stat-pill-btn"
+                title="Voltar aos seus pedidos reais"
+                onClick={() => setDemoConfirm('exit')}
+              >
+                Modo demo — sair
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => {
+                if (board.demo) {
+                  loadDemo()
+                  return
+                }
+                if (board.cards.length > 0) {
+                  setDemoConfirm('load')
+                  return
+                }
+                loadDemo()
+              }}
+            >
+              Modo demo
+            </button>
+            <button type="button" className="btn ghost" onClick={() => setVendedoresOpen(true)}>
+              Vendedores ({board.vendedores.length})
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => setWhatsappNotifyOpen(true)}
+              title="Avisos no grupo WhatsApp"
+            >
+              Grupo WhatsApp
+            </button>
+            {view === 'visao' && (
+              <button type="button" className="btn secondary" onClick={entrarModoTv}>
+                Modo TV
+              </button>
+            )}
+            {requiresLogin() && (
+              <button type="button" className="btn ghost" onClick={() => void onLogout()}>
+                Sair
+              </button>
+            )}
+          </div>
+        </header>
+      )}
+
+      {view === 'kanban' ? (
+        <div id="panel-kanban" className="app-panel" role="tabpanel" aria-labelledby="tab-meus-pedidos">
+        <KanbanBoard
+          board={board}
+          dragEnabled={!modalOpen && !vendedoresOpen && !whatsappNotifyOpen}
+          onMoveCard={moveCard}
+          onAddCard={openCreate}
+          onEditCard={openEdit}
+          onDeleteCard={deleteCard}
+          onDeleteColumn={removeColumn}
+          onAddColumn={addColumn}
+        />
+        </div>
+      ) : view === 'visao' ? (
+        <div id="panel-visao" className="app-panel" role="tabpanel" aria-labelledby="tab-visao-geral">
+          <VisaoGeralPanel board={board} tvMode={visaoTvMode} onExitTv={sairModoTv} />
+        </div>
+      ) : view === 'vendedores' ? (
+        <div id="panel-vendedores" className="app-panel" role="tabpanel" aria-labelledby="tab-vendedores">
+          <VendedoresOverviewPanel board={board} />
+        </div>
+      ) : (
+        <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">
+          <SystemStatusPanel board={board} />
+        </div>
+      )}
+
+      <CardModal
+        key={modalSession}
+        session={modalSession}
+        open={modalOpen}
+        mode={modalMode}
+        initial={editingCard}
+        vendedores={board.vendedores}
+        segmentos={board.segmentos ?? []}
+        onClose={() => setModalOpen(false)}
+        onOpenVendedores={() => {
+          setModalOpen(false)
+          setVendedoresOpen(true)
+        }}
+        onAddSegmento={addSegmento}
+        onSubmit={(data) => {
+          if (modalMode === 'create' && activeColumnId) {
+            addCard(activeColumnId, data)
+          } else if (modalMode === 'edit' && editingCard) {
+            updateCard(editingCard.id, data)
+          }
+        }}
+      />
+
+      <VendedoresModal
+        open={vendedoresOpen}
+        vendedores={board.vendedores}
+        onClose={() => setVendedoresOpen(false)}
+        onAdd={addVendedor}
+        onUpdateContato={updateVendedorContato}
+        onRemove={removeVendedor}
+      />
+
+      <WhatsAppNotifyModal
+        open={whatsappNotifyOpen}
+        onClose={() => setWhatsappNotifyOpen(false)}
+      />
+
+      <ConfirmModal
+        open={demoConfirm === 'load'}
+        title="Carregar demonstração?"
+        message="Os pedidos atuais serão guardados neste navegador e substituídos por exemplos em todas as etapas. Use “Modo demo — sair” para voltar."
+        confirmLabel="Carregar demo"
+        onCancel={() => setDemoConfirm(null)}
+        onConfirm={() => {
+          setDemoConfirm(null)
+          loadDemo()
+        }}
+      />
+
+      <ConfirmModal
+        open={demoConfirm === 'exit'}
+        title="Sair do modo demo?"
+        message="Voltamos ao quadro com os seus pedidos de antes de carregar a demonstração."
+        confirmLabel="Voltar aos meus pedidos"
+        onCancel={() => setDemoConfirm(null)}
+        onConfirm={() => {
+          setDemoConfirm(null)
+          exitDemo()
+          setView('kanban')
+        }}
+      />
+
+      {!visaoTvMode && <PortalPedidoQuickLink />}
+    </div>
+  )
+}
