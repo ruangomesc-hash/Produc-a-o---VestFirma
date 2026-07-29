@@ -109,12 +109,20 @@ export function parseLoginHttpFailure(
     }
   }
 
+  const onRender = requestUrl.includes('onrender.com')
+  const onVercel =
+    requestUrl.includes('vercel.app') || trimmed.includes('verifyAdmin')
+
   return {
     code: res.status >= 500 ? 'SERVER_ERROR' : 'API_NOT_JSON',
     error: trimmed.slice(0, 200) || `Erro HTTP ${res.status}`,
     fix:
       res.status >= 500
-        ? 'Logs → Functions no painel Vercel; redeploy com api/[...slug].js atualizado.'
+        ? onRender
+          ? 'Render → serviço → Logs. Confira SEED_ADMIN_PASSWORD, disco /var/data, Start: npm run start:production.'
+          : onVercel
+            ? 'Vercel → Logs → Functions; redeploy com api/[...slug].js ou migre API para Render.'
+            : 'Abra /api/health. Confira SEED_ADMIN_PASSWORD e se a API Node está no ar (não só o site estático).'
         : 'Abra /api/health no navegador para testar a API.',
     httpStatus: res.status,
     requestUrl,

@@ -139,6 +139,11 @@ export async function readJsonBody(req, maxBytes) {
   return Buffer.concat(chunks).toString('utf8')
 }
 
+function loginJsonError(res, status, payload) {
+  res.writeHead(status, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+  res.end(JSON.stringify({ ok: false, ...payload }))
+}
+
 export async function handleLoginApi(req, res, readBody) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders())
@@ -151,35 +156,74 @@ export async function handleLoginApi(req, res, readBody) {
     return true
   }
 
-  const body = await readBody(req)
-  let data
   try {
-    data = JSON.parse(body)
-  } catch {
-    res.writeHead(400, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-    res.end(JSON.stringify({ error: 'JSON inválido' }))
+    const body = await readBody(req)
+    let data
+    try {
+      data = JSON.parse(body)
+    } catch {
+      loginJsonError(res, 400, {
+        code: 'INVALID_JSON',
+        error: 'JSON inválido.',
+      })
+      return true
+    }
+
+    const username = String(data.username || data.email || '').trim()
+    const password = String(data.password || '')
+    if (!username || !password) {
+      loginJsonError(res, 400, {
+        code: 'AUTH_MISSING_FIELDS',
+        error: 'E-mail e senha são obrigatórios.',
+      })
+      return true
+    }
+
+    const adminEmail = (process.env.SEED_ADMIN_EMAIL || 'ruan.gomesc@gmail.com').toLowerCase().trim()
+    const adminPwd = process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || ''
+    if (username.toLowerCase() === adminEmail && !adminPwd) {
+      loginJsonError(res, 503, {
+        code: 'CONFIG_ADMIN_PASSWORD',
+        error: 'Senha do administrador não está configurada no servidor.',
+        fix: 'Render → Environment → SEED_ADMIN_PASSWORD (ex.: @Vestfirma26!) → Save → Manual Deploy.',
+      })
+      return true
+    }
+
+    const user = await verifyCredentials(username, password)
+    if (!user) {
+      loginJsonError(res, 401, {
+        code: 'AUTH_INVALID',
+        error:
+          username.toLowerCase() === adminEmail
+            ? 'Senha incorreta para o administrador.'
+            : 'E-mail ou senha incorretos.',
+        fix:
+          username.toLowerCase() === adminEmail
+            ? 'Confira SEED_ADMIN_PASSWORD no Render (sem aspas extras) e redeploy.'
+            : 'Peça um acesso em Usuários ou confira e-mail e senha.',
+      })
+      return true
+    }
+
+    const session = await createSession(user)
+    res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(session))
+    return true
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[vestfirma login]', err)
+    const diskHint = /ENOENT|EACCES|EPERM|read-only|Payload/i.test(msg)
+    loginJsonError(res, 500, {
+      code: 'SERVER_ERROR',
+      error: 'Erro interno ao processar login.',
+      message: msg,
+      fix: diskHint
+        ? 'Render → Disks: monte /var/data. Environment: BOARD_DATA_DIR=/var/data, BOARD_DATA_FILE=/var/data/board.json. Redeploy.'
+        : 'Render → Logs do serviço. Confira SEED_ADMIN_PASSWORD, REQUIRE_LOGIN=true e Start Command: npm run start:production.',
+    })
     return true
   }
-
-  const username = String(data.username || '').trim()
-  const password = String(data.password || '')
-  if (!username || !password) {
-    res.writeHead(400, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-    res.end(JSON.stringify({ error: 'Usuário e senha são obrigatórios' }))
-    return true
-  }
-
-  const user = await verifyCredentials(username, password)
-  if (!user) {
-    res.writeHead(401, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-    res.end(JSON.stringify({ error: 'Usuário ou senha incorretos' }))
-    return true
-  }
-
-  const session = await createSession(user)
-  res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(session))
-  return true
 }
 
 export async function handleSessionApi(req, res) {

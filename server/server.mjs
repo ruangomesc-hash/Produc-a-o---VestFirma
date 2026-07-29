@@ -245,11 +245,37 @@ const server = http.createServer(async (req, res) => {
   } catch (err) {
     console.error(err)
     if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
-      res.end('Server error')
+      const msg = err instanceof Error ? err.message : String(err)
+      res.writeHead(500, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(
+        JSON.stringify({
+          ok: false,
+          code: 'SERVER_ERROR',
+          error: 'Erro interno na API.',
+          message: msg,
+          fix: 'Render → Logs. Start: npm run start:production. Disco em /var/data se usar BOARD_DATA_*.',
+        }),
+      )
     }
   }
 })
+
+async function ensureDataDirs() {
+  const dirs = new Set([
+    path.dirname(DATA_FILE),
+    LOGO_DIR,
+    process.env.BOARD_DATA_DIR || path.join(ROOT, 'data'),
+  ])
+  for (const dir of dirs) {
+    try {
+      await fs.mkdir(dir, { recursive: true })
+    } catch (err) {
+      console.warn('[vestfirma] Não foi possível criar pasta de dados:', dir, err)
+    }
+  }
+}
+
+await ensureDataDirs()
 
 if (!existsSync(DIST)) {
   console.warn('[vestfirma] Pasta dist/ não encontrada. Rode: npm run build')

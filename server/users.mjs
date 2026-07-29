@@ -142,13 +142,17 @@ export async function verifyUserPassword(email, password) {
   const norm = normalizeEmail(email)
   const pwd = String(password)
 
-  if (norm === SEED_ADMIN_EMAIL && pwd === SEED_ADMIN_PASSWORD) {
+  if (SEED_ADMIN_PASSWORD && norm === SEED_ADMIN_EMAIL && pwd === SEED_ADMIN_PASSWORD) {
     return {
       id: 'admin-seed',
       email: SEED_ADMIN_EMAIL,
       name: SEED_ADMIN_NAME,
       role: 'admin',
     }
+  }
+
+  if (norm === SEED_ADMIN_EMAIL) {
+    return null
   }
 
   await ensureUsersSeeded()

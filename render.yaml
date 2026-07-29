@@ -47,6 +47,9 @@ services:
       - key: SESSION_SECRET
         generateValue: true
 
+      - key: SESSION_MODE
+        value: jwt
+
       - key: SESSION_DAYS
         value: "14"
 
