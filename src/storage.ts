@@ -10,7 +10,7 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
-import { mergeBoardPreservingPedidos } from './pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos } from './pedidosPolicy'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -113,7 +113,13 @@ export function normalizeBoard(raw: BoardState | undefined | null): BoardState {
 }
 
 function boardHasPedidos(state: BoardState): boolean {
-  return state.cards.length > 0
+  return contagemPedidos(state) > 0
+}
+
+function localUsavelParaProducao(local: BoardState | null): BoardState | null {
+  if (!local?.columns?.length) return null
+  if (local.demo) return null
+  return local
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -198,11 +204,14 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     const remoteRaw = await fetchRemoteBoard({ signal: options?.signal })
     if (remoteRaw) {
       const remote = normalizeBoard(remoteRaw)
-      if (local && boardHasPedidos(local) && local.cards.length > remote.cards.length) {
-        return { board: remote, richerLocal: local }
-      }
-      await saveBoardToIdb(remote)
-      return { board: remote }
+      const localProd = localUsavelParaProducao(local)
+      const board = localProd
+        ? mergeBoardPreservingPedidos(remote, localProd)
+        : remote
+      await saveBoardToIdb(board)
+      const richerLocal =
+        contagemPedidos(board) > contagemPedidos(remote) ? board : undefined
+      return { board, richerLocal }
     }
 
     if (local && boardHasPedidos(local)) {
@@ -236,15 +245,44 @@ export async function saveBoard(
     options = { ...options, skipRemote: true }
   }
 
+  const idbRaw = await loadBoardFromIdb()
+  const idb = idbRaw ? normalizeBoard(idbRaw) : null
+  const idbProd = localUsavelParaProducao(idb)
+
+  if (normalized.demo) {
+    if (options?.skipRemote) {
+      try {
+        await saveBoardToIdb(normalized)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Falha ao salvar no navegador'
+        return { ok: false, error: message, remote: isRemoteSyncEnabled() }
+      }
+      return { ok: true, remote: false }
+    }
+  } else if (idbProd) {
+    normalized = mergeBoardPreservingPedidos(idbProd, normalized)
+  }
+
   if (isRemoteSyncEnabled() && !options?.skipRemote && !options?.forceRemote) {
     try {
       const remoteRaw = await fetchRemoteBoard()
       if (remoteRaw) {
-        normalized = mergeBoardPreservingPedidos(normalizeBoard(remoteRaw), normalized)
+        const remote = normalizeBoard(remoteRaw)
+        normalized = mergeBoardPreservingPedidos(remote, normalized)
       }
     } catch {
       /* servidor também faz merge */
     }
+  }
+
+  if (
+    !normalized.demo &&
+    !options?.forceRemote &&
+    idbProd &&
+    boardHasPedidos(idbProd) &&
+    !boardHasPedidos(normalized)
+  ) {
+    normalized = mergeBoardPreservingPedidos(normalized, idbProd)
   }
 
   try {

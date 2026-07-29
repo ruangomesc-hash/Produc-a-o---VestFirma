@@ -10,6 +10,8 @@ import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
+import { fetchRemoteBoard } from '../remoteBoard'
+import { contagemPedidos } from '../pedidosPolicy'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
@@ -47,10 +49,14 @@ function vendedorLogadoPodeCard(board: BoardState, card: OrderCard | undefined):
 }
 
 const PRE_DEMO_STORAGE_KEY = 'vestfirma-pre-demo-board'
+const PRE_DEMO_LS_KEY = 'vestfirma-pre-demo-board-ls'
 
 function savePreDemoBoard(state: BoardState) {
+  if (state.demo || state.cards.length === 0) return
   try {
-    sessionStorage.setItem(PRE_DEMO_STORAGE_KEY, JSON.stringify(state))
+    const payload = JSON.stringify(state)
+    sessionStorage.setItem(PRE_DEMO_STORAGE_KEY, payload)
+    localStorage.setItem(PRE_DEMO_LS_KEY, payload)
   } catch {
     /* quota or private mode */
   }
@@ -58,7 +64,9 @@ function savePreDemoBoard(state: BoardState) {
 
 function readPreDemoBoard(): BoardState | null {
   try {
-    const raw = sessionStorage.getItem(PRE_DEMO_STORAGE_KEY)
+    const raw =
+      sessionStorage.getItem(PRE_DEMO_STORAGE_KEY) ??
+      localStorage.getItem(PRE_DEMO_LS_KEY)
     if (!raw) return null
     return JSON.parse(raw) as BoardState
   } catch {
@@ -69,6 +77,7 @@ function readPreDemoBoard(): BoardState | null {
 function clearPreDemoBoard() {
   try {
     sessionStorage.removeItem(PRE_DEMO_STORAGE_KEY)
+    localStorage.removeItem(PRE_DEMO_LS_KEY)
   } catch {
     /* ignore */
   }
@@ -477,7 +486,7 @@ export function useBoard() {
   const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
 
   const loadDemo = useCallback(() => {
-    if (!board.demo) {
+    if (!board.demo && board.cards.length > 0) {
       savePreDemoBoard(board)
     }
     persist(createDemoBoard(), { skipRemote: true })
@@ -487,13 +496,31 @@ export function useBoard() {
   const exitDemo = useCallback(() => {
     const saved = readPreDemoBoard()
     clearPreDemoBoard()
-    if (saved) {
+    if (saved?.cards?.length) {
       persist(normalizeBoard({ ...saved, demo: false }))
       recordAudit({ action: 'demo.saiu', summary: 'Saiu do modo demo — quadro anterior restaurado' })
       return
     }
-    persist(structuredClone(DEFAULT_BOARD))
-    recordAudit({ action: 'demo.saiu', summary: 'Saiu do modo demo' })
+    void fetchRemoteBoard()
+      .then((raw) => {
+        const remote = raw ? normalizeBoard(raw) : null
+        if (remote && contagemPedidos(remote) > 0) {
+          persist({ ...remote, demo: false })
+          recordAudit({
+            action: 'demo.saiu',
+            summary: 'Saiu do modo demo — pedidos recarregados do servidor',
+          })
+          return
+        }
+        persist(structuredClone(DEFAULT_BOARD), { skipRemote: true })
+        recordAudit({
+          action: 'demo.saiu',
+          summary: 'Saiu do modo demo (sem cópia local — servidor vazio)',
+        })
+      })
+      .catch(() => {
+        persist(structuredClone(DEFAULT_BOARD), { skipRemote: true })
+      })
   }, [persist])
 
   return {

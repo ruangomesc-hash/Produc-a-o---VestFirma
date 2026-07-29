@@ -438,6 +438,15 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
       {view === 'kanban' ? (
         <div id="panel-kanban" className="app-panel" role="tabpanel" aria-labelledby="tab-meus-pedidos">
+          {board.demo ? (
+            <div className="board-restore-banner board-demo-banner" role="status">
+              <p>
+                <strong>Modo demonstração</strong> — os pedidos reais <em>não foram apagados</em>.
+                Eles ficam guardados neste navegador e no servidor. Clique em{' '}
+                <strong>Modo demo — sair</strong> no topo para voltar ao seu quadro.
+              </p>
+            </div>
+          ) : null}
           {localRestore && localRestore.cards.length > board.cards.length ? (
             <div className="board-restore-banner" role="status">
               <p>

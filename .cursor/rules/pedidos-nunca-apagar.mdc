@@ -23,6 +23,8 @@ alwaysApply: true
 
 - Servidor: **merge por id** em todo PUT do quadro; **backup** antes de gravar; recusar quadro vazio se já existiam pedidos.
 - Cliente: antes de PUT remoto, **mesclar** com o quadro do servidor; não enviar quadro vazio; modo demo **não** sobrescreve o servidor de produção.
+- Cliente: ao **carregar**, unir servidor + IndexedDB (ignorar cópia demo) e **exibir** o quadro com mais pedidos — nunca mostrar vazio se ainda existir cópia local/servidor.
+- Cliente: ao **salvar** no navegador, mesclar com IndexedDB antes de gravar; recusar zerar IDB se havia pedidos.
 - **Histórico de auditoria** (`/api/audit`): registrar ações relevantes; aba **Histórico** só para admin.
 
 ## UI

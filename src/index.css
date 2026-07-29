@@ -98,6 +98,15 @@ textarea {
   margin: 0 0 0.65rem;
 }
 
+.board-demo-banner {
+  border-color: color-mix(in srgb, var(--vestfirma-gold) 50%, var(--border));
+  background: color-mix(in srgb, var(--vestfirma-gold) 12%, var(--surface));
+}
+
+.board-demo-banner p {
+  margin: 0;
+}
+
 .board-restore-actions {
   display: flex;
   flex-wrap: wrap;

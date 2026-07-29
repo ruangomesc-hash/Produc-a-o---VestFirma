@@ -18,18 +18,22 @@ export async function readExistingBoard(DATA_FILE) {
 /** Nunca remove pedidos já gravados — só adiciona ou atualiza por id. */
 export function mergeBoardPreservingPedidos(existing, incoming) {
   if (!existing?.cards?.length) return incoming
+
   const byId = new Map()
+  const legacy = []
   for (const c of existing.cards) {
     if (c?.id) byId.set(c.id, c)
+    else legacy.push(c)
   }
   for (const c of incoming.cards ?? []) {
     if (!c?.id) continue
     const prev = byId.get(c.id)
     byId.set(c.id, prev ? { ...prev, ...c } : c)
   }
+
   return {
     ...incoming,
-    cards: Array.from(byId.values()),
+    cards: [...legacy, ...Array.from(byId.values())],
   }
 }
 
