@@ -1,4 +1,5 @@
 import type { BoardState, OrderCard } from './types'
+import { mergeVendedoresUnion } from './vendedorUserSync'
 
 /** Pedidos arquivados permanecem no JSON — só saem do kanban. */
 export function pedidoVisivelNoKanban(card: OrderCard): boolean {
@@ -55,6 +56,9 @@ export function mergeBoardPreservingPedidos(
 
   return {
     ...incoming,
+    columns: incoming.columns?.length ? incoming.columns : existing.columns,
+    vendedores: mergeVendedoresUnion(existing.vendedores ?? [], incoming.vendedores ?? []),
+    segmentos: incoming.segmentos?.length ? incoming.segmentos : existing.segmentos,
     cards: [...legacy, ...Array.from(byId.values())],
   }
 }

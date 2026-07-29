@@ -10,7 +10,7 @@ import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
 import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
-import { findVendedorIdForSession, boardVisivelParaSession, vendedorPodeAcessarPedido } from './vendedorUserSync'
+import { findVendedorIdForSession, boardVisivelParaSession, vendedorPodeAcessarPedido, vendedoresParaAtribuirPedido } from './vendedorUserSync'
 import { autorComentarioFromSession } from './pedidoComentarios'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
@@ -181,6 +181,18 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   )
 
   const lockVendedorToSession = session?.role === 'vendedor'
+
+  const vendedoresNoPedido = useMemo(
+    () => vendedoresParaAtribuirPedido(board.vendedores, session),
+    [board.vendedores, session],
+  )
+
+  useEffect(() => {
+    if (!ready || !session || !isAdmin(session)) return
+    void fetchUsers()
+      .then((users) => syncVendedoresFromManagedUsers(users))
+      .catch(() => {})
+  }, [ready, session, syncVendedoresFromManagedUsers])
 
   const boardForSession = useMemo(
     () => boardVisivelParaSession(board, session),
@@ -554,7 +566,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         open={modalOpen}
         mode={modalMode}
         initial={editingCardLive}
-        vendedores={board.vendedores}
+        vendedores={lockVendedorToSession ? board.vendedores : vendedoresNoPedido}
         segmentos={board.segmentos ?? []}
         preferredVendedorId={preferredVendedorId}
         lockVendedorToSession={lockVendedorToSession}

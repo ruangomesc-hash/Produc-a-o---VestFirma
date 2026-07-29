@@ -67,6 +67,60 @@ export function mergeVendedoresFromManagedUsers(
   return { ...board, vendedores }
 }
 
+/** Une listas do quadro sem perder vendedores (ex.: merge servidor + local). */
+export function mergeVendedoresUnion(a: Vendedor[], b: Vendedor[]): Vendedor[] {
+  const out: Vendedor[] = []
+  const index = new Map<string, number>()
+
+  const keysFor = (v: Vendedor): string[] => {
+    const keys = [`id:${v.id}`]
+    if (v.userId) keys.push(`uid:${v.userId}`)
+    if (v.email?.trim()) keys.push(`em:${v.email.trim().toLowerCase()}`)
+    return keys
+  }
+
+  const upsert = (v: Vendedor) => {
+    if (!v?.id) return
+    let targetIdx: number | undefined
+    for (const k of keysFor(v)) {
+      if (index.has(k)) {
+        targetIdx = index.get(k)
+        break
+      }
+    }
+    if (targetIdx !== undefined) {
+      const prev = out[targetIdx]
+      const merged: Vendedor = {
+        ...prev,
+        ...v,
+        id: prev.id,
+        nome: v.nome?.trim() ? v.nome : prev.nome,
+      }
+      out[targetIdx] = merged
+      for (const k of keysFor(merged)) index.set(k, targetIdx)
+      return
+    }
+    const idx = out.length
+    out.push(v)
+    for (const k of keysFor(v)) index.set(k, idx)
+  }
+
+  for (const v of a) upsert(v)
+  for (const v of b) upsert(v)
+  return out
+}
+
+/** Vendedores que podem receber pedido no select (admin/gerente). */
+export function vendedoresParaAtribuirPedido(
+  vendedores: Vendedor[],
+  session: SessionProfile | null,
+): Vendedor[] {
+  if (!session || session.role === 'vendedor') return vendedores
+  const porPerfil = vendedores.filter((v) => !v.userId || v.userId !== 'admin-seed')
+  const lista = porPerfil.length > 0 ? porPerfil : vendedores
+  return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
 export function findVendedorIdForSession(
   board: BoardState,
   session: SessionProfile | null,

@@ -182,7 +182,7 @@ export function CardModal({
     if (vendedores.length > 0 && !vendedorIdEfetivo) {
       showAlert(
         allowVendedorCadastro
-          ? 'Selecione um vendedor ou cadastre um em Vendedores.'
+          ? 'Selecione um vendedor ou cadastre um em Usuários.'
           : 'Selecione seu nome na lista de vendedores.',
         'Vendedor',
       )

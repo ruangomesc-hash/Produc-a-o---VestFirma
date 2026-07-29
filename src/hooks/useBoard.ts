@@ -279,16 +279,22 @@ export function useBoard() {
           (existing.whatsapp ?? '') === (next.whatsapp ?? '') &&
           (existing.grupoWhatsapp ?? '') === (next.grupoWhatsapp ?? '')
         if (unchanged) return
-        persist({
-          ...current,
-          vendedores: current.vendedores.map((v) => (v.id === existing.id ? next : v)),
-        })
+        persist(
+          {
+            ...current,
+            vendedores: current.vendedores.map((v) => (v.id === existing.id ? next : v)),
+          },
+          { immediate: true },
+        )
         return
       }
-      persist({
-        ...current,
-        vendedores: [...current.vendedores, next],
-      })
+      persist(
+        {
+          ...current,
+          vendedores: [...current.vendedores, next],
+        },
+        { immediate: true },
+      )
     },
     [persist],
   )
@@ -313,7 +319,18 @@ export function useBoard() {
     (users: ManagedUser[]) => {
       const current = boardRef.current
       const merged = mergeVendedoresFromManagedUsers(current, users)
-      if (merged.vendedores !== current.vendedores) persist(merged)
+      const same =
+        merged.vendedores.length === current.vendedores.length &&
+        merged.vendedores.every((v) => {
+          const c = current.vendedores.find((x) => x.id === v.id)
+          return (
+            c &&
+            c.nome === v.nome &&
+            c.userId === v.userId &&
+            (c.email ?? '') === (v.email ?? '')
+          )
+        })
+      if (!same) persist(merged, { immediate: true })
     },
     [persist],
   )
