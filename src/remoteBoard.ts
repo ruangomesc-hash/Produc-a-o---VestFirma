@@ -4,7 +4,7 @@ import {
   getApiBase,
   isRemoteSyncEnabled,
 } from './runtimeConfig'
-import { authHeaders, handleAuthResponse, requiresLogin } from './authSession'
+import { authHeaders, getAuthGeneration, handleAuthResponse, requiresLogin } from './authSession'
 
 export type SaveBoardResult =
   | { ok: true; remote: boolean }
@@ -17,18 +17,27 @@ function boardEndpoint(): string {
 
 export { isRemoteSyncEnabled }
 
-export async function fetchRemoteBoard(): Promise<BoardState | null> {
+export type RemoteBoardFetchOptions = {
+  signal?: AbortSignal
+}
+
+export async function fetchRemoteBoard(
+  options?: RemoteBoardFetchOptions,
+): Promise<BoardState | null> {
   const base = getApiBase()
   if (!base) return null
+
+  const authGen = getAuthGeneration()
 
   const res = await fetch(`${base}${boardEndpoint()}`, {
     method: 'GET',
     cache: 'no-store',
+    signal: options?.signal,
     headers: { Accept: 'application/json', ...authHeaders() },
   })
 
   if (res.status === 401) {
-    handleAuthResponse(401)
+    if (!options?.signal?.aborted) handleAuthResponse(401, authGen)
     throw new Error(
       requiresLogin() || blockLocalFallbackWhenProtected()
         ? 'Sessão expirada ou acesso negado'
@@ -50,6 +59,8 @@ export async function saveRemoteBoard(state: BoardState): Promise<void> {
   const base = getApiBase()
   if (!base) return
 
+  const authGen = getAuthGeneration()
+
   const res = await fetch(`${base}${boardEndpoint()}`, {
     method: 'PUT',
     headers: {
@@ -60,7 +71,7 @@ export async function saveRemoteBoard(state: BoardState): Promise<void> {
   })
 
   if (res.status === 401) {
-    handleAuthResponse(401)
+    handleAuthResponse(401, authGen)
     throw new Error('Sessão expirada')
   }
 

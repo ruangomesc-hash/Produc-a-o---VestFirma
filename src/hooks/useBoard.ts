@@ -67,6 +67,7 @@ export function useBoard() {
 
   useEffect(() => {
     let cancelled = false
+    const abort = new AbortController()
     const remote = isRemoteSyncEnabled()
     const fallback = remote
       ? undefined
@@ -74,7 +75,7 @@ export function useBoard() {
           if (!cancelled) setReady(true)
         }, 2500)
 
-    loadBoard()
+    loadBoard({ signal: abort.signal })
       .then((data) => {
         if (!cancelled) {
           setBoard(data)
@@ -86,6 +87,7 @@ export function useBoard() {
       })
       .catch((err) => {
         if (cancelled) return
+        if (err instanceof DOMException && err.name === 'AbortError') return
         if (isAuthSessionError(err)) {
           notifyUnauthorized()
           return
@@ -103,6 +105,7 @@ export function useBoard() {
 
     return () => {
       cancelled = true
+      abort.abort()
       if (fallback) clearTimeout(fallback)
     }
   }, [])

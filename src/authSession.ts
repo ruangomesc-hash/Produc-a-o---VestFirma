@@ -13,6 +13,18 @@ import {
 
 const TOKEN_KEY = 'vestfirma_auth_token'
 
+/** Incrementa a cada login/logout para ignorar 401 de requisições antigas (Strict Mode / remount). */
+let authGeneration = 0
+
+export function getAuthGeneration(): number {
+  return authGeneration
+}
+
+function bumpAuthGeneration(): number {
+  authGeneration += 1
+  return authGeneration
+}
+
 export type LoginResult =
   | { ok: true; profile: SessionProfile }
   | ({ ok: false } & LoginFailure)
@@ -40,6 +52,7 @@ export function getSessionToken(): string | null {
 
 export function setSessionToken(token: string): void {
   sessionStorage.setItem(TOKEN_KEY, token)
+  bumpAuthGeneration()
 }
 
 export function clearSessionToken(): void {
@@ -53,6 +66,7 @@ export function authHeaders(): Record<string, string> {
 
 export function notifyUnauthorized(): void {
   clearSessionToken()
+  bumpAuthGeneration()
   window.dispatchEvent(new CustomEvent('vestfirma:unauthorized'))
 }
 
@@ -145,6 +159,7 @@ export async function logout(): Promise<void> {
   const base = getApiBase()
   const token = getSessionToken()
   clearSessionToken()
+  bumpAuthGeneration()
   if (!base || !token) return
 
   try {
@@ -164,6 +179,8 @@ export async function fetchSessionProfile(): Promise<SessionProfile | null> {
   const token = getSessionToken()
   if (!base || !token) return null
 
+  const authGen = getAuthGeneration()
+
   try {
     const res = await fetch(`${base}${apiPath('session')}`, {
       method: 'GET',
@@ -171,7 +188,7 @@ export async function fetchSessionProfile(): Promise<SessionProfile | null> {
       headers: { Accept: 'application/json', ...authHeaders() },
     })
     if (res.status === 401) {
-      clearSessionToken()
+      handleAuthResponse(401, authGen)
       return null
     }
     if (!res.ok) return null
@@ -188,8 +205,11 @@ export async function verifySession(): Promise<boolean> {
   return profile !== null
 }
 
-export function handleAuthResponse(status: number): void {
-  if (status === 401) notifyUnauthorized()
+export function handleAuthResponse(status: number, requestGeneration?: number): void {
+  if (status !== 401) return
+  if (requestGeneration != null && requestGeneration !== getAuthGeneration()) return
+  if (!getSessionToken()) return
+  notifyUnauthorized()
 }
 
 /** Erros que indicam sessão inválida — não confundir com falha 500/rede ao carregar o quadro. */

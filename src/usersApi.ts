@@ -1,7 +1,7 @@
 import { formatApiErrorMessage, readApiJson } from './apiErrors'
 import type { ManagedUser, SessionProfile, UserRole } from './userRoles'
 import { CREATABLE_ROLES } from './userRoles'
-import { authHeaders, ensureAuthConfigReady, handleAuthResponse } from './authSession'
+import { authHeaders, ensureAuthConfigReady, getAuthGeneration, handleAuthResponse } from './authSession'
 import { getApiBase } from './runtimeConfig'
 
 export { CREATABLE_ROLES }
@@ -16,10 +16,11 @@ export async function fetchUsers(): Promise<ManagedUser[]> {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
+  const authGen = getAuthGeneration()
   const res = await fetch(`${base}${apiPath('users')}`, {
     headers: { Accept: 'application/json', ...authHeaders() },
   })
-  handleAuthResponse(res.status)
+  handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   const data = json as { users?: ManagedUser[] }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao carregar usuários'))
@@ -35,12 +36,13 @@ export async function createManagedUser(input: {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
+  const authGen = getAuthGeneration()
   const res = await fetch(`${base}${apiPath('users')}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
   })
-  handleAuthResponse(res.status)
+  handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   const data = json as { user?: ManagedUser }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao criar usuário'))
@@ -67,12 +69,13 @@ export async function updateManagedUser(input: {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
+  const authGen = getAuthGeneration()
   const res = await fetch(`${base}${apiPath('users')}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
   })
-  handleAuthResponse(res.status)
+  handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   const data = json as { user?: ManagedUser }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
@@ -85,11 +88,12 @@ export async function deleteManagedUser(id: string): Promise<void> {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
+  const authGen = getAuthGeneration()
   const res = await fetch(`${base}${apiPath('users')}?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Accept: 'application/json', ...authHeaders() },
   })
-  handleAuthResponse(res.status)
+  handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao excluir usuário'))
 }

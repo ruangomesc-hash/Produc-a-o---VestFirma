@@ -157,7 +157,11 @@ async function saveBoardToIdb(state: BoardState): Promise<void> {
   })
 }
 
-export async function loadBoard(): Promise<BoardState> {
+export type LoadBoardOptions = {
+  signal?: AbortSignal
+}
+
+export async function loadBoard(options?: LoadBoardOptions): Promise<BoardState> {
   await initRuntimeConfig()
   const localRaw = await loadBoardFromIdb()
   const local = localRaw ? normalizeBoard(localRaw) : null
@@ -170,7 +174,7 @@ export async function loadBoard(): Promise<BoardState> {
     blockLocalFallbackWhenProtected() || (requiresLogin() && !getSessionToken())
 
   try {
-    const remoteRaw = await fetchRemoteBoard()
+    const remoteRaw = await fetchRemoteBoard({ signal: options?.signal })
     if (remoteRaw) {
       const remote = normalizeBoard(remoteRaw)
       await saveBoardToIdb(remote)

@@ -70,12 +70,8 @@ export default function App() {
   if (authState === 'login') {
     return (
       <LoginPage
-        onSuccess={async () => {
-          const verified = await fetchSessionProfile()
-          if (!verified) {
-            return
-          }
-          setSession(verified)
+        onSuccess={(profile) => {
+          setSession(profile)
           setAuthState('ok')
         }}
       />
