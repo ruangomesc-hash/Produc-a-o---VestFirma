@@ -1,0 +1,15 @@
+{
+  "buildCommand": "npm run build:publicar",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/login.php", "destination": "/api/login" },
+    { "source": "/api/session.php", "destination": "/api/session" },
+    { "source": "/api/logout.php", "destination": "/api/logout" },
+    { "source": "/api/board.php", "destination": "/api/board" },
+    { "source": "/api/health.php", "destination": "/api/health" },
+    { "source": "/api/users.php", "destination": "/api/users" },
+    { "source": "/api/notify.php", "destination": "/api/health" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

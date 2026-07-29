@@ -1,20 +1,14 @@
 import crypto from 'node:crypto'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const ROOT = path.join(__dirname, '..')
+import { readJsonStore, writeJsonStore } from './storageAdapter.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
 
-const USERS_FILE = process.env.USERS_FILE || path.join(ROOT, 'data', 'users.json')
+const USERS_STORE = 'users.json'
 
 const SEED_ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'ruan.gomesc@gmail.com').toLowerCase().trim()
 const SEED_ADMIN_NAME = process.env.SEED_ADMIN_NAME || 'Administrador'
-const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || ''
-const LEGACY_ADMIN_USER = process.env.ADMIN_USER || 'vestfirma'
-const LEGACY_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'vestfirma-dev-change-me'
+const SEED_ADMIN_PASSWORD =
+  process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '@Vestfirma26!'
 
 function randomPassword(length = 12) {
   const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -30,23 +24,13 @@ function normalizeEmail(email) {
 }
 
 async function loadRaw() {
-  try {
-    const raw = await fs.readFile(USERS_FILE, 'utf8')
-    const data = JSON.parse(raw)
-    if (data && Array.isArray(data.users)) return data
-  } catch (err) {
-    if (!(err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT')) {
-      /* ignore parse errors */
-    }
-  }
+  const data = await readJsonStore(USERS_STORE)
+  if (data && Array.isArray(data.users)) return data
   return { users: [] }
 }
 
 async function saveRaw(data) {
-  await fs.mkdir(path.dirname(USERS_FILE), { recursive: true })
-  const tmp = `${USERS_FILE}.tmp`
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2), 'utf8')
-  await fs.rename(tmp, USERS_FILE)
+  await writeJsonStore(USERS_STORE, data)
 }
 
 export async function ensureUsersSeeded() {
@@ -55,12 +39,6 @@ export async function ensureUsersSeeded() {
 
   let email = SEED_ADMIN_EMAIL
   let password = SEED_ADMIN_PASSWORD || randomPassword(12)
-  if (LEGACY_ADMIN_USER.includes('@')) {
-    email = normalizeEmail(LEGACY_ADMIN_USER)
-  }
-  if (!SEED_ADMIN_PASSWORD && LEGACY_ADMIN_PASSWORD) {
-    password = LEGACY_ADMIN_PASSWORD
-  }
 
   data.users.push({
     id: crypto.randomBytes(8).toString('hex'),
@@ -170,16 +148,6 @@ export async function verifyUserPassword(email, password) {
     return null
   }
 
-  if (email === LEGACY_ADMIN_USER || normalizeEmail(email) === normalizeEmail(LEGACY_ADMIN_USER)) {
-    if (password === LEGACY_ADMIN_PASSWORD) {
-      return {
-        id: 'legacy',
-        email: LEGACY_ADMIN_USER.includes('@') ? normalizeEmail(LEGACY_ADMIN_USER) : email,
-        name: LEGACY_ADMIN_USER,
-        role: 'admin',
-      }
-    }
-  }
   return null
 }
 
@@ -199,7 +167,7 @@ export async function handleUsersApi(req, res, readBody, requireSession, corsHea
     return true
   }
 
-  if (process.env.REQUIRE_LOGIN !== 'true') {
+  if (process.env.REQUIRE_LOGIN !== 'true' && process.env.VERCEL !== '1') {
     res.writeHead(503, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ error: 'Login desligado no servidor (REQUIRE_LOGIN)' }))
     return true

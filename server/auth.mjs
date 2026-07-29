@@ -1,35 +1,17 @@
 import crypto from 'node:crypto'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { readJsonStore, writeJsonStore } from './storageAdapter.mjs'
 import { ensureUsersSeeded, verifyUserPassword } from './users.mjs'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const ROOT = path.join(__dirname, '..')
-
-const SESSIONS_FILE =
-  process.env.SESSIONS_FILE || path.join(ROOT, 'data', 'sessions.json')
-
+const SESSIONS_STORE = 'sessions.json'
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14)
 
 async function loadSessions() {
-  try {
-    const raw = await fs.readFile(SESSIONS_FILE, 'utf8')
-    const data = JSON.parse(raw)
-    return typeof data === 'object' && data ? data : {}
-  } catch (err) {
-    if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
-      return {}
-    }
-    return {}
-  }
+  const data = await readJsonStore(SESSIONS_STORE)
+  return typeof data === 'object' && data ? data : {}
 }
 
 async function saveSessions(sessions) {
-  await fs.mkdir(path.dirname(SESSIONS_FILE), { recursive: true })
-  const tmp = `${SESSIONS_FILE}.tmp`
-  await fs.writeFile(tmp, JSON.stringify(sessions, null, 2), 'utf8')
-  await fs.rename(tmp, SESSIONS_FILE)
+  await writeJsonStore(SESSIONS_STORE, sessions)
 }
 
 function purgeExpired(sessions) {

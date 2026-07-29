@@ -86,7 +86,11 @@ export async function login(email: string, password: string): Promise<LoginResul
     }
 
     if (!res.ok) {
-      return { ok: false, error: data.error || 'E-mail ou senha incorretos' }
+      const hint =
+        res.status === 404
+          ? 'API não encontrada. Na Vercel, confira Blob + variáveis de ambiente e redeploy.'
+          : data.error || 'E-mail ou senha incorretos'
+      return { ok: false, error: hint }
     }
 
     if (!data.token) {
