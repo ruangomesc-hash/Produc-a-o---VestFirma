@@ -123,8 +123,17 @@ export function mutateUsersStore(mutate, opts = {}) {
     }
     let merged = next
     if (!replace) {
-      const again = await loadUsersData().catch(() => ({ users: [] }))
-      merged = mergeUsersById(again.users ?? [], next)
+      let againUsers = []
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const again = await loadUsersData()
+          againUsers = again.users ?? []
+          break
+        } catch {
+          await new Promise((r) => setTimeout(r, 40 * (attempt + 1)))
+        }
+      }
+      merged = mergeUsersById(againUsers, next)
     }
     const file = usersPath()
     if (await pathExists(file)) {
@@ -136,6 +145,16 @@ export function mutateUsersStore(mutate, opts = {}) {
       }
     }
     await writeUsersAtomic(merged)
+    const verify = await readUsersFileOrNull()
+    if (!verify || !Array.isArray(verify.users)) {
+      throw new Error('Falha ao verificar users.json após gravação')
+    }
+    for (const u of merged) {
+      if (!u?.id) continue
+      if (!verify.users.some((x) => x.id === u.id)) {
+        throw new Error(`users.json não contém o usuário recém-gravado (${u.email || u.id})`)
+      }
+    }
     return merged
   })
   return writeChain

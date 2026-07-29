@@ -159,15 +159,7 @@ export function useBoard() {
         saveTimer.current = setTimeout(() => {
           setSync((s) => ({ ...s, status: 'saving' }))
           void (async () => {
-            let payload = safe
-            try {
-              payload = await boardComVendedoresDosUsuarios(safe)
-              if (vendedoresListChanged(safe.vendedores, payload.vendedores)) {
-                setBoard((prev) => mergeBoardPreservingPedidos(prev, payload))
-              }
-            } catch {
-              /* mantém safe */
-            }
+            const payload = safe
             const result = await saveBoard(payload, {
               forceRemote: opts?.forceRemote,
               skipRemote: opts?.skipRemote,

@@ -10,6 +10,7 @@ import type { SessionProfile } from './authSession'
 import type { ManagedUser } from './userRoles'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
+import { mergeManagedUsers } from './mergeManagedUsers'
 import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
 import {
   findVendedorIdForSession,
@@ -176,18 +177,24 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     if (!isAdmin(session)) return Promise.resolve()
     return fetchUsers()
       .then((users) => {
-        setManagedUsers(users)
+        setManagedUsers((prev) => {
+          const merged = mergeManagedUsers(prev, users)
+          syncVendedoresFromManagedUsers(merged)
+          return merged
+        })
         setManagedUsersReady(true)
-        syncVendedoresFromManagedUsers(users)
       })
       .catch(() => {})
   }, [session, syncVendedoresFromManagedUsers])
 
   const handleUsersLoaded = useCallback(
     (users: ManagedUser[]) => {
-      setManagedUsers(users)
+      setManagedUsers((prev) => {
+        const merged = mergeManagedUsers(prev, users)
+        syncVendedoresFromManagedUsers(merged)
+        return merged
+      })
       setManagedUsersReady(true)
-      syncVendedoresFromManagedUsers(users)
     },
     [syncVendedoresFromManagedUsers],
   )
@@ -195,15 +202,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const handleUserCreated = useCallback(
     (user: ManagedUser, contato?: VendedorContatoPatch) => {
       upsertVendedorFromManagedUser(user, contato)
-      setManagedUsers((prev) => {
-        const exists = prev.some((u) => u.id === user.id)
-        if (exists) return prev.map((u) => (u.id === user.id ? user : u))
-        return [...prev, user]
-      })
+      setManagedUsers((prev) => mergeManagedUsers(prev, [user]))
       setManagedUsersReady(true)
-      void refreshManagedUsers()
     },
-    [upsertVendedorFromManagedUser, refreshManagedUsers],
+    [upsertVendedorFromManagedUser],
   )
 
   useEffect(() => {

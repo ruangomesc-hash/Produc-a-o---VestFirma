@@ -3,8 +3,9 @@
  */
 import { getBoardPaths } from './dataPaths.mjs'
 import { useJwtSessions } from './sessionToken.mjs'
+import { countUsersOnDisk } from './usersRepair.mjs'
 
-export function handleHealthApi(req, res, corsHeaders) {
+export async function handleHealthApi(req, res, corsHeaders) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders())
     res.end()
@@ -26,6 +27,8 @@ export function handleHealthApi(req, res, corsHeaders) {
     process.env.SEED_ADMIN_PASSWORD?.trim() || process.env.ADMIN_PASSWORD?.trim(),
   )
 
+  const usersOnDisk = await countUsersOnDisk()
+
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
   if (req.method === 'HEAD') {
     res.end()
@@ -45,7 +48,8 @@ export function handleHealthApi(req, res, corsHeaders) {
       adminPasswordConfigured: adminPwdConfigured,
       storageNote: paths.storageNote || undefined,
       onRender: process.env.RENDER === 'true',
-      buildTag: 'storage-fallback-v2',
+      buildTag: 'users-persist-v3',
+      usersOnDisk,
       whatsappWebhookConfigured: webhook,
       timestamp: new Date().toISOString(),
     }),

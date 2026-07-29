@@ -9,6 +9,7 @@ import {
   fetchUsers,
   updateManagedUser,
 } from '../usersApi'
+import { mergeManagedUsers } from '../mergeManagedUsers'
 import { AlertModal } from './AlertModal'
 import { NovoUsuarioForm } from './NovoUsuarioForm'
 
@@ -88,8 +89,11 @@ export function UsuariosModal({
   seedUsersRef.current = seedUsers
 
   const notifyUsersLoaded = useCallback((list: ManagedUser[]) => {
-    setUsers(list)
-    onUsersLoadedRef.current?.(list)
+    setUsers((prev) => {
+      const merged = mergeManagedUsers(prev, list)
+      onUsersLoadedRef.current?.(merged)
+      return merged
+    })
   }, [])
 
   const reload = useCallback(async () => {
@@ -114,7 +118,12 @@ export function UsuariosModal({
 
   const handleCreated = (user: ManagedUser, contato?: VendedorContatoPatch) => {
     onUserCreated?.(user, contato)
-    void reload()
+    setUsers((prev) => {
+      const merged = mergeManagedUsers(prev, [user])
+      onUsersLoadedRef.current?.(merged)
+      return merged
+    })
+    window.setTimeout(() => void reload(), 700)
   }
 
   if (!open && !alertMessage) return null

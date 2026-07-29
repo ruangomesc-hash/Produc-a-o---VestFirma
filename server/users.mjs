@@ -5,6 +5,7 @@ import {
   mutateUsersStore,
   usersStoreFileExists,
 } from './usersPersist.mjs'
+import { repairUsersMissingFromBoard, countUsersOnDisk } from './usersRepair.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
 
@@ -63,7 +64,12 @@ export async function ensureUsersSeeded() {
 export async function listUsers() {
   await ensureUsersSeeded()
   const data = await loadRaw()
-  return data.users
+  const repaired = await repairUsersMissingFromBoard(data.users)
+  return repaired
+}
+
+export async function getUsersStoreStats() {
+  return { count: await countUsersOnDisk(), file: 'users.json' }
 }
 
 export function findUserByEmail(users, email) {
@@ -103,12 +109,16 @@ export async function createUser(email, role, name) {
   }
 
   let created = user
-  await mutateUsersStore((users) => {
+  const merged = await mutateUsersStore((users) => {
     if (findUserByEmail(users, norm)) throw new Error('Este e-mail já está cadastrado')
     users.push(user)
     created = user
     return users
   })
+
+  if (!merged.some((u) => u.id === user.id)) {
+    throw new Error('Cadastro não persistiu no servidor — tente de novo')
+  }
 
   return created
 }

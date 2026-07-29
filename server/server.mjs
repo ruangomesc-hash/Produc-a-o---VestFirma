@@ -297,7 +297,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/health' || url.pathname === '/api/health.php') {
-      handleHealthApi(req, res, corsHeaders)
+      await handleHealthApi(req, res, corsHeaders)
       return
     }
 
