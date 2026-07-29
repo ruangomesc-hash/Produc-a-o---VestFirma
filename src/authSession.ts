@@ -11,8 +11,9 @@ export type LoginResult =
   | { ok: true; profile: SessionProfile }
   | { ok: false; error: string }
 
-function apiPath(file: string): string {
-  return file.startsWith('/') ? file : `/${file}`
+function apiPath(segment: string): string {
+  const clean = segment.replace(/\.php$/i, '').replace(/^\//, '')
+  return `/${clean}`
 }
 
 export function requiresLogin(): boolean {
@@ -71,7 +72,7 @@ export async function login(email: string, password: string): Promise<LoginResul
   const loginId = email.trim()
 
   try {
-    const res = await fetch(`${base}${apiPath('login.php')}`, {
+    const res = await fetch(`${base}${apiPath('login')}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ username: loginId, password }),
@@ -86,10 +87,11 @@ export async function login(email: string, password: string): Promise<LoginResul
     }
 
     if (!res.ok) {
+      const raw = typeof data.error === 'string' ? data.error : ''
       const hint =
         res.status === 404
-          ? 'API não encontrada. Na Vercel, confira Blob + variáveis de ambiente e redeploy.'
-          : data.error || 'E-mail ou senha incorretos'
+          ? 'API não encontrada (404). Redeploy na Vercel com pasta api/ e Root Directory = raiz do repo.'
+          : raw || (res.status === 401 ? 'E-mail ou senha incorretos' : `Erro ${res.status}`)
       return { ok: false, error: hint }
     }
 
@@ -111,7 +113,7 @@ export async function logout(): Promise<void> {
   if (!base || !token) return
 
   try {
-    await fetch(`${base}${apiPath('logout.php')}`, {
+    await fetch(`${base}${apiPath('logout')}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -128,7 +130,7 @@ export async function fetchSessionProfile(): Promise<SessionProfile | null> {
   if (!base || !token) return null
 
   try {
-    const res = await fetch(`${base}${apiPath('session.php')}`, {
+    const res = await fetch(`${base}${apiPath('session')}`, {
       method: 'GET',
       cache: 'no-store',
       headers: { Accept: 'application/json', ...authHeaders() },

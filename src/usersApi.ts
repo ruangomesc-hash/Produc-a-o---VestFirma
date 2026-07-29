@@ -5,8 +5,9 @@ import { getApiBase } from './runtimeConfig'
 
 export { CREATABLE_ROLES }
 
-function apiPath(file: string): string {
-  return file.startsWith('/') ? file : `/${file}`
+function apiPath(segment: string): string {
+  const clean = segment.replace(/\.php$/i, '').replace(/^\//, '')
+  return `/${clean}`
 }
 
 export async function fetchUsers(): Promise<ManagedUser[]> {
@@ -14,7 +15,7 @@ export async function fetchUsers(): Promise<ManagedUser[]> {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
-  const res = await fetch(`${base}${apiPath('users.php')}`, {
+  const res = await fetch(`${base}${apiPath('users')}`, {
     headers: { Accept: 'application/json', ...authHeaders() },
   })
   handleAuthResponse(res.status)
@@ -32,7 +33,7 @@ export async function createManagedUser(input: {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
-  const res = await fetch(`${base}${apiPath('users.php')}`, {
+  const res = await fetch(`${base}${apiPath('users')}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
@@ -54,7 +55,7 @@ export async function updateManagedUser(input: {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
-  const res = await fetch(`${base}${apiPath('users.php')}`, {
+  const res = await fetch(`${base}${apiPath('users')}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify(input),
@@ -70,7 +71,7 @@ export async function deleteManagedUser(id: string): Promise<void> {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
-  const res = await fetch(`${base}${apiPath('users.php')}?id=${encodeURIComponent(id)}`, {
+  const res = await fetch(`${base}${apiPath('users')}?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: { Accept: 'application/json', ...authHeaders() },
   })

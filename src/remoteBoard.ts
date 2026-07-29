@@ -11,7 +11,7 @@ export type SaveBoardResult =
   | { ok: false; error: string; remote: boolean }
 
 function boardEndpoint(): string {
-  const path = import.meta.env.VITE_API_BOARD_PATH?.trim() || 'board.php'
+  const path = import.meta.env.VITE_API_BOARD_PATH?.trim() || '/board'
   return path.startsWith('/') ? path : `/${path}`
 }
 

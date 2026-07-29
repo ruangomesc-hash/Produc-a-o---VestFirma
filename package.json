@@ -7,7 +7,7 @@
     "dev": "vite",
     "start": "vite",
     "build": "npm run sync:sino && tsc -b && vite build",
-    "build:publicar": "npm run sync:sino && tsc -b && vite build --mode production",
+    "build:publicar": "npm run sync:sino && tsc -b && vite build --mode production && node scripts/strip-dist-php-api.mjs",
     "sync:sino": "cp sino.mp3 src/assets/sino.mp3 2>/dev/null || cp public/sino.mp3 src/assets/sino.mp3 2>/dev/null || true",
     "preview": "vite preview",
     "view": "npm run build && node server/server.mjs",

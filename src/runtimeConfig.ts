@@ -33,7 +33,7 @@ function configUrl(): string {
 }
 
 function healthUrl(apiBase: string): string {
-  return `${apiBase.replace(/\/$/, '')}/health.php`
+  return `${apiBase.replace(/\/$/, '')}/health`
 }
 
 export function getRuntimeConfig(): RuntimeConfig {

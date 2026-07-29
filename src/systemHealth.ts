@@ -37,7 +37,7 @@ function healthUrl(): string | null {
 function boardUrl(): string | null {
   const base = apiBase()
   if (!base) return null
-  const path = import.meta.env.VITE_API_BOARD_PATH?.trim() || '/board.php'
+  const path = import.meta.env.VITE_API_BOARD_PATH?.trim() || '/board'
   return `${base}${path.startsWith('/') ? path : `/${path}`}`
 }
 
