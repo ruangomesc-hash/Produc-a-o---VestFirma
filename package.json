@@ -3,11 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "start": "vite",
     "build": "npm run sync:sino && tsc -b && vite build",
     "build:publicar": "npm run sync:sino && tsc -b && vite build --mode production && node scripts/strip-dist-php-api.mjs",
+    "build:render": "npm run build:publicar",
     "sync:sino": "cp sino.mp3 src/assets/sino.mp3 2>/dev/null || cp public/sino.mp3 src/assets/sino.mp3 2>/dev/null || true",
     "preview": "vite preview",
     "view": "npm run build && node server/server.mjs",

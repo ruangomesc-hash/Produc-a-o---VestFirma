@@ -1,0 +1,95 @@
+# VestFirma — Produção Kanban (Render Blueprint)
+# https://render.com/docs/blueprint-spec
+#
+# Como usar:
+# 1. Envie este repo para GitHub/GitLab
+# 2. Render → New → Blueprint → selecione o repositório
+# 3. No primeiro deploy, informe SEED_ADMIN_PASSWORD quando pedido (ex.: @Vestfirma26!)
+# 4. Abra /api/health e faça login com SEED_ADMIN_EMAIL
+
+services:
+  - type: web
+    name: vestfirma-producao
+    runtime: node
+    region: ohio
+    plan: starter
+
+    buildCommand: npm ci && npm run build:render
+    startCommand: npm run start:production
+
+    healthCheckPath: /api/health
+
+    disk:
+      name: vestfirma-data
+      mountPath: /var/data
+      sizeGB: 5
+
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      - key: NODE_ENV
+        value: production
+
+      - key: REQUIRE_LOGIN
+        value: "true"
+
+      - key: SEED_ADMIN_EMAIL
+        value: ruan.gomesc@gmail.com
+
+      - key: SEED_ADMIN_NAME
+        value: Administrador
+
+      # Defina no painel na 1ª vez (Blueprint pede valor) — não commitar senha real em repo público
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+
+      - key: SESSION_SECRET
+        generateValue: true
+
+      - key: SESSION_DAYS
+        value: "14"
+
+      - key: HOST
+        value: 0.0.0.0
+
+      - key: BOARD_DATA_FILE
+        value: /var/data/board.json
+
+      - key: BOARD_DATA_DIR
+        value: /var/data
+
+      - key: BOARD_LOGO_DIR
+        value: /var/data/logos
+
+      - key: MAX_BODY_MB
+        value: "120"
+
+      - key: EXTERNALIZE_BOARD_LOGOS
+        value: "1"
+
+      # --- Vite (build) — mesmo host, API em /api ---
+      - key: VITE_BASE_PATH
+        value: /
+
+      - key: VITE_REQUIRE_LOGIN
+        value: "true"
+
+      - key: VITE_API_BASE
+        value: /api
+
+      - key: VITE_API_BOARD_PATH
+        value: /board
+
+      - key: VITE_API_HEALTH_PATH
+        value: /health
+
+      - key: VITE_API_NOTIFY_PATH
+        value: /notify
+
+      - key: VITE_WHATSAPP_NOTIFY
+        value: "true"
+
+      # Opcional: webhook n8n / Evolution (configure depois no Dashboard)
+      - key: WHATSAPP_WEBHOOK_URL
+        sync: false

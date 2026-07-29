@@ -1,5 +1,13 @@
 # VestFirma na Render (1000+ pedidos)
 
+## Deploy rápido (Blueprint)
+
+O repositório inclui **`render.yaml`** na raiz. Passo a passo curto: **[RENDER-QUICKSTART.md](./RENDER-QUICKSTART.md)**.
+
+Resumo: Render → **New → Blueprint** → conecte o Git → informe **`SEED_ADMIN_PASSWORD`** no primeiro deploy.
+
+---
+
 Para **mais de ~100–200 pedidos com logos**, a Vercel não é adequada: o quadro inteiro ia num único JSON com limite de **~4,5 MB** por salvamento.
 
 Na **Render** você roda o **servidor Node** do projeto (`server/server.mjs`), que:
