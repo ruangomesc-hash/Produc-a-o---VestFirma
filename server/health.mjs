@@ -1,6 +1,9 @@
 /**
  * GET /api/health — diagnóstico do servidor (sem expor segredos).
  */
+import { getBoardPaths } from './dataPaths.mjs'
+import { useJwtSessions } from './sessionToken.mjs'
+
 export function handleHealthApi(req, res, corsHeaders) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders())
@@ -16,9 +19,12 @@ export function handleHealthApi(req, res, corsHeaders) {
 
   const requireLogin = process.env.REQUIRE_LOGIN === 'true'
   const webhook = Boolean(process.env.WHATSAPP_WEBHOOK_URL?.trim())
-  const dataFile = process.env.BOARD_DATA_FILE || 'data/board.json'
+  const paths = getBoardPaths()
   const maxBodyMb = Number(process.env.MAX_BODY_MB || 80)
   const logosExternal = process.env.EXTERNALIZE_BOARD_LOGOS !== '0'
+  const adminPwdConfigured = Boolean(
+    process.env.SEED_ADMIN_PASSWORD?.trim() || process.env.ADMIN_PASSWORD?.trim(),
+  )
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
   res.end(
@@ -26,12 +32,16 @@ export function handleHealthApi(req, res, corsHeaders) {
       ok: true,
       service: 'vestfirma-kanban',
       requireLogin,
-      sessionMode: 'node',
+      sessionMode: useJwtSessions() ? 'jwt' : 'file',
       storage: 'filesystem',
+      dataDir: paths.dataDir,
+      boardFile: paths.boardFile,
       logosExternal,
       maxSaveBodyMb: maxBodyMb,
+      adminPasswordConfigured: adminPwdConfigured,
+      storageNote: paths.storageNote || undefined,
+      onRender: process.env.RENDER === 'true',
       whatsappWebhookConfigured: webhook,
-      boardDataConfigured: Boolean(dataFile),
       timestamp: new Date().toISOString(),
     }),
   )

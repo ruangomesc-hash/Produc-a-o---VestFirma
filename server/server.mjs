@@ -9,29 +9,38 @@ import { fileURLToPath } from 'node:url'
 import { createReadStream, existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 
-import {
+import { getBoardPaths, initStoragePaths } from './dataPaths.mjs'
+
+await initStoragePaths()
+
+const {
   corsHeaders,
   handleLoginApi,
   handleLogoutApi,
   handleSessionApi,
   requireSession,
-} from './auth.mjs'
-import { handleNotifyApi } from './notify.mjs'
-import { handleHealthApi } from './health.mjs'
-import { handleUsersApi } from './users.mjs'
-import { externalizeBoardLogos, logoMime, resolveLogoFile } from './boardLogos.mjs'
+} = await import('./auth.mjs')
+const { handleNotifyApi } = await import('./notify.mjs')
+const { handleHealthApi } = await import('./health.mjs')
+const { handleUsersApi } = await import('./users.mjs')
+const { externalizeBoardLogos, logoMime, resolveLogoFile } = await import('./boardLogos.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 const DIST = path.join(ROOT, 'dist')
-const DATA_FILE = process.env.BOARD_DATA_FILE || path.join(ROOT, 'data', 'board.json')
-const LOGO_DIR =
-  process.env.BOARD_LOGO_DIR || path.join(path.dirname(DATA_FILE), 'logos')
 const REQUIRE_LOGIN = process.env.REQUIRE_LOGIN === 'true'
 const PORT = Number(process.env.PORT || 4199)
 const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1')
 
 const MAX_BODY = Number(process.env.MAX_BODY_MB || 80) * 1024 * 1024
+
+function boardFilePath() {
+  return getBoardPaths().boardFile
+}
+
+function logoDirPath() {
+  return getBoardPaths().logoDir
+}
 
 async function readBody(req) {
   const chunks = []
@@ -59,6 +68,7 @@ async function handleBoardApi(req, res) {
   }
 
   if (req.method === 'GET') {
+    const DATA_FILE = boardFilePath()
     try {
       const raw = await fs.readFile(DATA_FILE, 'utf8')
       res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
@@ -75,6 +85,8 @@ async function handleBoardApi(req, res) {
   }
 
   if (req.method === 'PUT' || req.method === 'POST') {
+    const DATA_FILE = boardFilePath()
+    const LOGO_DIR = logoDirPath()
     const body = await readBody(req)
     let board = JSON.parse(body)
     if (process.env.EXTERNALIZE_BOARD_LOGOS !== '0') {
@@ -113,7 +125,7 @@ async function handleLogoApi(req, res, url) {
     return
   }
 
-  const resolved = await resolveLogoFile(LOGO_DIR, m[1], m[2].toLowerCase())
+  const resolved = await resolveLogoFile(logoDirPath(), m[1], m[2].toLowerCase())
   if (!resolved) {
     res.writeHead(404, corsHeaders())
     res.end('Not Found')
@@ -260,33 +272,18 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-async function ensureDataDirs() {
-  const dirs = new Set([
-    path.dirname(DATA_FILE),
-    LOGO_DIR,
-    process.env.BOARD_DATA_DIR || path.join(ROOT, 'data'),
-  ])
-  for (const dir of dirs) {
-    try {
-      await fs.mkdir(dir, { recursive: true })
-    } catch (err) {
-      console.warn('[vestfirma] Não foi possível criar pasta de dados:', dir, err)
-    }
-  }
-}
-
-await ensureDataDirs()
-
 if (!existsSync(DIST)) {
   console.warn('[vestfirma] Pasta dist/ não encontrada. Rode: npm run build')
 }
 
+const paths = getBoardPaths()
 server.listen(PORT, HOST, () => {
   if (process.env.API_ONLY === '1') {
     console.log(`VestFirma API — http://${HOST}:${PORT}/api/board`)
   } else {
     console.log(`VestFirma Kanban — http://${HOST}:${PORT}`)
   }
-  console.log(`Quadro salvo em: ${DATA_FILE}`)
-  console.log(`Logos em: ${LOGO_DIR} (externalize ativo)`)
+  console.log(`Quadro salvo em: ${paths.boardFile}`)
+  console.log(`Logos em: ${paths.logoDir}`)
+  if (paths.storageNote) console.log(`[vestfirma] ${paths.storageNote}`)
 })

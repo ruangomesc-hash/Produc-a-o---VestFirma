@@ -1,10 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const ROOT = path.join(__dirname, '..')
-const DATA_DIR = process.env.BOARD_DATA_DIR || path.join(ROOT, 'data')
+import { getDataDir } from './dataPaths.mjs'
 
 const BLOB_PREFIX = 'vestfirma/'
 
@@ -31,8 +27,9 @@ export async function readJsonStore(filename) {
     }
   }
 
+  const dir = getDataDir()
   try {
-    const raw = await fs.readFile(path.join(DATA_DIR, filename), 'utf8')
+    const raw = await fs.readFile(path.join(dir, filename), 'utf8')
     if (!raw.trim()) return null
     return JSON.parse(raw)
   } catch (err) {
@@ -57,8 +54,9 @@ export async function writeJsonStore(filename, data) {
     return
   }
 
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  const full = path.join(DATA_DIR, filename)
+  const dir = getDataDir()
+  await fs.mkdir(dir, { recursive: true })
+  const full = path.join(dir, filename)
   const tmp = `${full}.tmp`
   await fs.writeFile(tmp, json, 'utf8')
   await fs.rename(tmp, full)
@@ -78,7 +76,7 @@ export async function readTextStore(filename) {
   }
 
   try {
-    return await fs.readFile(path.join(DATA_DIR, filename), 'utf8')
+    return await fs.readFile(path.join(getDataDir(), filename), 'utf8')
   } catch {
     return null
   }
@@ -96,8 +94,9 @@ export async function writeTextStore(filename, text) {
     return
   }
 
-  await fs.mkdir(DATA_DIR, { recursive: true })
-  const full = path.join(DATA_DIR, filename)
+  const dir = getDataDir()
+  await fs.mkdir(dir, { recursive: true })
+  const full = path.join(dir, filename)
   const tmp = `${full}.tmp`
   await fs.writeFile(tmp, text, 'utf8')
   await fs.rename(tmp, full)

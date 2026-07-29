@@ -23,7 +23,25 @@ Guia completo: [DEPLOY-RENDER.md](./DEPLOY-RENDER.md)
    - **Usuários** → cadastrar vendedores (sem Blob)
    - **Status** → medidor de espaço do quadro
 
-## Disco persistente
+## Disco persistente (importante)
+
+O erro `EACCES: permission denied, mkdir '/var/data'` significa: você definiu **`BOARD_DATA_DIR=/var/data`** mas **não anexou o disco** na Render.
+
+**Opção A — Com disco (produção):**
+
+1. Serviço → **Disks** → **Add disk**
+2. **Mount path:** `/var/data`
+3. **Size:** 5 GB+
+4. **Save** → **Manual Deploy**
+5. Mantenha as env vars `BOARD_DATA_FILE`, `BOARD_DATA_DIR`, `BOARD_LOGO_DIR` apontando para `/var/data/...`
+
+**Opção B — Teste rápido sem disco:**
+
+Remova temporariamente `BOARD_DATA_DIR`, `BOARD_DATA_FILE` e `BOARD_LOGO_DIR` do Environment e redeploy. O servidor usa pasta gravável dentro do app (dados **somem** no redeploy).
+
+**Opção C — Código novo (após push):**
+
+Se `/var/data` não for gravável, o servidor **cai para** `data/` automaticamente e o login funciona; `/api/health` mostra `storageNote` explicando.
 
 O Blueprint já cria **5 GB** em `/var/data`:
 

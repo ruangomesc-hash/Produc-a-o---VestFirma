@@ -11,9 +11,13 @@ function sessionSecret() {
   )
 }
 
-/** Sessão stateless (Vercel) — não depende de Blob/arquivo. */
+/** Sessão stateless — Vercel/Render (sem sessions.json). */
 export function useJwtSessions() {
-  return process.env.VERCEL === '1' || process.env.SESSION_MODE === 'jwt'
+  return (
+    process.env.VERCEL === '1' ||
+    process.env.RENDER === 'true' ||
+    process.env.SESSION_MODE === 'jwt'
+  )
 }
 
 export function issueSessionToken(user) {
