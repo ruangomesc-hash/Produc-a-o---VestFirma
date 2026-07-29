@@ -19,15 +19,17 @@ function daysAgo(days: number) {
 }
 
 function card(
-  data: Omit<OrderCard, 'createdAt' | 'historicoEtapa' | 'localLogo' | 'segmentoId'> & {
+  data: Omit<OrderCard, 'createdAt' | 'historicoEtapa' | 'localLogo' | 'segmentoId' | 'comentarios'> & {
     createdAt?: string
     historicoEtapa?: OrderCard['historicoEtapa']
+    comentarios?: OrderCard['comentarios']
     localLogo?: LogoLocal | null
     segmentoId?: string | null
   },
 ): OrderCard {
   return {
     historicoEtapa: data.historicoEtapa ?? [],
+    comentarios: data.comentarios ?? [],
     localLogo: data.localLogo ?? 'frente',
     segmentoId: data.segmentoId ?? 'seg-varejo',
     ...data,

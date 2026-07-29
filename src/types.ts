@@ -1,4 +1,5 @@
 import type { LogoLocal } from './logoLocal'
+import type { UserRole } from './userRoles'
 
 export type SalesChannel = 'whatsapp' | 'ecommerce'
 
@@ -12,6 +13,15 @@ export interface HistoricoEtapaEntry {
   at: string
   fromColumnId?: string
   fromColumnTitle?: string
+}
+
+export interface PedidoComentario {
+  id: string
+  texto: string
+  autorNome: string
+  autorEmail: string
+  autorRole?: UserRole
+  at: string
 }
 
 export interface Vendedor {
@@ -53,6 +63,8 @@ export interface OrderCard {
   etapaDesde: string
   createdAt: string
   historicoEtapa: HistoricoEtapaEntry[]
+  /** Observações compartilhadas (atrasos, alterações, etc.). */
+  comentarios: PedidoComentario[]
 }
 
 export interface Column {
@@ -72,7 +84,7 @@ export interface BoardState {
 
 export type CardFormData = Omit<
   OrderCard,
-  'id' | 'columnId' | 'createdAt' | 'etapaDesde' | 'historicoEtapa'
+  'id' | 'columnId' | 'createdAt' | 'etapaDesde' | 'historicoEtapa' | 'comentarios'
 >
 
 export function nomeVendedor(board: BoardState, vendedorId: string | null): string | null {

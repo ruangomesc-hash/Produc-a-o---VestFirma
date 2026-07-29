@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { mesclarSegmentos } from '../segmentosEmpresa'
-import type { CardFormData, OrderCard, SalesChannel, SegmentoEmpresa, Vendedor } from '../types'
+import type { CardFormData, OrderCard, PedidoComentario, SalesChannel, SegmentoEmpresa, Vendedor } from '../types'
 import { AlertModal } from './AlertModal'
 import { LogoUploadField } from './LogoUploadField'
 import { LogoLocalPicker } from './LogoLocalPicker'
 import { CardHistoricoTimeline } from './CardHistoricoTimeline'
+import { CardComentariosSection } from './CardComentariosSection'
 import { formatTelefoneBr, telefoneBrCompleto } from '../telefoneBr'
 import { prepararAudioVenda } from '../vendaSino'
 
@@ -73,6 +74,9 @@ type Props = {
   preferredVendedorId?: string | null
   /** Portal: dispara o sino no clique de enviar (antes de gravar). */
   onVendaCelebrar?: () => void
+  comentarios?: PedidoComentario[]
+  onAddComentario?: (texto: string) => void
+  comentarioAutorNome?: string
 }
 
 export function CardModal({
@@ -89,6 +93,9 @@ export function CardModal({
   allowVendedorCadastro = true,
   preferredVendedorId = null,
   onVendaCelebrar,
+  comentarios = [],
+  onAddComentario,
+  comentarioAutorNome,
 }: Props) {
   const [form, setForm] = useState<CardFormData>(() =>
     buildForm(mode, initial, vendedores, preferredVendedorId),
@@ -407,6 +414,14 @@ export function CardModal({
               <div className="field span-2 modal-historico-wrap">
                 <CardHistoricoTimeline entries={initial.historicoEtapa} defaultOpen />
               </div>
+            ) : null}
+
+            {mode === 'edit' && onAddComentario ? (
+              <CardComentariosSection
+                comentarios={comentarios}
+                onAdd={onAddComentario}
+                autorNome={comentarioAutorNome}
+              />
             ) : null}
           </div>
 

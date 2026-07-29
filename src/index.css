@@ -1327,6 +1327,103 @@ textarea {
   overflow-x: hidden;
 }
 
+.card-comentarios {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 0.65rem 0.85rem;
+}
+
+.card-comentarios summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+}
+
+.card-comentarios summary::-webkit-details-marker {
+  display: none;
+}
+
+.card-comentarios summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.card-comentarios[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.comentarios-intro {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.comentarios-vazio {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-comentarios-list {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: min(16rem, 36vh);
+  overflow-y: auto;
+}
+
+.card-comentarios-item {
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.card-comentarios-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.card-comentarios-autor {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.card-comentarios-data {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.card-comentarios-texto {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.comentarios-compose textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.comentarios-add-btn {
+  margin-top: 0.5rem;
+}
+
+.modal-comentarios-wrap {
+  margin-top: 0.25rem;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;

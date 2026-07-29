@@ -19,8 +19,9 @@ const DB_VERSION = 1
 const STORE = 'board'
 const KEY = 'state'
 
-type LegacyCard = Omit<OrderCard, 'historicoEtapa'> & {
+type LegacyCard = Omit<OrderCard, 'historicoEtapa' | 'comentarios'> & {
   historicoEtapa?: OrderCard['historicoEtapa']
+  comentarios?: OrderCard['comentarios']
   vendedor?: string
   segmento?: string
   logoDataUrl?: string | null
@@ -76,6 +77,7 @@ function normalizeCard(
     etapaDesde: raw.etapaDesde ?? raw.createdAt ?? new Date().toISOString(),
     createdAt: raw.createdAt ?? raw.etapaDesde ?? new Date().toISOString(),
     historicoEtapa: raw.historicoEtapa ?? [],
+    comentarios: Array.isArray(raw.comentarios) ? raw.comentarios : [],
   }
 }
 

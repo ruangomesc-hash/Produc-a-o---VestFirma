@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createDemoBoard } from '../demoBoard'
 import { DEFAULT_BOARD } from '../defaultBoard'
+import { criarComentarioPedido, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa } from '../historicoEtapa'
 import { isRemoteSyncEnabled } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
@@ -301,6 +302,7 @@ export function useBoard() {
         etapaDesde: now,
         createdAt: now,
         historicoEtapa: registrarCriacaoPedido(board, columnId, now),
+        comentarios: [],
       }
       persist({ ...board, cards: [...board.cards, card] })
       notificarSePedidoCriado(card, { ...board, cards: [...board.cards, card] })
@@ -314,6 +316,23 @@ export function useBoard() {
         ...board,
         cards: board.cards.map((c) =>
           c.id === cardId ? { ...c, ...data } : c,
+        ),
+      })
+    },
+    [board, persist],
+  )
+
+  const addPedidoComentario = useCallback(
+    (cardId: string, texto: string, autor: ComentarioAutor) => {
+      const trimmed = texto.trim()
+      if (!trimmed) return
+      const entry = criarComentarioPedido(trimmed, autor)
+      persist({
+        ...board,
+        cards: board.cards.map((c) =>
+          c.id === cardId
+            ? { ...c, comentarios: [...(c.comentarios ?? []), entry] }
+            : c,
         ),
       })
     },
@@ -386,6 +405,7 @@ export function useBoard() {
     addSegmento,
     addCard,
     updateCard,
+    addPedidoComentario,
     deleteCard,
     moveCard,
     loadDemo,

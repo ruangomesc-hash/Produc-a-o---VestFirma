@@ -127,6 +127,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     addSegmento,
     addCard,
     updateCard,
+    addPedidoComentario,
     deleteCard,
     moveCard,
     loadDemo,
@@ -160,6 +161,12 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
+
+  const editingCardLive = useMemo(() => {
+    if (!editingCard) return undefined
+    return board.cards.find((c) => c.id === editingCard.id) ?? editingCard
+  }, [board.cards, editingCard])
+
   const [view, setView] = useState<'kanban' | 'visao' | 'status' | 'vendedores'>(() => {
     const hash = window.location.hash.replace(/^#/, '')
     if (hash === 'status' || hash === 'visao' || hash === 'kanban' || hash === 'vendedores') {
@@ -394,10 +401,22 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         session={modalSession}
         open={modalOpen}
         mode={modalMode}
-        initial={editingCard}
+        initial={editingCardLive}
         vendedores={board.vendedores}
         segmentos={board.segmentos ?? []}
         preferredVendedorId={preferredVendedorId}
+        comentarios={editingCardLive?.comentarios ?? []}
+        comentarioAutorNome={session?.user ?? 'Equipe'}
+        onAddComentario={
+          editingCardLive
+            ? (texto) =>
+                addPedidoComentario(editingCardLive.id, texto, {
+                  nome: session?.user ?? 'Equipe',
+                  email: session?.email ?? '',
+                  role: session?.role,
+                })
+            : undefined
+        }
         onClose={() => setModalOpen(false)}
         onOpenVendedores={() => {
           setModalOpen(false)
@@ -407,8 +426,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onSubmit={(data) => {
           if (modalMode === 'create' && activeColumnId) {
             addCard(activeColumnId, data)
-          } else if (modalMode === 'edit' && editingCard) {
-            updateCard(editingCard.id, data)
+          } else if (modalMode === 'edit' && editingCardLive) {
+            updateCard(editingCardLive.id, data)
           }
         }}
       />
