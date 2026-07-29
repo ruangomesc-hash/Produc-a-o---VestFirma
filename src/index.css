@@ -104,13 +104,19 @@ textarea {
   gap: 0.5rem;
 }
 
-.historico-auditoria-panel {
+.historico-auditoria {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 1rem 1.25rem 1.5rem;
   overflow: hidden;
+}
+
+.historico-auditoria-top {
+  flex-shrink: 0;
+  padding: 1rem max(1.25rem, env(safe-area-inset-right, 0px)) 0.75rem
+    max(1.25rem, env(safe-area-inset-left, 0px));
+  background: var(--vestfirma-gold);
 }
 
 .historico-auditoria-header {
@@ -119,77 +125,197 @@ textarea {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.85rem;
 }
 
-.historico-auditoria-header h2 {
-  margin: 0 0 0.35rem;
-  font-size: 1.25rem;
+.historico-auditoria-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  color: #1a1404;
 }
 
 .historico-auditoria-sub {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  max-width: 42rem;
+  margin: 0.35rem 0 0;
+  color: rgba(26, 20, 4, 0.75);
+  font-size: 0.88rem;
+  max-width: 40rem;
+  line-height: 1.45;
 }
 
-.historico-auditoria-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.historico-auditoria-item {
-  padding: 0.65rem 0.85rem;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.historico-auditoria-meta {
+.historico-auditoria-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
-  margin-bottom: 0.35rem;
-  font-size: 0.8rem;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.historico-view-tabs {
+  display: inline-flex;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: rgba(26, 20, 4, 0.12);
+  border: 1px solid rgba(26, 20, 4, 0.18);
+  gap: 0.15rem;
+}
+
+.historico-view-tab {
+  border: none;
+  background: transparent;
+  color: rgba(26, 20, 4, 0.75);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.historico-view-tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.historico-auditoria-meta {
+  font-size: 0.78rem;
+  color: rgba(26, 20, 4, 0.6);
+}
+
+.historico-auditoria-board {
+  flex: 1;
+  min-height: 0;
+}
+
+.historico-columns {
+  align-items: stretch;
+}
+
+.historico-column {
+  --column-width: min(22rem, 88vw);
+  max-height: none;
+  min-height: calc(100dvh - var(--board-height-offset) - 7.5rem);
+}
+
+.historico-column-header h2 {
+  font-size: 1rem;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.historico-column-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+  word-break: break-all;
+}
+
+.historico-column-cards {
+  gap: 0.55rem;
+}
+
+.historico-card {
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.historico-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.historico-card-time {
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
-.historico-auditoria-autor {
+.historico-card-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.historico-card--auth .historico-card-badge {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+.historico-card--pedido .historico-card-badge {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: var(--vestfirma-gold);
+}
+
+.historico-card--quadro .historico-card-badge {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #86efac;
+}
+
+.historico-card--usuario .historico-card-badge {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.35);
+  color: #d8b4fe;
+}
+
+.historico-card--outro .historico-card-badge {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--muted);
+}
+
+.historico-card-autor {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text);
 }
 
-.historico-auditoria-action {
-  font-size: 0.72rem;
-  opacity: 0.85;
-}
-
-.historico-auditoria-summary {
+.historico-card-summary {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
-.historico-auditoria-detail {
+.historico-card-detail {
   margin: 0.35rem 0 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--muted);
   white-space: pre-wrap;
+  line-height: 1.35;
 }
 
 .historico-auditoria-error {
-  color: var(--danger);
+  margin: 0.5rem 0 0;
+  color: #7f1d1d;
+  background: rgba(254, 202, 202, 0.45);
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
 }
 
 .historico-auditoria-empty {
-  color: var(--muted);
+  color: rgba(26, 20, 4, 0.65);
+  font-size: 0.95rem;
+}
+
+.historico-auditoria-empty--board {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  max-width: 24rem;
+  margin: 0 auto;
 }
 
 .app-header {

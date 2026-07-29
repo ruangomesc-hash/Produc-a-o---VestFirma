@@ -1,18 +1,78 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  describeAuditAction,
+  groupAuditByActor,
+  rotuloAutor,
+  sortEntriesNewestFirst,
+  type ActorColumn,
+} from '../auditDisplay'
 import { fetchAuditLog, type AuditEntry } from '../auditLog'
-import { USER_ROLE_LABELS, type UserRole } from '../userRoles'
 import { formatarDataHora } from '../historicoEtapa'
 
-function rotuloAutor(e: AuditEntry): string {
-  const role = e.actorRole ? USER_ROLE_LABELS[e.actorRole as UserRole] : null
-  if (role && e.actorName) return `${e.actorName} · ${role}`
-  return e.actorName || e.actorEmail || '—'
+type ViewMode = 'por-usuario' | 'todos'
+
+function AuditHistoryCard({
+  entry,
+  showAuthor,
+}: {
+  entry: AuditEntry
+  showAuthor?: boolean
+}) {
+  const { label, tone } = describeAuditAction(entry.action)
+
+  return (
+    <article className={`historico-card historico-card--${tone}`}>
+      <div className="historico-card-top">
+        <time className="historico-card-time" dateTime={entry.at}>
+          {formatarDataHora(entry.at)}
+        </time>
+        <span className="historico-card-badge">{label}</span>
+      </div>
+      {showAuthor ? (
+        <p className="historico-card-autor">{rotuloAutor(entry)}</p>
+      ) : null}
+      <p className="historico-card-summary">{entry.summary}</p>
+      {entry.detail ? <p className="historico-card-detail">{entry.detail}</p> : null}
+    </article>
+  )
+}
+
+function HistoricoColumn({
+  title,
+  subtitle,
+  countLabel,
+  entries,
+  showAuthorInCards,
+}: {
+  title: string
+  subtitle?: string | null
+  countLabel: string
+  entries: AuditEntry[]
+  showAuthorInCards?: boolean
+}) {
+  return (
+    <section className="kanban-column historico-column">
+      <header className="column-header historico-column-header">
+        <div>
+          <h2>{title}</h2>
+          {subtitle ? <span className="historico-column-sub">{subtitle}</span> : null}
+          <span className="column-count">{countLabel}</span>
+        </div>
+      </header>
+      <div className="column-cards historico-column-cards">
+        {entries.map((e) => (
+          <AuditHistoryCard key={e.id} entry={e} showAuthor={showAuthorInCards} />
+        ))}
+      </div>
+    </section>
+  )
 }
 
 export function HistoricoAuditoriaPanel() {
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<ViewMode>('por-usuario')
 
   const carregar = useCallback(() => {
     setLoading(true)
@@ -29,43 +89,101 @@ export function HistoricoAuditoriaPanel() {
     carregar()
   }, [carregar])
 
+  const sortedAll = useMemo(() => sortEntriesNewestFirst(entries), [entries])
+  const byUser = useMemo(() => groupAuditByActor(entries), [entries])
+
+  const totalLabel =
+    entries.length === 1 ? '1 ação registrada' : `${entries.length} ações registradas`
+
   return (
-    <div className="historico-auditoria-panel">
-      <header className="historico-auditoria-header">
-        <div>
-          <h2>Histórico de ações</h2>
-          <p className="historico-auditoria-sub">
-            Registro de tudo que usuários fazem no app (pedidos, quadro, login, usuários, etc.).
-          </p>
+    <div className="historico-auditoria">
+      <div className="historico-auditoria-top">
+        <header className="historico-auditoria-header">
+          <div>
+            <h1 className="historico-auditoria-title">Histórico de ações</h1>
+            <p className="historico-auditoria-sub">
+              Pedidos, quadro, login e usuários — como no kanban, por pessoa ou tudo na mesma
+              linha do tempo.
+            </p>
+          </div>
+          <button type="button" className="btn primary" onClick={carregar} disabled={loading}>
+            {loading ? 'Atualizando…' : 'Atualizar'}
+          </button>
+        </header>
+
+        <div className="historico-auditoria-toolbar">
+          <div className="historico-view-tabs" role="tablist" aria-label="Modo de visualização">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'por-usuario'}
+              className={`historico-view-tab ${view === 'por-usuario' ? 'is-active' : ''}`}
+              onClick={() => setView('por-usuario')}
+            >
+              Por usuário
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'todos'}
+              className={`historico-view-tab ${view === 'todos' ? 'is-active' : ''}`}
+              onClick={() => setView('todos')}
+            >
+              Todos juntos
+            </button>
+          </div>
+          {!loading && !error && entries.length > 0 ? (
+            <span className="historico-auditoria-meta">{totalLabel}</span>
+          ) : null}
         </div>
-        <button type="button" className="btn ghost" onClick={carregar} disabled={loading}>
-          {loading ? 'Atualizando…' : 'Atualizar'}
-        </button>
-      </header>
 
-      {error && (
-        <p className="historico-auditoria-error" role="alert">
-          {error}
-        </p>
-      )}
+        {error ? (
+          <p className="historico-auditoria-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
 
-      {!loading && !error && entries.length === 0 ? (
-        <p className="historico-auditoria-empty">Nenhuma ação registrada ainda.</p>
-      ) : null}
+      <div className="historico-auditoria-board board-scroll">
+        {loading && entries.length === 0 ? (
+          <p className="historico-auditoria-empty historico-auditoria-empty--board">
+            Carregando histórico…
+          </p>
+        ) : null}
 
-      <ol className="historico-auditoria-list">
-        {entries.map((e) => (
-          <li key={e.id} className="historico-auditoria-item">
-            <div className="historico-auditoria-meta">
-              <time dateTime={e.at}>{formatarDataHora(e.at)}</time>
-              <span className="historico-auditoria-autor">{rotuloAutor(e)}</span>
-              <code className="historico-auditoria-action">{e.action}</code>
-            </div>
-            <p className="historico-auditoria-summary">{e.summary}</p>
-            {e.detail ? <p className="historico-auditoria-detail">{e.detail}</p> : null}
-          </li>
-        ))}
-      </ol>
+        {!loading && !error && entries.length === 0 ? (
+          <p className="historico-auditoria-empty historico-auditoria-empty--board">
+            Nenhuma ação registrada ainda.
+          </p>
+        ) : null}
+
+        {!error && entries.length > 0 ? (
+          <div className="board-columns historico-columns">
+            {view === 'por-usuario' ? (
+              byUser.map((col: ActorColumn) => (
+                <HistoricoColumn
+                  key={col.key}
+                  title={col.title}
+                  subtitle={col.subtitle !== col.title ? col.subtitle : null}
+                  countLabel={
+                    col.entries.length === 1
+                      ? '1 ação'
+                      : `${col.entries.length} ações`
+                  }
+                  entries={col.entries}
+                />
+              ))
+            ) : (
+              <HistoricoColumn
+                title="Linha do tempo"
+                countLabel={totalLabel}
+                entries={sortedAll}
+                showAuthorInCards
+              />
+            )}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

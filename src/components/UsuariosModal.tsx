@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ManagedUser } from '../userRoles'
+import { USER_ROLE_LABELS, canPlaceOrders } from '../userRoles'
 import type { VendedorContatoPatch } from '../vendedorUserSync'
-import { USER_ROLE_LABELS } from '../userRoles'
+import { findVendedorForManagedUser } from '../vendedorUserSync'
+import type { Vendedor } from '../types'
 import {
   deleteManagedUser,
   fetchUsers,
@@ -13,9 +15,15 @@ import { NovoUsuarioForm } from './NovoUsuarioForm'
 type Props = {
   open: boolean
   onClose: () => void
+  vendedores: Vendedor[]
   onUsersLoaded?: (users: ManagedUser[]) => void
   onUserCreated?: (user: ManagedUser, contato?: VendedorContatoPatch) => void
   onUserDeleted?: (user: ManagedUser) => void
+  onUpdateVendedorContato?: (
+    id: string,
+    patch: { whatsapp?: string; grupoWhatsapp?: string },
+  ) => void
+  onEnsureVendedor?: (user: ManagedUser, contato?: VendedorContatoPatch) => void
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -27,12 +35,19 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+function boardSliceForLookup(vendedores: Vendedor[]) {
+  return { vendedores, columns: [], cards: [] }
+}
+
 export function UsuariosModal({
   open,
   onClose,
+  vendedores,
   onUsersLoaded,
   onUserCreated,
   onUserDeleted,
+  onUpdateVendedorContato,
+  onEnsureVendedor,
 }: Props) {
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [loading, setLoading] = useState(false)
@@ -66,6 +81,8 @@ export function UsuariosModal({
 
   if (!open && !alertMessage) return null
 
+  const lookupBoard = boardSliceForLookup(vendedores)
+
   return (
     <>
       {open ? (
@@ -92,9 +109,9 @@ export function UsuariosModal({
 
             <div className="usuarios-body">
               <p className="usuarios-hint">
-                Perfis de <strong>gerente</strong>, <strong>expedição</strong> e{' '}
-                <strong>impressão</strong> entram aqui. Para <strong>vendedor</strong>, use o painel{' '}
-                <strong>Vendedores</strong> — mesmo layout, com WhatsApp e grupo no cadastro.
+                Cadastro único: <strong>e-mail</strong>, <strong>senha</strong>, perfil e, para{' '}
+                <strong>vendedor</strong>, <strong>WhatsApp</strong> e <strong>grupo</strong>. Quem
+                lança pedidos entra automaticamente no quadro — os pedidos ficam atrelados à pessoa.
               </p>
 
               <NovoUsuarioForm
@@ -120,12 +137,14 @@ export function UsuariosModal({
                       {showPasswords ? 'Ocultar senhas' : 'Mostrar senhas'}
                     </button>
                   </div>
-                  <table className="usuarios-table">
+                  <table className="usuarios-table usuarios-table--com-contato">
                     <thead>
                       <tr>
                         <th>Nome</th>
                         <th>E-mail</th>
                         <th>Perfil</th>
+                        <th>WhatsApp</th>
+                        <th>Grupo (ID)</th>
                         <th>Senha</th>
                         <th aria-label="Ações" />
                       </tr>
@@ -135,11 +154,14 @@ export function UsuariosModal({
                         <UsuarioRow
                           key={u.id}
                           user={u}
+                          vendedor={findVendedorForManagedUser(lookupBoard, u)}
                           showPassword={showPasswords}
                           onChanged={reload}
                           onAlert={setAlertMessage}
                           onError={setError}
                           onUserDeleted={onUserDeleted}
+                          onUpdateVendedorContato={onUpdateVendedorContato}
+                          onEnsureVendedor={onEnsureVendedor}
                         />
                       ))}
                     </tbody>
@@ -162,22 +184,62 @@ export function UsuariosModal({
 
 function UsuarioRow({
   user,
+  vendedor,
   showPassword,
   onChanged,
   onAlert,
   onError,
   onUserDeleted,
+  onUpdateVendedorContato,
+  onEnsureVendedor,
 }: {
   user: ManagedUser
+  vendedor: Vendedor | null
   showPassword: boolean
   onChanged: () => Promise<void>
   onAlert: (msg: string) => void
   onError: (msg: string | null) => void
   onUserDeleted?: (user: ManagedUser) => void
+  onUpdateVendedorContato?: Props['onUpdateVendedorContato']
+  onEnsureVendedor?: Props['onEnsureVendedor']
 }) {
   const isAdmin = user.role === 'admin'
+  const placesOrders = canPlaceOrders(user.role)
   const [rowVisible, setRowVisible] = useState(false)
   const passwordVisible = showPassword || rowVisible
+  const [whatsapp, setWhatsapp] = useState(vendedor?.whatsapp ?? '')
+  const [grupoWhatsapp, setGrupoWhatsapp] = useState(vendedor?.grupoWhatsapp ?? '')
+  const [contatoSavedHint, setContatoSavedHint] = useState(false)
+
+  useEffect(() => {
+    setWhatsapp(vendedor?.whatsapp ?? '')
+    setGrupoWhatsapp(vendedor?.grupoWhatsapp ?? '')
+  }, [vendedor?.id, vendedor?.whatsapp, vendedor?.grupoWhatsapp])
+
+  const savedWhatsapp = (vendedor?.whatsapp ?? '').trim()
+  const savedGrupo = (vendedor?.grupoWhatsapp ?? '').trim()
+  const contatoDirty =
+    placesOrders &&
+    (whatsapp.trim() !== savedWhatsapp || grupoWhatsapp.trim() !== savedGrupo)
+
+  const saveContato = () => {
+    if (!placesOrders) return
+    const patch = { whatsapp, grupoWhatsapp }
+    if (vendedor) {
+      onUpdateVendedorContato?.(vendedor.id, patch)
+    } else {
+      onEnsureVendedor?.(user, {
+        whatsapp: whatsapp.trim() || undefined,
+        grupoWhatsapp: grupoWhatsapp.trim() || undefined,
+      })
+    }
+    setContatoSavedHint(true)
+    window.setTimeout(() => setContatoSavedHint(false), 2200)
+  }
+
+  useEffect(() => {
+    if (contatoDirty) setContatoSavedHint(false)
+  }, [contatoDirty])
 
   const copyPassword = async () => {
     const ok = await copyText(user.password)
@@ -221,6 +283,33 @@ function UsuarioRow({
         <code className="usuarios-email">{user.email}</code>
       </td>
       <td>{USER_ROLE_LABELS[user.role]}</td>
+      <td className="usuarios-contato-cell">
+        {placesOrders ? (
+          <input
+            className="usuarios-table-input"
+            type="tel"
+            inputMode="tel"
+            placeholder="Número"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+          />
+        ) : (
+          <span className="usuarios-muted">—</span>
+        )}
+      </td>
+      <td className="usuarios-contato-cell">
+        {placesOrders ? (
+          <input
+            className="usuarios-table-input"
+            type="text"
+            placeholder="120363…@g.us"
+            value={grupoWhatsapp}
+            onChange={(e) => setGrupoWhatsapp(e.target.value)}
+          />
+        ) : (
+          <span className="usuarios-muted">—</span>
+        )}
+      </td>
       <td>
         <div className="usuarios-password-cell">
           <span
@@ -254,6 +343,16 @@ function UsuarioRow({
         </div>
       </td>
       <td className="usuarios-actions">
+        {placesOrders && (contatoDirty || !vendedor) ? (
+          <button type="button" className="btn primary btn-xs" onClick={saveContato}>
+            Salvar contato
+          </button>
+        ) : null}
+        {contatoSavedHint ? (
+          <span className="vendedor-saved-hint" aria-live="polite">
+            Salvo
+          </span>
+        ) : null}
         {!isAdmin ? (
           <button type="button" className="btn ghost btn-xs danger-text" onClick={() => void remove()}>
             Excluir

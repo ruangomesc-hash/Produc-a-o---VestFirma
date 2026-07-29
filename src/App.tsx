@@ -16,7 +16,6 @@ import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
 import { LoginPage } from './components/LoginPage'
-import { VendedoresModal } from './components/VendedoresModal'
 import { WhatsAppNotifyModal } from './components/WhatsAppNotifyModal'
 import { VisaoGeralPanel } from './components/VisaoGeralPanel'
 import { VisaoEquipePanel } from './components/VisaoEquipePanel'
@@ -144,7 +143,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     addColumn,
     removeColumn,
     updateVendedorContato,
-    removeVendedor,
     upsertVendedorFromManagedUser,
     upsertVendedorFromSession,
     removeVendedorForManagedUser,
@@ -160,17 +158,16 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalSession, setModalSession] = useState(0)
-  const [vendedoresOpen, setVendedoresOpen] = useState(false)
-  const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [usuariosOpen, setUsuariosOpen] = useState(false)
+  const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
 
   useEffect(() => {
-    if (!vendedoresOpen || !isAdmin(session)) return
+    if (!usuariosOpen || !isAdmin(session)) return
     void fetchUsers()
       .then((users) => syncVendedoresFromManagedUsers(users))
       .catch(() => {})
-  }, [vendedoresOpen, session, syncVendedoresFromManagedUsers])
+  }, [usuariosOpen, session, syncVendedoresFromManagedUsers])
 
   useEffect(() => {
     if (!ready || !session || !canPlaceOrders(session.role)) return
@@ -422,9 +419,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 Usuários
               </button>
             )}
-            <button type="button" className="btn ghost" onClick={() => setVendedoresOpen(true)}>
-              Vendedores ({board.vendedores.length})
-            </button>
+
             <button
               type="button"
               className="btn ghost"
@@ -516,7 +511,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           ) : null}
         <KanbanBoard
           board={boardForSession}
-          dragEnabled={!modalOpen && !vendedoresOpen && !whatsappNotifyOpen}
+          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
@@ -579,7 +574,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onClose={() => setModalOpen(false)}
         onOpenVendedores={() => {
           setModalOpen(false)
-          setVendedoresOpen(true)
+          setUsuariosOpen(true)
         }}
         onAddSegmento={addSegmento}
         onSubmit={(data) => {
@@ -591,30 +586,20 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         }}
       />
 
-      <VendedoresModal
-        open={vendedoresOpen}
+      <UsuariosModal
+        open={usuariosOpen}
+        onClose={() => setUsuariosOpen(false)}
         vendedores={board.vendedores}
-        onClose={() => setVendedoresOpen(false)}
-        onUpdateContato={updateVendedorContato}
-        onRemove={removeVendedor}
-        canManageUsers={isAdmin(session)}
-        onUserCreated={upsertVendedorFromManagedUser}
         onUsersLoaded={syncVendedoresFromManagedUsers}
+        onUserCreated={upsertVendedorFromManagedUser}
+        onEnsureVendedor={upsertVendedorFromManagedUser}
+        onUpdateVendedorContato={updateVendedorContato}
+        onUserDeleted={(user) => removeVendedorForManagedUser(user.id)}
       />
 
       <WhatsAppNotifyModal
         open={whatsappNotifyOpen}
         onClose={() => setWhatsappNotifyOpen(false)}
-      />
-
-      <UsuariosModal
-        open={usuariosOpen}
-        onClose={() => setUsuariosOpen(false)}
-        onUsersLoaded={syncVendedoresFromManagedUsers}
-        onUserCreated={upsertVendedorFromManagedUser}
-        onUserDeleted={(user) => {
-          if (user.role === 'vendedor') removeVendedorForManagedUser(user.id)
-        }}
       />
 
       <ConfirmModal

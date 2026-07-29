@@ -351,7 +351,7 @@ export function CardModal({
                   </select>
                   {allowVendedorCadastro ? (
                     <button type="button" className="link-btn" onClick={onOpenVendedores}>
-                      Cadastrar vendedores
+                      Cadastrar em Usuários
                     </button>
                   ) : (
                     <p className="field-hint">
