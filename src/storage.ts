@@ -10,7 +10,7 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
-import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly, mergeBoardRemotePrimary } from './pedidosPolicy'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
@@ -264,30 +264,43 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       const remote = normalizeBoard(remoteRaw)
       const snapshotRaw = loadBoardPedidosSnapshot()
       const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
-      let board =
-        mergeBoardsMaxPedidos(snapshot, remote, local) ??
-        mergeBoardsMaxPedidos(remote, local, snapshot) ??
-        (local ? mergeBoardPreservingPedidos(remote, local) : remote)
+      const loggedIn = requiresLogin() && Boolean(getSessionToken())
+      const remoteCount = contagemPedidos(remote)
 
-      if (!boardHasPedidos(board) && snapshot && boardHasPedidos(snapshot)) {
-        board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
+      let board: BoardState
+      let richerLocal: BoardState | undefined
+
+      if (loggedIn && remoteCount > 0) {
+        board = mergeBoardRemotePrimary(remote, local)
+      } else if (loggedIn && remoteCount === 0) {
+        board =
+          mergeBoardsMaxPedidos(snapshot, local, remote) ??
+          mergeBoardPreservingPedidos(remote, local ?? remote)
+        if (snapshot && boardHasPedidos(snapshot)) {
+          board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
+        }
+        if (contagemPedidos(board) > 0) richerLocal = board
+      } else {
+        board =
+          mergeBoardsMaxPedidos(snapshot, remote, local) ??
+          mergeBoardsMaxPedidos(remote, local, snapshot) ??
+          (local ? mergeBoardPreservingPedidos(remote, local) : remote)
+
+        if (!boardHasPedidos(board) && snapshot && boardHasPedidos(snapshot)) {
+          board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
+        }
       }
 
-      let richerLocal: BoardState | undefined
-      const remoteCount = contagemPedidos(remote)
       const mergedCount = contagemPedidos(board)
 
-      if (mergedCount > remoteCount) {
-        richerLocal = board
-      } else if (mergedCount === 0 && snapshot && boardHasPedidos(snapshot)) {
-        board = mergeBoardAddingMissingPedidosOnly(remote, snapshot)
+      if (!loggedIn && mergedCount > remoteCount) {
         richerLocal = board
       }
 
       await saveBoardToIdb(board)
       snapshotBoardPedidos(board)
 
-      if (richerLocal && !protectedServer && boardHasPedidos(board)) {
+      if (richerLocal && !protectedServer && !loggedIn && boardHasPedidos(board)) {
         try {
           await saveRemoteBoard(board)
           richerLocal = undefined

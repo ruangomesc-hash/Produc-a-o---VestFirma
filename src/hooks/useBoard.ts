@@ -9,7 +9,7 @@ import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
-import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardRemotePrimary } from '../pedidosPolicy'
 import {
   snapshotBoardPedidos,
   loadBoardPedidosSnapshot,
@@ -627,7 +627,7 @@ export function useBoard() {
   const refreshBoardFromServer = useCallback(async () => {
     try {
       const result = await loadBoard()
-      const merged = mergeBoardPreservingPedidos(boardRef.current, result.board)
+      const merged = mergeBoardRemotePrimary(result.board, boardRef.current)
       const unified = relinkOrphanVendedorIdsConservative(
         unifyVendedorRowsAndRelinkCards(merged),
       )

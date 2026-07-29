@@ -84,6 +84,26 @@ export function mergeBoardPreservingPedidos(
   }
 }
 
+/**
+ * Com sessão: ids de pedidos vêm do servidor. IDB/snapshot só atualizam pedidos que ainda existem no servidor.
+ * Impede “ressuscitar” pedido apagado (ou só no navegador) ao dar F5.
+ */
+export function mergeBoardRemotePrimary(
+  remote: BoardState,
+  local: BoardState | null | undefined,
+): BoardState {
+  const shell = mergeBoardShell(remote, local ?? remote)
+  const byId = new Map<string, OrderCard>()
+  for (const c of remote.cards ?? []) {
+    if (c?.id) byId.set(c.id, c)
+  }
+  for (const c of local?.cards ?? []) {
+    if (!c?.id || !byId.has(c.id)) continue
+    byId.set(c.id, mergeOrderCard(byId.get(c.id)!, c))
+  }
+  return { ...remote, ...shell, cards: [...byId.values()] }
+}
+
 /** Só inclui pedidos que faltam em `primary` — não sobrescreve dados atuais. */
 export function mergeBoardAddingMissingPedidosOnly(
   primary: BoardState,
