@@ -4,6 +4,8 @@ type Props = {
   message: string
   confirmLabel?: string
   cancelLabel?: string
+  /** Botão de confirmação em vermelho (ex.: apagar definitivamente). */
+  destructive?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -14,6 +16,7 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
+  destructive = false,
   onConfirm,
   onCancel,
 }: Props) {
@@ -53,7 +56,11 @@ export function ConfirmModal({
             <button type="button" className="btn confirm-cancel" onClick={onCancel}>
               {cancelLabel}
             </button>
-            <button type="button" className="btn primary" onClick={onConfirm}>
+            <button
+              type="button"
+              className={`btn primary${destructive ? ' confirm-danger' : ''}`}
+              onClick={onConfirm}
+            >
               {confirmLabel}
             </button>
           </div>

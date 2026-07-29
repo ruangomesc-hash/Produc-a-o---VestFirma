@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatarDataHora, tituloColuna } from '../historicoEtapa'
 import type { BoardState, OrderCard } from '../types'
+import { ConfirmModal } from './ConfirmModal'
 
 type Props = {
   board: BoardState
@@ -9,6 +10,8 @@ type Props = {
 }
 
 export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
+  const [deleteConfirm, setDeleteConfirm] = useState<OrderCard | null>(null)
+
   const arquivados = useMemo(() => {
     return board.cards
       .filter((c) => c.arquivadoEm)
@@ -30,31 +33,51 @@ export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
   }
 
   return (
-    <section className="pedidos-arquivados" aria-labelledby="pedidos-arquivados-title">
-      <h2 id="pedidos-arquivados-title" className="pedidos-arquivados-title">
-        Pedidos arquivados ({arquivados.length})
-      </h2>
-      <p className="pedidos-arquivados-hint">
-        Ocultos do kanban, mas intactos no sistema. Restaure para voltar à etapa{' '}
-        <strong>em que estavam</strong> (não mudam de coluna ao arquivar).{' '}
-        {onDelete ? (
-          <>
-            <strong>Apagar</strong> remove o pedido de forma permanente (só administrador).
-          </>
-        ) : null}
-      </p>
-      <ul className="pedidos-arquivados-list">
-        {arquivados.map((c) => (
-          <PedidoArquivadoRow
-            key={c.id}
-            card={c}
-            board={board}
-            onRestore={onRestore}
-            onDelete={onDelete}
-          />
-        ))}
-      </ul>
-    </section>
+    <>
+      <section className="pedidos-arquivados" aria-labelledby="pedidos-arquivados-title">
+        <h2 id="pedidos-arquivados-title" className="pedidos-arquivados-title">
+          Pedidos arquivados ({arquivados.length})
+        </h2>
+        <p className="pedidos-arquivados-hint">
+          Ocultos do kanban, mas intactos no sistema. Restaure para voltar à etapa{' '}
+          <strong>em que estavam</strong> (não mudam de coluna ao arquivar).{' '}
+          {onDelete ? (
+            <>
+              <strong>Apagar</strong> remove o pedido de forma permanente (só administrador).
+            </>
+          ) : null}
+        </p>
+        <ul className="pedidos-arquivados-list">
+          {arquivados.map((c) => (
+            <PedidoArquivadoRow
+              key={c.id}
+              card={c}
+              board={board}
+              onRestore={onRestore}
+              onRequestDelete={onDelete ? () => setDeleteConfirm(c) : undefined}
+            />
+          ))}
+        </ul>
+      </section>
+
+      <ConfirmModal
+        open={Boolean(deleteConfirm && onDelete)}
+        title="Apagar pedido definitivamente?"
+        message={
+          deleteConfirm
+            ? `O pedido ${deleteConfirm.numeroPedido} (${deleteConfirm.cliente}) será removido do servidor. Esta ação não pode ser desfeita — diferente de arquivar, os dados deixam de existir no sistema.`
+            : ''
+        }
+        confirmLabel="Sim, apagar definitivamente"
+        cancelLabel="Cancelar"
+        destructive
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={() => {
+          if (deleteConfirm && onDelete) onDelete(deleteConfirm.id)
+          setDeleteConfirm(null)
+        }}
+      />
+    </>
   )
 }
 
@@ -62,23 +85,14 @@ function PedidoArquivadoRow({
   card,
   board,
   onRestore,
-  onDelete,
+  onRequestDelete,
 }: {
   card: OrderCard
   board: BoardState
   onRestore: (id: string) => void
-  onDelete?: (id: string) => void
+  onRequestDelete?: () => void
 }) {
   const etapa = tituloColuna(board, card.columnId)
-
-  const handleDelete = () => {
-    if (!onDelete) return
-    const ok = window.confirm(
-      `Apagar DEFINITIVAMENTE o pedido ${card.numeroPedido} — ${card.cliente}?\n\n` +
-        'Os dados serão removidos do servidor. Esta ação não pode ser desfeita.',
-    )
-    if (ok) onDelete(card.id)
-  }
 
   return (
     <li className="pedidos-arquivados-item">
@@ -100,8 +114,8 @@ function PedidoArquivadoRow({
         <button type="button" className="btn ghost small" onClick={() => onRestore(card.id)}>
           Restaurar no kanban
         </button>
-        {onDelete ? (
-          <button type="button" className="btn ghost small danger-text" onClick={handleDelete}>
+        {onRequestDelete ? (
+          <button type="button" className="btn ghost small danger-text" onClick={onRequestDelete}>
             Apagar definitivamente
           </button>
         ) : null}

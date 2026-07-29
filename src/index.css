@@ -2302,6 +2302,16 @@ textarea {
   border-color: var(--muted);
 }
 
+.confirm-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.confirm-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 .vendedores-body {
   padding: 1rem 1.1rem 1.1rem;
 }
