@@ -70,8 +70,12 @@ export default function App() {
   if (authState === 'login') {
     return (
       <LoginPage
-        onSuccess={(profile) => {
-          setSession(profile)
+        onSuccess={async () => {
+          const verified = await fetchSessionProfile()
+          if (!verified) {
+            return
+          }
+          setSession(verified)
           setAuthState('ok')
         }}
       />
@@ -116,6 +120,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const {
     board,
     ready,
+    sync,
     addColumn,
     removeColumn,
     updateVendedorContato,
@@ -150,8 +155,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
   useEffect(() => {
     if (!ready || !session || !canPlaceOrders(session.role)) return
+    if (sync.remote && sync.status === 'error') return
     upsertVendedorFromSession(session)
-  }, [ready, session, upsertVendedorFromSession])
+  }, [ready, session, sync.remote, sync.status, upsertVendedorFromSession])
 
   const preferredVendedorId = useMemo(
     () => (session ? findVendedorIdForSession(board, session) : null),

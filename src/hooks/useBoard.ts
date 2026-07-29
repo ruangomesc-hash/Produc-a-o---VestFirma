@@ -6,7 +6,7 @@ import { registrarCriacaoPedido, registrarMudancaEtapa } from '../historicoEtapa
 import { isRemoteSyncEnabled } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
-import { notifyUnauthorized } from '../authSession'
+import { isAuthSessionError, notifyUnauthorized } from '../authSession'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
@@ -67,33 +67,43 @@ export function useBoard() {
 
   useEffect(() => {
     let cancelled = false
-    const fallback = setTimeout(() => {
-      if (!cancelled) setReady(true)
-    }, 2500)
+    const remote = isRemoteSyncEnabled()
+    const fallback = remote
+      ? undefined
+      : setTimeout(() => {
+          if (!cancelled) setReady(true)
+        }, 2500)
 
     loadBoard()
       .then((data) => {
         if (!cancelled) {
           setBoard(data)
           setSync({
-            remote: isRemoteSyncEnabled(),
+            remote,
             status: 'saved',
           })
         }
       })
-      .catch(() => {
-        if (!cancelled) notifyUnauthorized()
+      .catch((err) => {
+        if (cancelled) return
+        if (isAuthSessionError(err)) {
+          notifyUnauthorized()
+          return
+        }
+        const message = err instanceof Error ? err.message : 'Falha ao carregar o quadro'
+        console.warn('VestFirma: erro ao carregar quadro (sessão mantida):', err)
+        setSync({ remote, status: 'error', message })
       })
       .finally(() => {
         if (!cancelled) {
-          clearTimeout(fallback)
+          if (fallback) clearTimeout(fallback)
           setReady(true)
         }
       })
 
     return () => {
       cancelled = true
-      clearTimeout(fallback)
+      if (fallback) clearTimeout(fallback)
     }
   }, [])
 

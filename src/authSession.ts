@@ -192,4 +192,17 @@ export function handleAuthResponse(status: number): void {
   if (status === 401) notifyUnauthorized()
 }
 
+/** Erros que indicam sessão inválida — não confundir com falha 500/rede ao carregar o quadro. */
+export function isAuthSessionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const m = err.message.toLowerCase()
+  return (
+    m.includes('sessão expirada') ||
+    m.includes('acesso negado') ||
+    m.includes('login necessário') ||
+    m.includes('não autenticado') ||
+    m.includes('exige login')
+  )
+}
+
 export type { SessionProfile }
