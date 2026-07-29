@@ -69,19 +69,30 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
   const localLogo = rotuloLocalLogo(card.localLogo)
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
   const [expanded, setExpanded] = useState(false)
+  const qtdComentarios = (card.comentarios ?? []).length
 
   return (
     <article
       ref={setNodeRef}
       style={style}
-      className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'}`}
+      className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''}`}
     >
       <div className="card-drag-header" {...listeners} {...attributes} title="Arrastar pedido">
-        <EtapaPrazoBadge
-          columnId={card.columnId}
-          columnTitle={columnTitle}
-          etapaDesde={card.etapaDesde}
-        />
+        <div className="card-drag-badges">
+          <EtapaPrazoBadge
+            columnId={card.columnId}
+            columnTitle={columnTitle}
+            etapaDesde={card.etapaDesde}
+          />
+          {qtdComentarios > 0 ? (
+            <span
+              className="card-comentarios-tag"
+              title={`${qtdComentarios} comentário${qtdComentarios === 1 ? '' : 's'} — abra o pedido para ler`}
+            >
+              Comentário{qtdComentarios === 1 ? '' : 's'} · {qtdComentarios}
+            </span>
+          ) : null}
+        </div>
         <span className="drag-dots" aria-hidden />
       </div>
 
@@ -104,6 +115,14 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
             Pedido {card.numeroPedido}
             <span className="card-collapsed-sep">·</span>
             {card.quantidade} peças
+            {qtdComentarios > 0 ? (
+              <>
+                <span className="card-collapsed-sep">·</span>
+                <span className="card-comentarios-tag card-comentarios-tag--inline">
+                  Comentário{qtdComentarios === 1 ? '' : 's'}
+                </span>
+              </>
+            ) : null}
           </p>
           <span className="card-collapsed-cta">Toque para expandir</span>
         </button>
@@ -125,9 +144,16 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
           <div className="card-body">
             <div className="card-top">
               <h3>{card.cliente}</h3>
-              <span className={`badge canal-${card.canal}`}>
-                {card.canal === 'whatsapp' ? 'WhatsApp' : 'E-commerce'}
-              </span>
+              <div className="card-top-badges">
+                {qtdComentarios > 0 ? (
+                  <span className="card-comentarios-tag" title="Pedido com comentários / avisos">
+                    Comentário{qtdComentarios === 1 ? '' : 's'} · {qtdComentarios}
+                  </span>
+                ) : null}
+                <span className={`badge canal-${card.canal}`}>
+                  {card.canal === 'whatsapp' ? 'WhatsApp' : 'E-commerce'}
+                </span>
+              </div>
             </div>
             <p className="card-meta">
               <strong>Pedido</strong> {card.numeroPedido} · <strong>{card.quantidade}</strong> peças

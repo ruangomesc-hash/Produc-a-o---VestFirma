@@ -844,6 +844,52 @@ textarea {
   flex-shrink: 0;
 }
 
+.kanban-card--has-comentarios {
+  border-color: color-mix(in srgb, var(--vestfirma-gold) 45%, var(--border));
+  box-shadow: inset 3px 0 0 var(--vestfirma-gold);
+}
+
+.card-drag-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.card-comentarios-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.22rem 0.45rem;
+  border-radius: 4px;
+  line-height: 1.2;
+  background: color-mix(in srgb, var(--vestfirma-gold) 28%, var(--surface));
+  color: var(--vestfirma-gold-light);
+  border: 1px solid color-mix(in srgb, var(--vestfirma-gold) 55%, var(--border));
+  white-space: nowrap;
+}
+
+.card-comentarios-tag--inline {
+  font-size: 0.58rem;
+  padding: 0.12rem 0.35rem;
+  vertical-align: middle;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.card-top-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
 .kanban-card--collapsed .card-collapsed-hit {
   display: block;
   width: 100%;
