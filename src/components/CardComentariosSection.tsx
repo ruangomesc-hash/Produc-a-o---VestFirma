@@ -1,29 +1,28 @@
 import { useState } from 'react'
 import { formatarDataHora } from '../historicoEtapa'
-import { ordenarComentariosPedido } from '../pedidoComentarios'
-import { USER_ROLE_LABELS, type UserRole } from '../userRoles'
+import {
+  introVisibilidadeComentarios,
+  ordenarComentariosPedido,
+  placeholderNovoComentario,
+  rotuloAutorComentario,
+  type ComentarioAutor,
+} from '../pedidoComentarios'
 import type { PedidoComentario } from '../types'
 
 type Props = {
   comentarios: PedidoComentario[]
-  onAdd: (texto: string) => void
-  /** Nome exibido no placeholder (quem está comentando). */
-  autorNome?: string
-  /** Coluna lateral do modal de pedido — sempre visível, sem recolher. */
+  onAdd?: (texto: string) => void
+  comentarioAutor?: ComentarioAutor | null
+  podeComentar?: boolean
   layout?: 'default' | 'aside'
-}
-
-function rotuloAutor(c: PedidoComentario): string {
-  const role = c.autorRole ? USER_ROLE_LABELS[c.autorRole as UserRole] : null
-  if (role && c.autorNome) return `${c.autorNome} · ${role}`
-  return c.autorNome || c.autorEmail || 'Equipe'
 }
 
 export function CardComentariosSection({
   comentarios,
   onAdd,
-  autorNome,
+  comentarioAutor = null,
   layout = 'default',
+  podeComentar = true,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [open, setOpen] = useState(true)
@@ -31,37 +30,39 @@ export function CardComentariosSection({
 
   const enviar = () => {
     const texto = draft.trim()
-    if (!texto) return
+    if (!texto || !onAdd) return
     onAdd(texto)
     setDraft('')
   }
 
-  const compose = (
-    <div className="comentarios-compose">
-      <label className="comentarios-label">
-        <span className="sr-only">Novo comentário</span>
-        <textarea
-          rows={layout === 'aside' ? 4 : 3}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={
-            autorNome
-              ? `${autorNome}: descreva o que mudou ou o motivo do atraso…`
-              : 'Descreva o que mudou ou o motivo do atraso…'
-          }
-          maxLength={4000}
-        />
-      </label>
-      <button
-        type="button"
-        className="btn ghost comentarios-add-btn"
-        disabled={!draft.trim()}
-        onClick={enviar}
-      >
-        Adicionar comentário
-      </button>
-    </div>
-  )
+  const intro = introVisibilidadeComentarios(comentarioAutor?.role)
+  const placeholder = comentarioAutor
+    ? placeholderNovoComentario(comentarioAutor)
+    : 'Descreva o que mudou ou o motivo do atraso…'
+
+  const compose =
+    podeComentar && onAdd ? (
+      <div className="comentarios-compose">
+        <label className="comentarios-label">
+          <span className="sr-only">Novo comentário</span>
+          <textarea
+            rows={layout === 'aside' ? 4 : 3}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={placeholder}
+            maxLength={4000}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn ghost comentarios-add-btn"
+          disabled={!draft.trim()}
+          onClick={enviar}
+        >
+          Adicionar comentário
+        </button>
+      </div>
+    ) : null
 
   const list =
     ordered.length > 0 ? (
@@ -69,7 +70,7 @@ export function CardComentariosSection({
         {ordered.map((c) => (
           <li key={c.id} className="card-comentarios-item">
             <div className="card-comentarios-meta">
-              <strong className="card-comentarios-autor">{rotuloAutor(c)}</strong>
+              <strong className="card-comentarios-autor">{rotuloAutorComentario(c)}</strong>
               <time className="card-comentarios-data" dateTime={c.at}>
                 {formatarDataHora(c.at)}
               </time>
@@ -93,9 +94,7 @@ export function CardComentariosSection({
             Comentários do pedido
             <span className="card-comentarios-count">{ordered.length}</span>
           </h3>
-          <p className="field-hint comentarios-intro">
-            Avisos, atrasos e alterações — visíveis para toda a equipe.
-          </p>
+          <p className="field-hint comentarios-intro">{intro}</p>
         </header>
         <div className="card-comentarios-aside-scroll">{list}</div>
         {compose}
@@ -107,9 +106,7 @@ export function CardComentariosSection({
     <div className="field span-2 modal-comentarios-wrap">
       <details className="card-comentarios" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary>Comentários do pedido ({ordered.length})</summary>
-        <p className="field-hint comentarios-intro">
-          Registre atrasos, alterações ou combinações — todos veem o histórico aqui.
-        </p>
+        <p className="field-hint comentarios-intro">{intro}</p>
         {list}
         {compose}
       </details>

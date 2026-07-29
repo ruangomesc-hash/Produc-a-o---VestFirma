@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import type { CardFormData, OrderCard, PedidoComentario, SalesChannel, SegmentoEmpresa, Vendedor } from '../types'
+import type { ComentarioAutor } from '../pedidoComentarios'
 import { AlertModal } from './AlertModal'
 import { LogoUploadField } from './LogoUploadField'
 import { LogoLocalPicker } from './LogoLocalPicker'
@@ -78,6 +79,9 @@ type Props = {
   onVendaCelebrar?: () => void
   comentarios?: PedidoComentario[]
   onAddComentario?: (texto: string) => void
+  comentarioAutor?: import('../pedidoComentarios').ComentarioAutor | null
+  podeComentarPedido?: boolean
+  /** @deprecated use comentarioAutor */
   comentarioAutorNome?: string
 }
 
@@ -98,6 +102,8 @@ export function CardModal({
   onVendaCelebrar,
   comentarios = [],
   onAddComentario,
+  comentarioAutor = null,
+  podeComentarPedido = true,
   comentarioAutorNome,
 }: Props) {
   const [form, setForm] = useState<CardFormData>(() =>
@@ -214,18 +220,24 @@ export function CardModal({
     onClose()
   }
 
+  const autorComentario: ComentarioAutor | null =
+    comentarioAutor ??
+    (comentarioAutorNome
+      ? { nome: comentarioAutorNome, email: '', role: undefined }
+      : null)
+
   const vendedorLockedNome =
     lockVendedorToSession && form.vendedorId
       ? (vendedores.find((v) => v.id === form.vendedorId)?.nome ??
-        comentarioAutorNome ??
+        autorComentario?.nome ??
         'Vendedor')
       : lockVendedorToSession
-        ? (comentarioAutorNome ?? 'Vendedor')
+        ? (autorComentario?.nome ?? 'Vendedor')
         : null
 
   if (!open && !alert) return null
 
-  const showComentariosAside = mode === 'edit' && Boolean(onAddComentario)
+  const showComentariosAside = mode === 'edit' && Boolean(initial)
 
   const dialog = open ? (
     <div className="modal-backdrop modal-backdrop-pedido" role="presentation">
@@ -475,8 +487,9 @@ export function CardModal({
                 <CardComentariosSection
                   layout="aside"
                   comentarios={comentarios}
-                  onAdd={onAddComentario!}
-                  autorNome={comentarioAutorNome}
+                  onAdd={onAddComentario}
+                  comentarioAutor={autorComentario}
+                  podeComentar={podeComentarPedido && Boolean(onAddComentario)}
                 />
               </aside>
             ) : null}

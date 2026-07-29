@@ -10,11 +10,8 @@ import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
 import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
-import {
-  findVendedorIdForSession,
-  boardVisivelParaSession,
-  vendedorPodeAcessarPedido,
-} from './vendedorUserSync'
+import { findVendedorIdForSession, boardVisivelParaSession, vendedorPodeAcessarPedido } from './vendedorUserSync'
+import { autorComentarioFromSession } from './pedidoComentarios'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
@@ -198,6 +195,16 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     if (!editingCard) return undefined
     return board.cards.find((c) => c.id === editingCard.id) ?? editingCard
   }, [board.cards, editingCard])
+
+  const podeComentarPedidoAberto =
+    Boolean(editingCardLive) &&
+    Boolean(session) &&
+    vendedorPodeAcessarPedido(board, session, editingCardLive!)
+
+  const autorComentario = useMemo(
+    () => (session ? autorComentarioFromSession(session) : null),
+    [session],
+  )
 
   const openEdit = useCallback(
     (card: OrderCard) => {
@@ -506,15 +513,16 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         preferredVendedorId={preferredVendedorId}
         lockVendedorToSession={lockVendedorToSession}
         comentarios={editingCardLive?.comentarios ?? []}
-        comentarioAutorNome={session?.user ?? 'Equipe'}
+        comentarioAutor={autorComentario}
+        podeComentarPedido={podeComentarPedidoAberto}
         onAddComentario={
-          editingCardLive
+          podeComentarPedidoAberto && editingCardLive
             ? (texto) =>
-                addPedidoComentario(editingCardLive.id, texto, {
-                  nome: session?.user ?? 'Equipe',
-                  email: session?.email ?? '',
-                  role: session?.role,
-                })
+                addPedidoComentario(
+                  editingCardLive.id,
+                  texto,
+                  autorComentarioFromSession(session),
+                )
             : undefined
         }
         onClose={() => setModalOpen(false)}

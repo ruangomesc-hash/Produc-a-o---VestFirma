@@ -134,11 +134,15 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
               src={card.logoEnviadaCliente}
               emptyText="Sem logo do cliente"
             />
-            <CardLogoBlock
-              label="Logo pronta para impressão"
-              src={card.logoProntaImpressao}
-              emptyText="Aguardando arte da produção"
-            />
+            {card.logoProntaImpressao ? (
+              <CardLogoBlock
+                label="Logo pronta para impressão"
+                src={card.logoProntaImpressao}
+                emptyText="Aguardando arte da produção"
+              />
+            ) : (
+              <p className="card-logo-awaiting">Aguardando logo pronta para impressão</p>
+            )}
           </div>
 
           <div className="card-body">

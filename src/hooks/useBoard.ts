@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createDemoBoard } from '../demoBoard'
 import { DEFAULT_BOARD } from '../defaultBoard'
-import { criarComentarioPedido, type ComentarioAutor } from '../pedidoComentarios'
+import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
 import { isRemoteSyncEnabled } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
@@ -396,7 +396,9 @@ export function useBoard() {
       if (!trimmed) return
       const alvo = board.cards.find((c) => c.id === cardId)
       if (!vendedorLogadoPodeCard(board, alvo)) return
-      const entry = criarComentarioPedido(trimmed, autor)
+      const actor = getAuditActor()
+      const autorEfetivo = autorComentarioFromSession(actor, autor)
+      const entry = criarComentarioPedido(trimmed, autorEfetivo)
       persist({
         ...board,
         cards: board.cards.map((c) =>
@@ -408,7 +410,7 @@ export function useBoard() {
       const card = board.cards.find((c) => c.id === cardId)
       recordAudit({
         action: 'pedido.comentario',
-        summary: `Comentário no pedido ${card?.numeroPedido ?? cardId}`,
+        summary: `${autorEfetivo.nome} comentou no pedido ${card?.numeroPedido ?? cardId}`,
         detail: trimmed.slice(0, 500),
         meta: { cardId },
       })
