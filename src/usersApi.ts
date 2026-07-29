@@ -1,7 +1,13 @@
 import { formatApiErrorMessage, readApiJson } from './apiErrors'
 import type { ManagedUser, SessionProfile, UserRole } from './userRoles'
 import { CREATABLE_ROLES } from './userRoles'
-import { authHeaders, ensureAuthConfigReady, getAuthGeneration, handleAuthResponse } from './authSession'
+import { recordAudit } from './auditLog'
+import {
+  authHeaders,
+  ensureAuthConfigReady,
+  getAuthGeneration,
+  handleAuthResponse,
+} from './authSession'
 import { getApiBase } from './runtimeConfig'
 
 export { CREATABLE_ROLES }
@@ -55,6 +61,11 @@ export async function createManagedUser(input: {
       ),
     )
   }
+  recordAudit({
+    action: 'usuario.criado',
+    summary: `Criou usuário ${data.user.email} (${data.user.role})`,
+    meta: { userId: data.user.id },
+  })
   return data.user
 }
 
@@ -80,6 +91,11 @@ export async function updateManagedUser(input: {
   const data = json as { user?: ManagedUser }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
   if (!data.user) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
+  recordAudit({
+    action: 'usuario.atualizado',
+    summary: `Atualizou usuário ${data.user.email}`,
+    meta: { userId: data.user.id },
+  })
   return data.user
 }
 
@@ -96,6 +112,11 @@ export async function deleteManagedUser(id: string): Promise<void> {
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao excluir usuário'))
+  recordAudit({
+    action: 'usuario.excluido',
+    summary: `Excluiu usuário (id ${id})`,
+    meta: { userId: id },
+  })
 }
 
 export type { SessionProfile, ManagedUser, UserRole }

@@ -23,6 +23,7 @@ const {
 const { handleNotifyApi } = await import('./notify.mjs')
 const { handleHealthApi } = await import('./health.mjs')
 const { handleUsersApi } = await import('./users.mjs')
+const { handleAuditApi } = await import('./audit.mjs')
 const { externalizeBoardLogos, logoMime, resolveLogoFile } = await import('./boardLogos.mjs')
 const {
   backupBoardBeforeWrite,
@@ -300,6 +301,11 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/users' || url.pathname === '/api/users.php') {
       await handleUsersApi(req, res, readBody, requireSession, corsHeaders)
+      return
+    }
+
+    if (url.pathname === '/api/audit' || url.pathname === '/api/audit.php') {
+      await handleAuditApi(req, res, readBody, requireSession, corsHeaders)
       return
     }
 

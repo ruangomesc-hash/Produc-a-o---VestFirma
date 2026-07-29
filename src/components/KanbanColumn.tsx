@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { COLUNA_NOVO_PEDIDO_ID } from '../defaultBoard'
 import { etapaDevePiscar, resumirPrazosColuna } from '../etapas'
 import type { BoardState, Column as ColumnType, OrderCard } from '../types'
+import { ConfirmModal } from './ConfirmModal'
 import { KanbanCard } from './KanbanCard'
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   onAddCard: () => void
   onEditCard: (card: OrderCard) => void
   onArchiveCard: (id: string) => void
+  canArchivePedidos?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
 }
 
@@ -24,10 +26,11 @@ export function KanbanColumn({
   onAddCard,
   onEditCard,
   onArchiveCard,
+  canArchivePedidos = false,
   onDeleteColumn,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [agora, setAgora] = useState(() => Date.now())
 
   useEffect(() => {
@@ -35,18 +38,34 @@ export function KanbanColumn({
     return () => window.clearInterval(id)
   }, [])
 
-  const handleDeleteColumn = (deleteCards: boolean) => {
-    onDeleteColumn(column.id, deleteCards)
-    setConfirmDelete(false)
+  const handleConfirmDeleteColumn = () => {
+    onDeleteColumn(column.id, false)
+    setConfirmDeleteOpen(false)
   }
 
   const colunaLogistica = etapaDevePiscar(column.id, column.title)
   const resumoPrazos = resumirPrazosColuna(column.id, column.title, cards, agora)
 
+  const destinoTitulo = board.columns.find((c) => c.id !== column.id)?.title ?? 'a primeira etapa'
+  const deleteMessage =
+    cards.length > 0
+      ? `A etapa “${column.title}” será removida. ${cards.length} pedido${cards.length === 1 ? '' : 's'} será${cards.length === 1 ? '' : 'ão'} movido${cards.length === 1 ? '' : 's'} para “${destinoTitulo}”.`
+      : `A etapa “${column.title}” será removida do quadro.`
+
   return (
     <section
       className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''}`}
     >
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Excluir coluna?"
+        message={`${deleteMessage} Tem certeza de que deseja continuar?`}
+        confirmLabel="Sim, excluir coluna"
+        cancelLabel="Cancelar"
+        onConfirm={handleConfirmDeleteColumn}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
       <header className="column-header">
         <div>
           {colunaLogistica && <span className="column-logistica-badge">Prioridade logística</span>}
@@ -67,30 +86,16 @@ export function KanbanColumn({
           )}
         </div>
         <div className="column-header-actions">
-          {canDelete && (
-            <>
-              {!confirmDelete ? (
-                <button
-                  type="button"
-                  className="icon-btn small column-delete-btn"
-                  title="Excluir coluna"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  Excluir
-                </button>
-              ) : (
-                <div className="column-delete-confirm">
-                  <span>Excluir coluna?</span>
-                  <button type="button" className="btn-text" onClick={() => handleDeleteColumn(false)}>
-                    Mover pedidos e excluir coluna
-                  </button>
-                  <button type="button" className="btn-text" onClick={() => setConfirmDelete(false)}>
-                    Cancelar
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          {canDelete ? (
+            <button
+              type="button"
+              className="icon-btn small column-delete-btn"
+              title="Excluir coluna"
+              onClick={() => setConfirmDeleteOpen(true)}
+            >
+              Excluir
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -102,15 +107,19 @@ export function KanbanColumn({
             board={board}
             columnTitle={column.title}
             onEdit={() => onEditCard(card)}
-            onArchive={() => {
-              if (
-                window.confirm(
-                  `Arquivar pedido ${card.numeroPedido} (${card.cliente})? Ele sai do quadro, mas permanece guardado no sistema.`,
-                )
-              ) {
-                onArchiveCard(card.id)
-              }
-            }}
+            onArchive={
+              canArchivePedidos
+                ? () => {
+                    if (
+                      window.confirm(
+                        `Arquivar pedido ${card.numeroPedido} (${card.cliente})? Ele sai do quadro, mas permanece guardado no sistema.`,
+                      )
+                    ) {
+                      onArchiveCard(card.id)
+                    }
+                  }
+                : undefined
+            }
           />
         ))}
       </div>

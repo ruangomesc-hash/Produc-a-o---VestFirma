@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createDemoBoard } from '../demoBoard'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, type ComentarioAutor } from '../pedidoComentarios'
-import { registrarCriacaoPedido, registrarMudancaEtapa } from '../historicoEtapa'
+import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
 import { isRemoteSyncEnabled } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
+import { getAuditActor } from '../auditContext'
+import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
@@ -139,11 +141,16 @@ export function useBoard() {
 
   const addColumn = useCallback(
     (title: string) => {
+      if (getAuditActor()?.role !== 'admin') return
       const trimmed = title.trim()
       if (!trimmed) return
       persist({
         ...board,
         columns: [...board.columns, { id: newId(), title: trimmed }],
+      })
+      recordAudit({
+        action: 'coluna.criada',
+        summary: `Criou a etapa “${trimmed}”`,
       })
     },
     [board, persist],
@@ -151,6 +158,7 @@ export function useBoard() {
 
   const removeColumn = useCallback(
     (columnId: string, _deleteCards: boolean) => {
+      if (getAuditActor()?.role !== 'admin') return
       if (board.columns.length <= 1) return
       const rest = board.columns.filter((c) => c.id !== columnId)
       const fallback = rest[0]?.id
@@ -166,6 +174,11 @@ export function useBoard() {
         }
       })
       persist({ ...board, columns: rest, cards })
+      recordAudit({
+        action: 'coluna.removida',
+        summary: `Removeu etapa (pedidos movidos para “${rest[0]?.title ?? 'primeira coluna'}”)`,
+        detail: columnId,
+      })
     },
     [board, persist],
   )
@@ -322,17 +335,28 @@ export function useBoard() {
       }
       persist({ ...board, cards: [...board.cards, card] })
       notificarSePedidoCriado(card, { ...board, cards: [...board.cards, card] })
+      recordAudit({
+        action: 'pedido.criado',
+        summary: `Novo pedido ${card.numeroPedido} — ${card.cliente}`,
+        meta: { cardId: card.id, columnId },
+      })
     },
     [board, persist],
   )
 
   const updateCard = useCallback(
     (cardId: string, data: CardFormData) => {
+      const prev = board.cards.find((c) => c.id === cardId)
       persist({
         ...board,
         cards: board.cards.map((c) =>
           c.id === cardId ? { ...c, ...data } : c,
         ),
+      })
+      recordAudit({
+        action: 'pedido.editado',
+        summary: `Editou pedido ${data.numeroPedido || prev?.numeroPedido} — ${data.cliente || prev?.cliente}`,
+        meta: { cardId },
       })
     },
     [board, persist],
@@ -351,18 +375,33 @@ export function useBoard() {
             : c,
         ),
       })
+      const card = board.cards.find((c) => c.id === cardId)
+      recordAudit({
+        action: 'pedido.comentario',
+        summary: `Comentário no pedido ${card?.numeroPedido ?? cardId}`,
+        detail: trimmed.slice(0, 500),
+        meta: { cardId },
+      })
     },
     [board, persist],
   )
 
   const archiveCard = useCallback(
     (cardId: string) => {
+      if (getAuditActor()?.role !== 'admin') return
+      const alvo = board.cards.find((c) => c.id === cardId)
+      if (!alvo) return
       const now = new Date().toISOString()
       persist({
         ...board,
         cards: board.cards.map((c) =>
           c.id === cardId ? { ...c, arquivadoEm: now } : c,
         ),
+      })
+      recordAudit({
+        action: 'pedido.arquivado',
+        summary: `Arquivou pedido ${alvo.numeroPedido} — ${alvo.cliente}`,
+        meta: { cardId },
       })
     },
     [board, persist],
@@ -387,6 +426,11 @@ export function useBoard() {
       }
       persist(nextBoard)
       notificarSePedidoMovido(updated, nextBoard, fromColumnId, columnId)
+      recordAudit({
+        action: 'pedido.movido',
+        summary: `Pedido ${existing.numeroPedido}: ${tituloColuna(board, fromColumnId)} → ${tituloColuna(board, columnId)}`,
+        meta: { cardId, fromColumnId, columnId },
+      })
     },
     [board, persist],
   )
@@ -402,6 +446,10 @@ export function useBoard() {
     })
     setLocalRestore(null)
     persist(merged, { forceRemote: true })
+    recordAudit({
+      action: 'quadro.restaurado',
+      summary: `Restaurou ${merged.cards.length} pedido(s) do navegador para o servidor`,
+    })
   }, [localRestore, board.vendedores, persist])
 
   const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
@@ -411,6 +459,7 @@ export function useBoard() {
       savePreDemoBoard(board)
     }
     persist(createDemoBoard(), { skipRemote: true })
+    recordAudit({ action: 'demo.entrou', summary: 'Entrou no modo demonstração' })
   }, [board, persist])
 
   const exitDemo = useCallback(() => {
@@ -418,9 +467,11 @@ export function useBoard() {
     clearPreDemoBoard()
     if (saved) {
       persist(normalizeBoard({ ...saved, demo: false }))
+      recordAudit({ action: 'demo.saiu', summary: 'Saiu do modo demo — quadro anterior restaurado' })
       return
     }
     persist(structuredClone(DEFAULT_BOARD))
+    recordAudit({ action: 'demo.saiu', summary: 'Saiu do modo demo' })
   }, [persist])
 
   return {

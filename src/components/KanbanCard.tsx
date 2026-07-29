@@ -50,7 +50,7 @@ type Props = {
   board: BoardState
   columnTitle: string
   onEdit: () => void
-  onArchive: () => void
+  onArchive?: () => void
 }
 
 export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Props) {
@@ -171,9 +171,11 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
             <button type="button" className="btn-text" onClick={onEdit}>
               Editar
             </button>
-            <button type="button" className="btn-text" onClick={onArchive}>
-              Arquivar
-            </button>
+            {onArchive ? (
+              <button type="button" className="btn-text" onClick={onArchive}>
+                Arquivar
+              </button>
+            ) : null}
           </div>
         </>
       )}

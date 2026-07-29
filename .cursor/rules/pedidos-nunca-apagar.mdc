@@ -7,17 +7,23 @@ alwaysApply: true
 
 **Prioridade absoluta**, acima de refactors e “limpeza” de código.
 
-## Proibido
+## Proibido (inclui agente de IA / Cursor)
 
+- **O agente de IA nunca apaga, arquiva nem remove pedidos** do quadro ou do JSON, **mesmo que o usuário peça em uma tarefa genérica** — só implementa proteções, merge, backup e arquivamento **no código**, sem executar remoção de dados reais.
 - Apagar pedidos do `board.json` / API `/api/board` (quadro vazio, merge que remove cards, demo gravando no servidor, sync que sobrescreve com menos pedidos).
 - Remover cards do array no cliente como “excluir pedido” — usar **arquivamento** (`arquivadoEm`) se precisar tirar do kanban.
 - Desativar backup, merge ou bloqueios de wipe sem pedido **explícito** do usuário citando perda de dados aceita.
+
+## Quem pode tirar pedido do kanban (UI)
+
+- **Somente administrador** — botão **Arquivar** (dados permanecem no JSON).
+- Outros perfis **não** veem arquivar nem apagar.
 
 ## Obrigatório
 
 - Servidor: **merge por id** em todo PUT do quadro; **backup** antes de gravar; recusar quadro vazio se já existiam pedidos.
 - Cliente: antes de PUT remoto, **mesclar** com o quadro do servidor; não enviar quadro vazio; modo demo **não** sobrescreve o servidor de produção.
-- Qualquer feature nova que toque em `cards`, `persist`, `saveBoard`, `loadBoard` ou `handleBoardApi` deve **preservar** todos os pedidos existentes.
+- **Histórico de auditoria** (`/api/audit`): registrar ações relevantes; aba **Histórico** só para admin.
 
 ## UI
 

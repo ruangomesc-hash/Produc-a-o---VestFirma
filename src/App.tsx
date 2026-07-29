@@ -24,6 +24,9 @@ import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
 import { PortalFestaPreviewPage } from './components/PortalFestaPreviewPage'
 import { PortalPedidoQuickLink } from './components/PortalPedidoQuickLink'
 import { isPortalFestaPreviewRoute, isPortalPedidoRoute } from './portalPedidoRoute'
+import { HistoricoAuditoriaPanel } from './components/HistoricoAuditoriaPanel'
+import { setAuditActor } from './auditContext'
+import { recordAudit } from './auditLog'
 import { useBoard } from './hooks/useBoard'
 import type { OrderCard } from './types'
 
@@ -79,6 +82,11 @@ export default function App() {
           markLoginGrace()
           setSession(profile)
           setAuthState('ok')
+          setAuditActor(profile)
+          recordAudit({
+            action: 'auth.login',
+            summary: `${profile.user} entrou no sistema`,
+          })
         }}
       />
     )
@@ -88,7 +96,9 @@ export default function App() {
     <AuthenticatedRoot
       session={session}
       onLogout={async () => {
+        recordAudit({ action: 'auth.logout', summary: `${session?.user ?? 'Usuário'} saiu` })
         await logout()
+        setAuditActor(null)
         setSession(null)
         setAuthState(requiresLogin() ? 'login' : 'ok')
       }}
@@ -179,14 +189,30 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     return board.cards.find((c) => c.id === editingCard.id) ?? editingCard
   }, [board.cards, editingCard])
 
-  const [view, setView] = useState<'kanban' | 'visao' | 'status' | 'vendedores'>(() => {
+  const [view, setView] = useState<'kanban' | 'visao' | 'status' | 'vendedores' | 'historico'>(() => {
     const hash = window.location.hash.replace(/^#/, '')
-    if (hash === 'status' || hash === 'visao' || hash === 'kanban' || hash === 'vendedores') {
+    if (
+      hash === 'status' ||
+      hash === 'visao' ||
+      hash === 'kanban' ||
+      hash === 'vendedores' ||
+      hash === 'historico'
+    ) {
       return hash
     }
     return 'kanban'
   })
   const [visaoTvMode, setVisaoTvMode] = useState(false)
+
+  useEffect(() => {
+    if (view === 'historico' && !isAdmin(session)) {
+      setView('kanban')
+    }
+  }, [view, session])
+
+  useEffect(() => {
+    setAuditActor(session)
+  }, [session])
 
   useEffect(() => {
     const want = view === 'kanban' ? '' : `#${view}`
@@ -299,6 +325,19 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               >
                 Status
               </button>
+              {isAdmin(session) ? (
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-historico"
+                  aria-selected={view === 'historico'}
+                  aria-controls="panel-historico"
+                  className={`nav-tab ${view === 'historico' ? 'active' : ''}`}
+                  onClick={() => setView('historico')}
+                >
+                  Histórico
+                </button>
+              ) : null}
             </div>
           </nav>
           <div className="brand brand-center">
@@ -314,7 +353,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                   ? 'Diagnóstico do kanban'
                   : view === 'vendedores'
                     ? 'Desempenho por vendedor'
-                    : 'Kanban de uniformes personalizados'}
+                    : view === 'historico'
+                      ? 'Histórico de ações no app'
+                      : 'Kanban de uniformes personalizados'}
             </p>
           </div>
           <div className="header-actions">
@@ -407,6 +448,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           onAddCard={openCreate}
           onEditCard={openEdit}
           onArchiveCard={archiveCard}
+          canArchivePedidos={isAdmin(session)}
+          canManageColumns={isAdmin(session)}
           onDeleteColumn={removeColumn}
           onAddColumn={addColumn}
         />
@@ -418,6 +461,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       ) : view === 'vendedores' ? (
         <div id="panel-vendedores" className="app-panel" role="tabpanel" aria-labelledby="tab-vendedores">
           <VendedoresOverviewPanel board={board} />
+        </div>
+      ) : view === 'historico' ? (
+        <div id="panel-historico" className="app-panel" role="tabpanel" aria-labelledby="tab-historico">
+          <HistoricoAuditoriaPanel />
         </div>
       ) : (
         <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">

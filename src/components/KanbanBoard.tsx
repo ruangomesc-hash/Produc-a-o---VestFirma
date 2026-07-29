@@ -19,6 +19,8 @@ type Props = {
   onAddCard: (columnId: string) => void
   onEditCard: (card: OrderCard) => void
   onArchiveCard: (id: string) => void
+  canArchivePedidos?: boolean
+  canManageColumns?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
   onAddColumn: (title: string) => void
   dragEnabled?: boolean
@@ -30,6 +32,8 @@ export function KanbanBoard({
   onAddCard,
   onEditCard,
   onArchiveCard,
+  canArchivePedidos = false,
+  canManageColumns = false,
   onDeleteColumn,
   onAddColumn,
   dragEnabled = true,
@@ -104,45 +108,48 @@ export function KanbanBoard({
               column={column}
               board={board}
               cards={cardsByColumn.get(column.id) ?? []}
-              canDelete={board.columns.length > 1}
+              canDelete={canManageColumns && board.columns.length > 1}
               onAddCard={() => onAddCard(column.id)}
               onEditCard={onEditCard}
               onArchiveCard={onArchiveCard}
+              canArchivePedidos={canArchivePedidos}
               onDeleteColumn={onDeleteColumn}
             />
           ))}
 
-          <div className="add-column">
-            {showAddColumn ? (
-              <form onSubmit={submitColumn} className="add-column-form">
-                <input
-                  autoFocus
-                  placeholder="Nome da nova etapa"
-                  value={newColumnTitle}
-                  onChange={(e) => setNewColumnTitle(e.target.value)}
-                />
-                <div className="add-column-actions">
-                  <button type="submit" className="btn primary small">
-                    Adicionar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost small"
-                    onClick={() => {
-                      setShowAddColumn(false)
-                      setNewColumnTitle('')
-                    }}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
-                + Nova coluna
-              </button>
-            )}
-          </div>
+          {canManageColumns ? (
+            <div className="add-column">
+              {showAddColumn ? (
+                <form onSubmit={submitColumn} className="add-column-form">
+                  <input
+                    autoFocus
+                    placeholder="Nome da nova etapa"
+                    value={newColumnTitle}
+                    onChange={(e) => setNewColumnTitle(e.target.value)}
+                  />
+                  <div className="add-column-actions">
+                    <button type="submit" className="btn primary small">
+                      Adicionar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost small"
+                      onClick={() => {
+                        setShowAddColumn(false)
+                        setNewColumnTitle('')
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
+                  + Nova coluna
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 
