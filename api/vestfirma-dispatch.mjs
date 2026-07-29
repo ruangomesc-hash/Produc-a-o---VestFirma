@@ -17,9 +17,13 @@ async function readBody(req) {
 
 /** @param {import('http').IncomingMessage} req */
 function routeName(req) {
-  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+  const raw =
+    req.url ||
+    req.headers['x-vercel-sc-path'] ||
+    req.headers['x-invoke-path'] ||
+    '/'
+  const url = new URL(String(raw), `http://${req.headers.host || 'localhost'}`)
   let path = url.pathname.replace(/^\/api\//, '').replace(/\.php$/i, '')
-  if (path === 'board' || path === 'board.php') return 'board'
   return path
 }
 

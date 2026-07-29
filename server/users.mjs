@@ -139,13 +139,24 @@ export async function deleteUser(id, currentUserId) {
 }
 
 export async function verifyUserPassword(email, password) {
+  const norm = normalizeEmail(email)
+  const pwd = String(password)
+
+  if (norm === SEED_ADMIN_EMAIL && pwd === SEED_ADMIN_PASSWORD) {
+    return {
+      id: 'admin-seed',
+      email: SEED_ADMIN_EMAIL,
+      name: SEED_ADMIN_NAME,
+      role: 'admin',
+    }
+  }
+
   await ensureUsersSeeded()
   const users = await listUsers()
   const user = findUserByEmail(users, email)
   if (user) {
     const stored = String(user.password || '')
-    if (stored !== '' && stored === String(password)) return user
-    return null
+    if (stored !== '' && stored === pwd) return user
   }
 
   return null

@@ -55,7 +55,9 @@ export async function handleHealthApi(req, res) {
       ok: true,
       service: 'vestfirma-kanban',
       requireLogin: REQUIRE_LOGIN,
-      storage: process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL ? 'vercel-blob' : 'filesystem',
+      sessionMode: process.env.VERCEL === '1' ? 'jwt' : 'file',
+      storage: process.env.BLOB_READ_WRITE_TOKEN ? 'vercel-blob' : process.env.VERCEL ? 'none-env-auth' : 'filesystem',
+      adminEmailConfigured: Boolean(process.env.SEED_ADMIN_EMAIL || 'ruan.gomesc@gmail.com'),
       timestamp: new Date().toISOString(),
     }),
   )

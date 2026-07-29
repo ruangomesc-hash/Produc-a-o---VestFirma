@@ -2,6 +2,11 @@
   "buildCommand": "npm run build:publicar",
   "outputDirectory": "dist",
   "framework": null,
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "server/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/login.php", "destination": "/api/login" },
     { "source": "/api/session.php", "destination": "/api/session" },

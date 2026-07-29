@@ -9,7 +9,7 @@ const DATA_DIR = process.env.BOARD_DATA_DIR || path.join(ROOT, 'data')
 const BLOB_PREFIX = 'vestfirma/'
 
 function useBlob() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL)
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN)
 }
 
 async function blobModule() {

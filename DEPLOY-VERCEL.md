@@ -1,31 +1,39 @@
-# VestFirma só na Vercel
+# VestFirma na Vercel — login
 
-Na Vercel **não roda PHP** (`login.php` etc.). O site estático vem de `dist/` e a API fica em **`/api/*`** (Serverless + **Vercel Blob**).
+## ⚠️ Root Directory
 
-## 1. No painel Vercel do projeto
+No projeto Vercel, **Root Directory deve ser a raiz do repo** (`.`).  
+Se estiver `dist`, as funções em `/api` **não sobem** e o login nunca funciona.
 
-1. **Storage → Blob** — crie um store (liga `BLOB_READ_WRITE_TOKEN` automaticamente).
-2. **Settings → Environment Variables** (Production):
+## Teste rápido (sem login)
 
-   | Variável | Valor |
-   |----------|--------|
-   | `REQUIRE_LOGIN` | `true` |
-   | `SEED_ADMIN_EMAIL` | `ruan.gomesc@gmail.com` |
-   | `SEED_ADMIN_PASSWORD` | `@Vestfirma26!` |
-   | `SEED_ADMIN_NAME` | `Administrador` |
+1. `https://SEU-APP.vercel.app/api/ping` → `"ok": true`
+2. `https://SEU-APP.vercel.app/api/health.php` → `"requireLogin": true`, `"sessionMode": "jwt"`
 
-3. **Deploy** — build `npm run build:publicar`, output `dist` (`vercel.json`).
+Se `/api/ping` der 404, o deploy não inclui a pasta `api/` — corrija o Root Directory e redeploy.
 
-## 2. Conferir API
+## Variáveis (Settings → Environment Variables)
 
-`https://SEU-PROJETO.vercel.app/api/health.php` → `"requireLogin": true`, `"storage": "vercel-blob"`.
+| Nome | Valor |
+|------|--------|
+| `REQUIRE_LOGIN` | `true` |
+| `SEED_ADMIN_EMAIL` | `ruan.gomesc@gmail.com` |
+| `SEED_ADMIN_PASSWORD` | `@Vestfirma26!` |
 
-## 3. Login admin
+Use **Production**. Depois: **Redeploy** (obrigatório).
 
-- **E-mail:** `ruan.gomesc@gmail.com`
-- **Senha:** `@Vestfirma26!`
+> Senha com `@` e `!` — cole exatamente no painel Vercel (sem aspas extras).
 
-## 4. Senha não entra
+**Blob** é opcional para **login** (sessão JWT + senha no env). Blob (ou equivalente) ainda é recomendado para **quadro** e **lista de usuários** persistirem.
 
-1. Variáveis na Vercel + **Redeploy**.
-2. No Blob, apague `vestfirma/users.json` se tiver senha antiga; login recria com `SEED_ADMIN_PASSWORD`.
+## Entrar
+
+- E-mail: `ruan.gomesc@gmail.com`
+- Senha: `@Vestfirma26!`
+
+## Ainda falha?
+
+1. Abra `/api/ping` e `/api/health.php` e confira o JSON.
+2. Redeploy após mudar variáveis.
+3. Aba anônima (cache do JS antigo).
+4. Se no Blob existir `vestfirma/users.json` com senha velha, apague o arquivo — o login do admin usa **`SEED_ADMIN_PASSWORD`** do env (prioridade).

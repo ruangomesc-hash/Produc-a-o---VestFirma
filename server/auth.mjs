@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { readJsonStore, writeJsonStore } from './storageAdapter.mjs'
+import { issueSessionToken, parseSessionToken, useJwtSessions } from './sessionToken.mjs'
 import { ensureUsersSeeded, verifyUserPassword } from './users.mjs'
 
 const SESSIONS_STORE = 'sessions.json'
@@ -26,6 +27,18 @@ export async function verifyCredentials(username, password) {
 }
 
 export async function createSession(user) {
+  if (useJwtSessions()) {
+    const token = issueSessionToken(user)
+    const expires = Date.now() + SESSION_DAYS * 86400000
+    return {
+      token,
+      user: user.name || user.email,
+      email: user.email,
+      role: user.role,
+      expiresAt: new Date(expires).toISOString(),
+    }
+  }
+
   const sessions = await loadSessions()
   purgeExpired(sessions)
   const token = crypto.randomBytes(32).toString('hex')
@@ -49,6 +62,10 @@ export async function createSession(user) {
 
 export async function validateSession(token) {
   if (!token) return null
+  if (useJwtSessions()) {
+    return parseSessionToken(token)
+  }
+
   const sessions = await loadSessions()
   purgeExpired(sessions)
   const row = sessions[token]
@@ -65,6 +82,8 @@ export async function validateSession(token) {
 
 export async function revokeSession(token) {
   if (!token) return
+  if (useJwtSessions()) return
+
   const sessions = await loadSessions()
   delete sessions[token]
   await saveSessions(sessions)
@@ -95,6 +114,21 @@ export async function requireSession(req, res) {
 }
 
 export async function readJsonBody(req, maxBytes) {
+  if (typeof req.body === 'string' && req.body.length > 0) {
+    if (req.body.length > maxBytes) throw new Error('Payload too large')
+    return req.body
+  }
+  if (
+    req.body &&
+    typeof req.body === 'object' &&
+    !Buffer.isBuffer(req.body) &&
+    !Array.isArray(req.body)
+  ) {
+    const s = JSON.stringify(req.body)
+    if (s.length > maxBytes) throw new Error('Payload too large')
+    return s
+  }
+
   const chunks = []
   let size = 0
   for await (const chunk of req) {
