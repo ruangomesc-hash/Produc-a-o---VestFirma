@@ -11,6 +11,13 @@ const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14)
 const REQUIRE_LOGIN = process.env.REQUIRE_LOGIN === 'true' || process.env.VERCEL === '1'
 const BLOB_PREFIX = 'vestfirma/'
 
+function jsonError(res, status, payload) {
+  res.status(status).json({
+    ok: false,
+    ...payload,
+  })
+}
+
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS')
@@ -212,15 +219,38 @@ export default async function handler(req, res) {
 
     if (route === 'login') {
       if (req.method !== 'POST') {
-        res.status(405).json({ error: 'Method Not Allowed' })
+        jsonError(res, 405, {
+          code: 'METHOD_NOT_ALLOWED',
+          error: 'Use POST para login.',
+          fix: 'O front deve enviar POST /api/login com JSON username e password.',
+        })
         return
       }
       const data = await parseJsonBody(req)
       const username = String(data.username || data.email || '').trim()
       const password = String(data.password || '')
+      if (!username || !password) {
+        jsonError(res, 400, {
+          code: 'AUTH_MISSING_FIELDS',
+          error: 'E-mail e senha são obrigatórios.',
+          fix: 'Preencha os dois campos antes de entrar.',
+        })
+        return
+      }
       const user = await verifyLoginUser(username, password)
       if (!user) {
-        res.status(401).json({ error: 'E-mail ou senha incorretos' })
+        const emailNorm = username.toLowerCase()
+        const isAdminEmail = emailNorm === ADMIN_EMAIL
+        jsonError(res, 401, {
+          code: 'AUTH_INVALID',
+          error: isAdminEmail
+            ? 'Senha incorreta para o administrador.'
+            : 'E-mail ou senha incorretos.',
+          fix: isAdminEmail
+            ? 'Vercel → Environment Variables: SEED_ADMIN_PASSWORD deve ser @Vestfirma26! (ou a senha que você definiu). Redeploy após alterar.'
+            : 'Peça ao admin um acesso em Usuários ou confira e-mail e senha.',
+          detail: `Tentativa: ${emailNorm}`,
+        })
         return
       }
       const token = issueToken(user)
@@ -328,12 +358,22 @@ export default async function handler(req, res) {
       return
     }
 
-    res.status(404).json({ error: 'Rota não encontrada', route })
+    res.status(404).json({
+      ok: false,
+      code: 'ROUTE_NOT_FOUND',
+      error: `Rota API "/${route}" não existe.`,
+      fix: 'Use /api/login, /api/health, /api/board. Redeploy com api/[...slug].js.',
+      detail: String(route),
+    })
   } catch (err) {
     console.error('[vestfirma-api]', route, err)
-    res.status(500).json({
-      error: 'Erro no servidor',
-      message: err instanceof Error ? err.message : String(err),
+    const msg = err instanceof Error ? err.message : String(err)
+    jsonError(res, 500, {
+      code: 'SERVER_ERROR',
+      error: 'Erro interno na API.',
+      message: msg,
+      fix: 'Vercel → Deployments → Functions → Logs. Corrija o erro e redeploy.',
+      detail: msg,
     })
   }
 }

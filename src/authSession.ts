@@ -1,5 +1,11 @@
 import type { SessionProfile } from './userRoles'
 import {
+  loginFailureTitle,
+  parseLoginHttpFailure,
+  type ApiErrorPayload,
+  type LoginFailure,
+} from './loginErrors'
+import {
   getApiBase,
   initRuntimeConfig,
   requiresLogin as runtimeRequiresLogin,
@@ -9,7 +15,7 @@ const TOKEN_KEY = 'vestfirma_auth_token'
 
 export type LoginResult =
   | { ok: true; profile: SessionProfile }
-  | { ok: false; error: string }
+  | ({ ok: false } & LoginFailure)
 
 function apiPath(segment: string): string {
   const clean = segment.replace(/\.php$/i, '').replace(/^\//, '')
@@ -66,45 +72,74 @@ export async function login(email: string, password: string): Promise<LoginResul
   await initRuntimeConfig()
   const base = getApiBase()
   if (!base) {
-    return { ok: false, error: 'API não configurada (vestfirma-config.json / VITE_API_BASE)' }
+    return {
+      ok: false,
+      code: 'CONFIG',
+      error: 'API não configurada no front (VITE_API_BASE / vestfirma-config.json).',
+      fix: 'Em produção, vestfirma-config.json na raiz com "apiBase": "/api".',
+    }
   }
 
   const loginId = email.trim()
+  const requestUrl = `${base}${apiPath('login')}`
 
   try {
-    const res = await fetch(`${base}${apiPath('login')}`, {
+    const res = await fetch(requestUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ username: loginId, password }),
     })
 
-    const data = (await res.json().catch(() => ({}))) as {
+    const rawBody = await res.text()
+    let json: ApiErrorPayload = {}
+    if (rawBody.trim()) {
+      try {
+        json = JSON.parse(rawBody) as ApiErrorPayload
+      } catch {
+        json = {}
+      }
+    }
+
+    if (!res.ok) {
+      const failure = parseLoginHttpFailure(res, requestUrl, rawBody, json)
+      return { ok: false, ...failure }
+    }
+
+    const data = json as ApiErrorPayload & {
       token?: string
       user?: string
       email?: string
       role?: string
-      error?: string
-    }
-
-    if (!res.ok) {
-      const raw = typeof data.error === 'string' ? data.error : ''
-      const hint =
-        res.status === 404
-          ? 'API não encontrada (404). Redeploy na Vercel com pasta api/ e Root Directory = raiz do repo.'
-          : raw || (res.status === 401 ? 'E-mail ou senha incorretos' : `Erro ${res.status}`)
-      return { ok: false, error: hint }
     }
 
     if (!data.token) {
-      return { ok: false, error: 'Resposta inválida do servidor' }
+      return {
+        ok: false,
+        code: 'NO_TOKEN',
+        error: 'Login respondeu OK, mas sem token de sessão.',
+        fix: 'API desatualizada — redeploy e teste POST /api/login.',
+        detail: rawBody.slice(0, 180),
+        httpStatus: res.status,
+        requestUrl,
+      }
     }
 
     setSessionToken(data.token)
     return { ok: true, profile: parseProfile(data) }
-  } catch {
-    return { ok: false, error: 'Não foi possível conectar ao servidor' }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    return {
+      ok: false,
+      code: 'NETWORK',
+      error: 'Não foi possível contactar a API de login.',
+      fix: 'Verifique internet e se /api/health abre no navegador.',
+      detail,
+      requestUrl,
+    }
   }
 }
+
+export { loginFailureTitle }
 
 export async function logout(): Promise<void> {
   const base = getApiBase()

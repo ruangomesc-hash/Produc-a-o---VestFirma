@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { login } from '../authSession'
+import { login, loginFailureTitle } from '../authSession'
 import type { SessionProfile } from '../authSession'
 
 type Props = {
@@ -9,7 +9,13 @@ type Props = {
 export function LoginPage({ onSuccess }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{
+    title: string
+    message: string
+    fix?: string
+    detail?: string
+    meta?: string
+  } | null>(null)
   const [loading, setLoading] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
@@ -21,7 +27,17 @@ export function LoginPage({ onSuccess }: Props) {
     if (result.ok) {
       onSuccess(result.profile)
     } else {
-      setError(result.error)
+      const metaParts: string[] = []
+      if (result.httpStatus) metaParts.push(`HTTP ${result.httpStatus}`)
+      if (result.code) metaParts.push(result.code)
+      if (result.requestUrl) metaParts.push(result.requestUrl)
+      setError({
+        title: loginFailureTitle(result.code, result.error),
+        message: result.error,
+        fix: result.fix,
+        detail: result.detail,
+        meta: metaParts.length ? metaParts.join(' · ') : undefined,
+      })
     }
   }
 
@@ -60,7 +76,19 @@ export function LoginPage({ onSuccess }: Props) {
               required
             />
           </label>
-          {error && <p className="login-error">{error}</p>}
+          {error && (
+            <div className="login-error-panel" role="alert">
+              <p className="login-error-title">{error.title}</p>
+              <p className="login-error-message">{error.message}</p>
+              {error.fix && (
+                <p className="login-error-fix">
+                  <strong>Como corrigir:</strong> {error.fix}
+                </p>
+              )}
+              {error.detail && <p className="login-error-detail">{error.detail}</p>}
+              {error.meta && <p className="login-error-meta">{error.meta}</p>}
+            </div>
+          )}
           <button type="submit" className="login-submit btn primary" disabled={loading}>
             {loading ? 'Entrando…' : 'Entrar'}
           </button>
