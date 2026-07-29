@@ -59,7 +59,11 @@ export function LoginPage({ onSuccess }: Props) {
           <label className="login-field">
             <span>E-mail</span>
             <input
-              type="email"
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

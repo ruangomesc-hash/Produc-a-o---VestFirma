@@ -2,6 +2,7 @@
  * API VestFirma na Vercel — um único handler, sem PHP, sem imports frágeis.
  */
 import crypto from 'node:crypto'
+import { isValidLoginEmail, normalizeLoginEmail } from '../shared/loginEmail.mjs'
 
 const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'ruan.gomesc@gmail.com').toLowerCase().trim()
 const ADMIN_PASSWORD =
@@ -183,11 +184,11 @@ async function saveUsersList(list) {
 }
 
 function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase()
+  return normalizeLoginEmail(email)
 }
 
 function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  return isValidLoginEmail(email)
 }
 
 function userPublic(user, includePassword) {
@@ -446,7 +447,11 @@ export default async function handler(req, res) {
         if (data.email != null) {
           const email = normalizeEmail(data.email)
           if (!isValidEmail(email)) {
-            jsonError(res, 400, { code: 'INVALID_EMAIL', error: 'E-mail inválido.', fix: 'Use @dominio.com' })
+            jsonError(res, 400, {
+              code: 'INVALID_EMAIL',
+              error: 'E-mail inválido.',
+              fix: 'Use nome@dominio.com ou login interno como nome@vestfirma',
+            })
             return
           }
           if (list.some((u) => u.id !== id && normalizeEmail(u.email) === email)) {

@@ -4,6 +4,7 @@ import { USER_ROLE_LABELS, canPlaceOrders } from '../userRoles'
 import { CREATABLE_ROLES, createManagedUser } from '../usersApi'
 import type { ManagedUser } from '../userRoles'
 import type { VendedorContatoPatch } from '../vendedorUserSync'
+import { isValidLoginEmail, LOGIN_EMAIL_HINT } from '../loginEmail'
 
 export type NovoUsuarioFormProps = {
   /** Cadastro só de vendedor (sem escolher perfil) ou qualquer perfil criável. */
@@ -33,11 +34,16 @@ export function NovoUsuarioForm({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    const emailTrim = newEmail.trim()
+    if (!isValidLoginEmail(emailTrim)) {
+      onError(`E-mail inválido. ${LOGIN_EMAIL_HINT}`)
+      return
+    }
     setCreating(true)
     onError(null)
     try {
       const created = await createManagedUser({
-        email: newEmail.trim(),
+        email: emailTrim,
         role: roleForCreate,
         name: newName.trim() || undefined,
       })
@@ -82,11 +88,16 @@ export function NovoUsuarioForm({
         <label>
           <span>E-mail (login)</span>
           <input
-            type="email"
+            type="text"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             required
             autoComplete="off"
+            placeholder="nome@vestfirma ou nome@empresa.com"
           />
         </label>
         <label>

@@ -16,8 +16,8 @@ export function formatApiErrorMessage(
   const lines = [main]
   if (json.fix) lines.push(`Como corrigir: ${json.fix}`)
   if (json.detail && json.detail !== main) lines.push(`Detalhe: ${json.detail}`)
-  if (json.code) lines.push(`Código: ${json.code} · HTTP ${res.status}`)
-  else if (!res.ok) lines.push(`HTTP ${res.status}`)
+  if (json.code) lines.push(`Código: ${json.code}`)
+  else if (!res.ok && !json.error && !json.message) lines.push(`HTTP ${res.status}`)
   return lines.join('\n')
 }
 

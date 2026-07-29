@@ -21,6 +21,42 @@ function vestfirma_normalize_email(string $email): string {
     return strtolower(trim($email));
 }
 
+function vestfirma_is_valid_login_email(string $email): bool {
+    $norm = vestfirma_normalize_email($email);
+    if ($norm === '' || strlen($norm) > 254) {
+        return false;
+    }
+    $at = strpos($norm, '@');
+    if ($at === false || $at < 1 || $at === strlen($norm) - 1) {
+        return false;
+    }
+    $local = substr($norm, 0, $at);
+    $domain = substr($norm, $at + 1);
+    if (strlen($local) > 64 || strlen($domain) > 253) {
+        return false;
+    }
+    if (preg_match('/\s/', $norm)) {
+        return false;
+    }
+    if (
+        str_starts_with($local, '.') ||
+        str_ends_with($local, '.') ||
+        str_starts_with($domain, '.') ||
+        str_ends_with($domain, '.') ||
+        str_contains($local, '..') ||
+        str_contains($domain, '..')
+    ) {
+        return false;
+    }
+    if (!preg_match('/^[a-z0-9.!#$%&\'*+\/=?^_`{|}~-]+$/i', $local)) {
+        return false;
+    }
+    if (!preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i', $domain)) {
+        return false;
+    }
+    return true;
+}
+
 /** @return array{users: list<array<string,mixed>>} */
 function vestfirma_users_load_raw(string $path): array {
     if (!is_file($path)) {
@@ -149,7 +185,7 @@ function vestfirma_users_create(array $config, string $email, string $role, stri
         throw new InvalidArgumentException('Use apenas um administrador geral');
     }
     $email = vestfirma_normalize_email($email);
-    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if ($email === '' || !vestfirma_is_valid_login_email($email)) {
         throw new InvalidArgumentException('E-mail inválido');
     }
     if (vestfirma_user_find_by_email($config, $email) !== null) {
@@ -190,7 +226,7 @@ function vestfirma_users_update(
         $found = true;
         if ($email !== null) {
             $emailNorm = vestfirma_normalize_email($email);
-            if ($emailNorm === '' || !filter_var($emailNorm, FILTER_VALIDATE_EMAIL)) {
+            if ($emailNorm === '' || !vestfirma_is_valid_login_email($emailNorm)) {
                 throw new InvalidArgumentException('E-mail inválido');
             }
             $other = vestfirma_user_find_by_email($config, $emailNorm);

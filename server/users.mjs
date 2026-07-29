@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { readJsonStore, writeJsonStore } from './storageAdapter.mjs'
+import { isValidLoginEmail, normalizeLoginEmail } from '../shared/loginEmail.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
 
@@ -23,7 +24,7 @@ function randomPassword(length = 12) {
 }
 
 function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase()
+  return normalizeLoginEmail(email)
 }
 
 async function loadRaw() {
@@ -85,7 +86,7 @@ export async function createUser(email, role, name) {
   if (!ROLES.includes(role)) throw new Error('Perfil inválido')
   if (role === 'admin') throw new Error('Use apenas um administrador geral')
   const norm = normalizeEmail(email)
-  if (!norm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm)) throw new Error('E-mail inválido')
+  if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
 
   const data = await loadRaw()
   if (findUserByEmail(data.users, norm)) throw new Error('Este e-mail já está cadastrado')
@@ -110,7 +111,7 @@ export async function updateUser(id, { email, role, name, regeneratePassword }) 
 
   if (email != null) {
     const norm = normalizeEmail(email)
-    if (!norm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm)) throw new Error('E-mail inválido')
+    if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
     const other = findUserByEmail(data.users, norm)
     if (other && other.id !== id) throw new Error('Este e-mail já está cadastrado')
     user.email = norm
