@@ -10,6 +10,7 @@ return [
 
     'seed_admin_email' => 'ruan.gomesc@gmail.com',
     'seed_admin_name' => 'Administrador',
+    'seed_admin_password' => '@Vestfirma26!',
 
     'users_file' => __DIR__ . '/../data/users.json',
     'sessions_file' => __DIR__ . '/../data/sessions.json',
