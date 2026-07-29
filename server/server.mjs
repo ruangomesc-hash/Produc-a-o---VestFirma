@@ -205,6 +205,9 @@ async function handleBoardApi(req, res) {
     const tmp = `${DATA_FILE}.tmp`
     await fs.writeFile(tmp, out, 'utf8')
     await fs.rename(tmp, DATA_FILE)
+    if (mergedCount === 0) {
+      await fs.writeFile(`${DATA_FILE}.bak`, out, 'utf8')
+    }
     res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ ok: true, savedAt: new Date().toISOString() }))
     return

@@ -10,6 +10,7 @@ import {
   mergeBoardPreservingPedidos,
   mergeBoardAddingMissingPedidosOnly,
   countBoardCards,
+  readBoardWithRecovery,
 } from '../server/boardPersist.mjs'
 
 const col = 'col-1'
@@ -92,6 +93,26 @@ test('servidor: admin pode apagar último pedido arquivado (body vazio + header)
   const removeIds = ['9599-id']
   const merged = mergeBoardPreservingPedidos(existing, incoming, removeIds)
   assert.equal(countBoardCards(merged), 0)
+})
+
+test('servidor: quadro vazio válido não ressuscita pedido do .bak', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-empty-board-'))
+  const file = path.join(dir, 'board.json')
+  await fs.writeFile(
+    `${file}.bak`,
+    JSON.stringify({
+      columns: [{ id: col, title: 'Entrada' }],
+      cards: [{ id: '9599-id', columnId: col, numeroPedido: '9599', arquivadoEm: '2026-07-29T20:00:00.000Z' }],
+    }),
+    'utf8',
+  )
+  await fs.writeFile(
+    file,
+    JSON.stringify({ columns: [{ id: col, title: 'Entrada' }], cards: [] }),
+    'utf8',
+  )
+  const data = await readBoardWithRecovery(file)
+  assert.equal(countBoardCards(data), 0)
 })
 
 test('servidor: simula gravação em disco após merge', async () => {

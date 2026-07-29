@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
-import { isRemoteSyncEnabled } from '../remoteBoard'
+import { isRemoteSyncEnabled, fetchRemoteBoard } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
@@ -18,7 +18,7 @@ import {
   removeCardFromPedidosSnapshot,
   purgeSnapshotPedidosExcluidos,
 } from '../boardPedidosSnapshot'
-import { recordPedidoExcluidoPermanente } from '../pedidosExcluidosLocal'
+import { recordPedidoExcluidoPermanente, filterBoardRemovendoExcluidos } from '../pedidosExcluidosLocal'
 import type { BoardState, CardFormData, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
@@ -587,6 +587,20 @@ export function useBoard() {
         recordPedidoExcluidoPermanente(cardId)
         removeCardFromPedidosSnapshot(cardId)
         purgeSnapshotPedidosExcluidos()
+        if (isRemoteSyncEnabled()) {
+          try {
+            const verify = await fetchRemoteBoard()
+            if (verify?.cards?.some((c) => c.id === cardId)) {
+              setBoard(current)
+              const err =
+                'O servidor ainda guarda este pedido (restauração automática). Atualize o deploy Node e tente de novo.'
+              setSync({ remote: true, status: 'error', message: err })
+              return { ok: false, error: err }
+            }
+          } catch {
+            /* rede — confiar no PUT */
+          }
+        }
         setSync({ remote: result.remote, status: 'saved' })
         recordAudit({
           action: 'pedido.excluido',
@@ -600,7 +614,7 @@ export function useBoard() {
         setBoard(
           relinkOrphanVendedorIdsConservative(
             unifyVendedorRowsAndRelinkCards(
-              mergeBoardPreservingPedidos(boardRef.current, reloaded.board),
+              filterBoardRemovendoExcluidos(reloaded.board),
             ),
           ),
         )

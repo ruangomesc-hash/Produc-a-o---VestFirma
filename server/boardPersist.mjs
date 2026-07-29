@@ -139,10 +139,15 @@ export function preserveArquivadoEmUnlessAdmin(existing, board, session) {
   return changed ? { ...board, cards } : board
 }
 
-/** Se board.json ficou vazio por bug, tenta .bak e backups/ antes de responder. */
+/** Se board.json estiver ausente ou ilegível, tenta .bak e backups/. Quadro vazio válido não ressuscita pedidos. */
 export async function readBoardWithRecovery(DATA_FILE) {
-  let data = await readExistingBoard(DATA_FILE)
-  if (countBoardCards(data) > 0) return data
+  let data = null
+  try {
+    data = await readExistingBoard(DATA_FILE)
+  } catch {
+    data = null
+  }
+  if (data !== null) return data
 
   const bak = await readExistingBoard(`${DATA_FILE}.bak`)
   if (countBoardCards(bak) > 0) {
