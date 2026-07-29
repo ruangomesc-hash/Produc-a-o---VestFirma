@@ -11,7 +11,7 @@ export function handleHealthApi(req, res, corsHeaders) {
     return
   }
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405, corsHeaders())
     res.end('Method Not Allowed')
     return
@@ -27,6 +27,10 @@ export function handleHealthApi(req, res, corsHeaders) {
   )
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+  if (req.method === 'HEAD') {
+    res.end()
+    return
+  }
   res.end(
     JSON.stringify({
       ok: true,

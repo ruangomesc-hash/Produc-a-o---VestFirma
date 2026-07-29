@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ManagedUser } from '../userRoles'
 import { USER_ROLE_LABELS, canPlaceOrders } from '../userRoles'
 import type { VendedorContatoPatch } from '../vendedorUserSync'
@@ -24,6 +24,30 @@ type Props = {
     patch: { whatsapp?: string; grupoWhatsapp?: string },
   ) => void
   onEnsureVendedor?: (user: ManagedUser, contato?: VendedorContatoPatch) => void
+  /** Lista já carregada no app — evita tela vazia e fetch duplicado ao abrir. */
+  seedUsers?: ManagedUser[]
+}
+
+const USERS_LOAD_TIMEOUT_MS = 45_000
+
+async function fetchUsersWithTimeout(): Promise<ManagedUser[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      fetchUsers(),
+      new Promise<ManagedUser[]>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new Error(
+              'Demorou demais para carregar usuários. O servidor pode estar acordando — aguarde ~1 minuto e clique em Atualizar.',
+            ),
+          )
+        }, USERS_LOAD_TIMEOUT_MS)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -48,29 +72,36 @@ export function UsuariosModal({
   onUserDeleted,
   onUpdateVendedorContato,
   onEnsureVendedor,
+  seedUsers,
 }: Props) {
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [showPasswords, setShowPasswords] = useState(false)
+  const onUsersLoadedRef = useRef(onUsersLoaded)
+  onUsersLoadedRef.current = onUsersLoaded
+  const seedUsersRef = useRef(seedUsers)
+  seedUsersRef.current = seedUsers
 
   const reload = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const list = await fetchUsers()
+      const list = await fetchUsersWithTimeout()
       setUsers(list)
-      onUsersLoaded?.(list)
+      onUsersLoadedRef.current?.(list)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar')
     } finally {
       setLoading(false)
     }
-  }, [onUsersLoaded])
+  }, [])
 
   useEffect(() => {
     if (!open) return
+    const seed = seedUsersRef.current
+    if (seed?.length) setUsers(seed)
     void reload()
   }, [open, reload])
 
@@ -121,13 +152,27 @@ export function UsuariosModal({
                 onSuccessAlert={setAlertMessage}
               />
 
-              {error && <p className="usuarios-error">{error}</p>}
+              {error && (
+                <p className="usuarios-error" role="alert">
+                  {error}
+                </p>
+              )}
 
-              {loading ? (
-                <p className="usuarios-loading">Carregando…</p>
-              ) : (
+              {loading && users.length === 0 ? (
+                <p className="usuarios-loading">Carregando usuários…</p>
+              ) : null}
+
+              {users.length > 0 || !loading ? (
                 <div className="usuarios-table-wrap">
                   <div className="usuarios-table-toolbar">
+                    <button
+                      type="button"
+                      className="btn ghost btn-xs"
+                      onClick={() => void reload()}
+                      disabled={loading}
+                    >
+                      {loading ? 'Atualizando…' : 'Atualizar lista'}
+                    </button>
                     <button
                       type="button"
                       className="btn ghost btn-xs"
@@ -166,8 +211,13 @@ export function UsuariosModal({
                       ))}
                     </tbody>
                   </table>
+                  {users.length === 0 && !loading ? (
+                    <p className="usuarios-muted usuarios-empty-hint">
+                      Nenhum usuário na lista. Cadastre acima ou clique em Atualizar lista.
+                    </p>
+                  ) : null}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

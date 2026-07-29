@@ -11,7 +11,14 @@ import type { ManagedUser } from './userRoles'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
 import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
-import { findVendedorIdForSession, boardVisivelParaSession, vendedorPodeAcessarPedido, vendedoresParaAtribuirPedido, vendedoresSelectFromUsers } from './vendedorUserSync'
+import {
+  findVendedorIdForSession,
+  boardVisivelParaSession,
+  vendedorPodeAcessarPedido,
+  vendedoresParaAtribuirPedido,
+  vendedoresSelectFromUsers,
+  type VendedorContatoPatch,
+} from './vendedorUserSync'
 import { autorComentarioFromSession } from './pedidoComentarios'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
@@ -176,10 +183,22 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       .catch(() => {})
   }, [session, syncVendedoresFromManagedUsers])
 
-  useEffect(() => {
-    if (!usuariosOpen || !isAdmin(session)) return
-    void refreshManagedUsers()
-  }, [usuariosOpen, session, refreshManagedUsers])
+  const handleUsersLoaded = useCallback(
+    (users: ManagedUser[]) => {
+      setManagedUsers(users)
+      setManagedUsersReady(true)
+      syncVendedoresFromManagedUsers(users)
+    },
+    [syncVendedoresFromManagedUsers],
+  )
+
+  const handleUserCreated = useCallback(
+    (user: ManagedUser, contato?: VendedorContatoPatch) => {
+      upsertVendedorFromManagedUser(user, contato)
+      void refreshManagedUsers()
+    },
+    [upsertVendedorFromManagedUser, refreshManagedUsers],
+  )
 
   useEffect(() => {
     if (!ready || !session || !canPlaceOrders(session.role)) return
@@ -628,14 +647,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         open={usuariosOpen}
         onClose={() => setUsuariosOpen(false)}
         vendedores={board.vendedores}
-        onUsersLoaded={(users) => {
-          setManagedUsers(users)
-          syncVendedoresFromManagedUsers(users)
-        }}
-        onUserCreated={(user, contato) => {
-          upsertVendedorFromManagedUser(user, contato)
-          void refreshManagedUsers()
-        }}
+        seedUsers={managedUsers}
+        onUsersLoaded={handleUsersLoaded}
+        onUserCreated={handleUserCreated}
         onEnsureVendedor={upsertVendedorFromManagedUser}
         onUpdateVendedorContato={updateVendedorContato}
         onUserDeleted={(user) => removeVendedorForManagedUser(user.id)}
