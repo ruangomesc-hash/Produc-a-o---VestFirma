@@ -16,7 +16,8 @@ return [
     'users_file' => __DIR__ . '/../data/users.json',
     'seed_admin_email' => 'ruan.gomesc@gmail.com',
     'seed_admin_name' => 'Administrador',
-    // 'seed_admin_password' => 'defina-só-na-primeira-instalação-se-quiser',
+    /** Defina antes do 1º login se data/users.json ainda não existir: */
+    'seed_admin_password' => 'ESCOLHA-UMA-SENHA-FORTE-AQUI',
     /** URL do n8n / WhatsApp Business — recebe POST JSON do kanban */
     'whatsapp_webhook_url' => '',
 ];

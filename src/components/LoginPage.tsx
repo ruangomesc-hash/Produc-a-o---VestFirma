@@ -34,7 +34,10 @@ export function LoginPage({ onSuccess }: Props) {
           className="login-logo"
         />
         <h1 className="login-title">Produção VestFirma</h1>
-        <p className="login-subtitle">Entre para acessar o kanban e o painel.</p>
+        <p className="login-subtitle">
+          Entre para acessar o kanban e o painel. Novos acessos só o administrador cria (botão
+          Usuários).
+        </p>
 
         <form className="login-form" onSubmit={submit}>
           <label className="login-field">
