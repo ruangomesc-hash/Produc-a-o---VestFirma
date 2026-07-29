@@ -4,6 +4,7 @@ import { colunaParaNovoPedido } from '../defaultBoard'
 import { useBoard } from '../hooks/useBoard'
 import { iniciarSinoVenda, prepararAudioVenda, pararSinoVenda } from '../vendaSino'
 import type { CardFormData } from '../types'
+import type { SaveBoardResult } from '../storage'
 import type { SessionProfile } from '../userRoles'
 import { findVendedorIdForSession } from '../vendedorUserSync'
 import { canPlaceOrders } from '../userRoles'
@@ -20,6 +21,7 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
   const [modalOpen, setModalOpen] = useState(true)
   const [modalSession, setModalSession] = useState(0)
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const columnId = useMemo(
     () => (ready ? colunaParaNovoPedido(board) : null),
@@ -58,9 +60,17 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
   }, [])
 
   const enviarPedido = useCallback(
-    (data: CardFormData) => {
+    async (data: CardFormData) => {
       if (!columnId) return
-      addCard(columnId, data)
+      setSaveError(null)
+      const result: SaveBoardResult = await addCard(columnId, data)
+      if (!result.ok) {
+        setSaveError(
+          result.error ||
+            'Não foi possível gravar no servidor. O pedido ficou neste aparelho — tente de novo ou avise o administrador.',
+        )
+        return
+      }
       setModalOpen(false)
       setModalSession((n) => n + 1)
       prepararAudioVenda()
@@ -135,6 +145,11 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
       </header>
 
       <main className="portal-pedido-main">
+        {saveError ? (
+          <p className="portal-pedido-error" role="alert">
+            {saveError}
+          </p>
+        ) : null}
         {!pedidoEnviado && !modalOpen ? (
           <div className="portal-pedido-hint">
             <p>Formulário fechado.</p>

@@ -20,7 +20,7 @@ import type { BoardState } from '../types'
 type Props = {
   board: BoardState
   onBoardRestored?: () => void
-  onRestoreFromSnapshot?: () => void
+  onRestoreFromSnapshot?: () => Promise<unknown>
   onClearLocalSnapshot?: () => void
 }
 
@@ -234,11 +234,23 @@ export function PedidosCheckupPanel({
               <button
                 type="button"
                 className="btn primary small"
+                disabled={restoreBusy}
                 onClick={() => {
-                  onRestoreFromSnapshot()
-                  setSnapshotRev((n) => n + 1)
-                  onBoardRestored?.()
-                  void refreshRemote()
+                  setRestoreBusy(true)
+                  setRestoreMessage(null)
+                  void onRestoreFromSnapshot()
+                    .then(() => {
+                      setSnapshotRev((n) => n + 1)
+                      onBoardRestored?.()
+                      void refreshRemote()
+                      setRestoreMessage('Pedidos do snapshot gravados no servidor.')
+                    })
+                    .catch((err: unknown) => {
+                      setBackupsError(
+                        err instanceof Error ? err.message : 'Falha ao gravar snapshot no servidor',
+                      )
+                    })
+                    .finally(() => setRestoreBusy(false))
                 }}
               >
                 Gravar estes pedidos no servidor

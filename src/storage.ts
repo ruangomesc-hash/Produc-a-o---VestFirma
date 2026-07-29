@@ -10,7 +10,8 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
-import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly, mergeBoardRemotePrimary } from './pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
+import { mergeBoardLoggedInFromServer, boardTemPedidosAlemDoServidor } from './boardLoadMerge'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
@@ -271,7 +272,10 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       let richerLocal: BoardState | undefined
 
       if (loggedIn && remoteCount > 0) {
-        board = mergeBoardRemotePrimary(remote, local)
+        board = mergeBoardLoggedInFromServer(remote, local)
+        if (boardTemPedidosAlemDoServidor(board, remote)) {
+          richerLocal = board
+        }
       } else if (loggedIn && remoteCount === 0) {
         board =
           mergeBoardsMaxPedidos(snapshot, local, remote) ??
@@ -300,7 +304,20 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       await saveBoardToIdb(board)
       snapshotBoardPedidos(board)
 
-      if (richerLocal && !protectedServer && !loggedIn && boardHasPedidos(board)) {
+      const shouldPushMissingToServer =
+        loggedIn &&
+        !protectedServer &&
+        boardHasPedidos(board) &&
+        (richerLocal != null || boardTemPedidosAlemDoServidor(board, remote))
+
+      if (shouldPushMissingToServer) {
+        try {
+          await saveRemoteBoard(board)
+          richerLocal = undefined
+        } catch {
+          /* banner / checkup / nova tentativa */
+        }
+      } else if (richerLocal && !protectedServer && !loggedIn && boardHasPedidos(board)) {
         try {
           await saveRemoteBoard(board)
           richerLocal = undefined

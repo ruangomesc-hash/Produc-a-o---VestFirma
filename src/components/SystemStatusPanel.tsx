@@ -13,7 +13,7 @@ type Props = {
     cardId: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>
   onBoardRestored?: () => void
-  onRestoreFromSnapshot?: () => void
+  onRestoreFromSnapshot?: () => Promise<unknown>
   onClearLocalSnapshot?: () => void
 }
 

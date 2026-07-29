@@ -8,8 +8,9 @@ import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
-import { loadBoard, normalizeBoard, saveBoard } from '../storage'
-import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardRemotePrimary } from '../pedidosPolicy'
+import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
+import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
+import { mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
   snapshotBoardPedidos,
   loadBoardPedidosSnapshot,
@@ -398,8 +399,16 @@ export function useBoard() {
   )
 
   const addCard = useCallback(
-    (columnId: string, data: CardFormData) => {
-      const payload = cardFormDataParaVendedorLogado(board, data)
+    async (columnId: string, data: CardFormData): Promise<SaveBoardResult> => {
+      const actor = getAuditActor()
+      let current = boardRef.current
+      if (actor && canPlaceOrders(actor.role)) {
+        current = boardAposSyncVendedoresCompleto(current, [
+          managedUserFromSession(actor as SessionProfile),
+        ])
+        setBoard(current)
+      }
+      const payload = cardFormDataParaVendedorLogado(current, data)
       const now = new Date().toISOString()
       const card: OrderCard = {
         ...payload,
@@ -407,18 +416,35 @@ export function useBoard() {
         columnId,
         etapaDesde: now,
         createdAt: now,
-        historicoEtapa: registrarCriacaoPedido(board, columnId, now),
+        historicoEtapa: registrarCriacaoPedido(current, columnId, now),
         comentarios: [],
       }
-      persist({ ...board, cards: [...board.cards, card] }, { immediate: true })
-      notificarSePedidoCriado(card, { ...board, cards: [...board.cards, card] })
-      recordAudit({
-        action: 'pedido.criado',
-        summary: `Novo pedido ${card.numeroPedido} — ${card.cliente}`,
-        meta: { cardId: card.id, columnId },
+      const next = mergeBoardPreservingPedidos(current, {
+        ...current,
+        cards: [...current.cards, card],
       })
+      setBoard(next)
+      setSync((s) => ({ ...s, status: 'saving' }))
+      const result = await saveBoard(next)
+      if (result.ok) {
+        snapshotBoardPedidos(next)
+        setSync({ remote: result.remote, status: 'saved' })
+        notificarSePedidoCriado(card, next)
+        recordAudit({
+          action: 'pedido.criado',
+          summary: `Novo pedido ${card.numeroPedido} — ${card.cliente}`,
+          meta: { cardId: card.id, columnId },
+        })
+      } else {
+        setSync({
+          remote: result.remote,
+          status: 'error',
+          message: result.error,
+        })
+      }
+      return result
     },
-    [board, persist],
+    [],
   )
 
   const updateCard = useCallback(
@@ -608,26 +634,35 @@ export function useBoard() {
     })
   }, [localRestore, board.vendedores, persist])
 
-  const restoreFromPedidosSnapshot = useCallback(() => {
+  const restoreFromPedidosSnapshot = useCallback(async (): Promise<SaveBoardResult | { ok: false; error: string }> => {
     const snapRaw = loadBoardPedidosSnapshot()
-    if (!snapRaw) return
+    if (!snapRaw) return { ok: false, error: 'Nenhum backup no navegador.' }
     const snap = normalizeBoard(snapRaw)
-    if (contagemPedidos(snap) === 0) return
+    if (contagemPedidos(snap) === 0) return { ok: false, error: 'Backup vazio.' }
     const merged = mergeBoardPreservingPedidos(boardRef.current, snap)
     setLocalRestore(null)
-    persist(merged, { forceRemote: true })
-    recordAudit({
-      action: 'quadro.restaurado',
-      summary: `Restaurou ${merged.cards.length} pedido(s) do backup do navegador`,
-    })
-  }, [persist])
+    setBoard(merged)
+    setSync((s) => ({ ...s, status: 'saving' }))
+    const result = await saveBoard(merged, { forceRemote: true })
+    if (result.ok) {
+      snapshotBoardPedidos(merged)
+      setSync({ remote: result.remote, status: 'saved' })
+      recordAudit({
+        action: 'quadro.restaurado',
+        summary: `Restaurou pedidos do backup do navegador para o servidor (${merged.cards.length} no quadro)`,
+      })
+    } else {
+      setSync({ remote: result.remote, status: 'error', message: result.error })
+    }
+    return result
+  }, [])
 
   const dismissLocalRestore = useCallback(() => setLocalRestore(null), [])
 
   const refreshBoardFromServer = useCallback(async () => {
     try {
       const result = await loadBoard()
-      const merged = mergeBoardRemotePrimary(result.board, boardRef.current)
+      const merged = mergeBoardLoggedInFromServer(result.board, boardRef.current)
       const unified = relinkOrphanVendedorIdsConservative(
         unifyVendedorRowsAndRelinkCards(merged),
       )
