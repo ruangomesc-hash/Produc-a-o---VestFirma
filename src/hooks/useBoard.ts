@@ -15,9 +15,11 @@ import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
 import {
   findVendedorForManagedUser,
+  findVendedorIdForSession,
   managedUserToVendedor,
   managedUserFromSession,
   mergeVendedoresFromManagedUsers,
+  vendedorPodeAcessarPedido,
 } from '../vendedorUserSync'
 
 export type BoardSyncState = {
@@ -28,6 +30,20 @@ export type BoardSyncState = {
 
 function newId() {
   return crypto.randomUUID()
+}
+
+function cardFormDataParaVendedorLogado(board: BoardState, data: CardFormData): CardFormData {
+  const actor = getAuditActor()
+  if (actor?.role !== 'vendedor') return data
+  const vendedorId = findVendedorIdForSession(board, actor)
+  if (!vendedorId) return data
+  return { ...data, vendedorId }
+}
+
+function vendedorLogadoPodeCard(board: BoardState, card: OrderCard | undefined): boolean {
+  const actor = getAuditActor()
+  if (!card) return false
+  return vendedorPodeAcessarPedido(board, actor, card)
 }
 
 const PRE_DEMO_STORAGE_KEY = 'vestfirma-pre-demo-board'
@@ -323,9 +339,10 @@ export function useBoard() {
 
   const addCard = useCallback(
     (columnId: string, data: CardFormData) => {
+      const payload = cardFormDataParaVendedorLogado(board, data)
       const now = new Date().toISOString()
       const card: OrderCard = {
-        ...data,
+        ...payload,
         id: newId(),
         columnId,
         etapaDesde: now,
@@ -347,15 +364,17 @@ export function useBoard() {
   const updateCard = useCallback(
     (cardId: string, data: CardFormData) => {
       const prev = board.cards.find((c) => c.id === cardId)
+      if (!vendedorLogadoPodeCard(board, prev)) return
+      const payload = cardFormDataParaVendedorLogado(board, data)
       persist({
         ...board,
         cards: board.cards.map((c) =>
-          c.id === cardId ? { ...c, ...data } : c,
+          c.id === cardId ? { ...c, ...payload } : c,
         ),
       })
       recordAudit({
         action: 'pedido.editado',
-        summary: `Editou pedido ${data.numeroPedido || prev?.numeroPedido} — ${data.cliente || prev?.cliente}`,
+        summary: `Editou pedido ${payload.numeroPedido || prev?.numeroPedido} — ${payload.cliente || prev?.cliente}`,
         meta: { cardId },
       })
     },
@@ -366,6 +385,8 @@ export function useBoard() {
     (cardId: string, texto: string, autor: ComentarioAutor) => {
       const trimmed = texto.trim()
       if (!trimmed) return
+      const alvo = board.cards.find((c) => c.id === cardId)
+      if (!vendedorLogadoPodeCard(board, alvo)) return
       const entry = criarComentarioPedido(trimmed, autor)
       persist({
         ...board,
@@ -411,6 +432,7 @@ export function useBoard() {
     (cardId: string, columnId: string) => {
       const existing = board.cards.find((c) => c.id === cardId)
       if (!existing || existing.columnId === columnId) return
+      if (!vendedorLogadoPodeCard(board, existing)) return
 
       const fromColumnId = existing.columnId
       const now = new Date().toISOString()

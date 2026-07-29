@@ -2014,6 +2014,17 @@ textarea {
   color: var(--danger);
 }
 
+.vendedor-locked-field {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  cursor: default;
+}
+
 .vendedor-empty-field {
   display: flex;
   flex-direction: column;

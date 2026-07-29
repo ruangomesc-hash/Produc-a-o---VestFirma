@@ -50,10 +50,10 @@ function buildForm(
     logoProntaImpressao: null,
     localLogo: null,
   }
-  if (vendedores.length === 1) {
-    base.vendedorId = vendedores[0].id
-  } else if (preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)) {
+  if (preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)) {
     base.vendedorId = preferredVendedorId
+  } else if (vendedores.length === 1) {
+    base.vendedorId = vendedores[0].id
   }
   return base
 }
@@ -72,6 +72,8 @@ type Props = {
   allowVendedorCadastro?: boolean
   /** Portal do vendedor: pré-seleciona o vendedor ligado ao login */
   preferredVendedorId?: string | null
+  /** Vendedor logado: campo fixo no nome dele (sem lista) */
+  lockVendedorToSession?: boolean
   /** Portal: dispara o sino no clique de enviar (antes de gravar). */
   onVendaCelebrar?: () => void
   comentarios?: PedidoComentario[]
@@ -92,6 +94,7 @@ export function CardModal({
   onAddSegmento,
   allowVendedorCadastro = true,
   preferredVendedorId = null,
+  lockVendedorToSession = false,
   onVendaCelebrar,
   comentarios = [],
   onAddComentario,
@@ -126,6 +129,19 @@ export function CardModal({
   }, [open, session, mode, initial, vendedores, preferredVendedorId])
 
   useEffect(() => {
+    if (!open || mode !== 'create') return
+    if (!lockVendedorToSession && !preferredVendedorId) return
+    const id =
+      preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)
+        ? preferredVendedorId
+        : lockVendedorToSession && vendedores.length === 1
+          ? vendedores[0].id
+          : null
+    if (!id) return
+    setForm((f) => (f.vendedorId === id ? f : { ...f, vendedorId: id }))
+  }, [open, mode, lockVendedorToSession, preferredVendedorId, vendedores])
+
+  useEffect(() => {
     if (open && mode === 'create' && onVendaCelebrar) prepararAudioVenda()
   }, [open, mode, onVendaCelebrar])
 
@@ -151,7 +167,13 @@ export function CardModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.cliente.trim() || !form.numeroPedido.trim()) return
-    if (vendedores.length > 0 && !form.vendedorId) {
+    const vendedorIdEfetivo =
+      lockVendedorToSession && preferredVendedorId
+        ? preferredVendedorId
+        : lockVendedorToSession && form.vendedorId
+          ? form.vendedorId
+          : form.vendedorId
+    if (vendedores.length > 0 && !vendedorIdEfetivo) {
       showAlert(
         allowVendedorCadastro
           ? 'Selecione um vendedor ou cadastre um em Vendedores.'
@@ -185,11 +207,21 @@ export function CardModal({
     if (mode === 'create') onVendaCelebrar?.()
     onSubmit({
       ...form,
+      vendedorId: vendedorIdEfetivo,
       whatsappCliente: formatTelefoneBr(form.whatsappCliente),
       quantidade: parseQuantidade(),
     })
     onClose()
   }
+
+  const vendedorLockedNome =
+    lockVendedorToSession && form.vendedorId
+      ? (vendedores.find((v) => v.id === form.vendedorId)?.nome ??
+        comentarioAutorNome ??
+        'Vendedor')
+      : lockVendedorToSession
+        ? (comentarioAutorNome ?? 'Vendedor')
+        : null
 
   if (!open && !alert) return null
 
@@ -279,8 +311,18 @@ export function CardModal({
             </div>
 
             <div className="field">
-              <span>Vendedor{vendedores.length > 0 ? ' *' : ''}</span>
-              {vendedores.length === 0 ? (
+              <span>Vendedor{vendedores.length > 0 && !lockVendedorToSession ? ' *' : ''}</span>
+              {lockVendedorToSession ? (
+                <>
+                  <input
+                    className="vendedor-locked-field"
+                    readOnly
+                    value={vendedorLockedNome ?? 'Carregando…'}
+                    aria-readonly="true"
+                  />
+                  <p className="field-hint">Vinculado ao seu login — o pedido fica no seu nome.</p>
+                </>
+              ) : vendedores.length === 0 ? (
                 <div className="vendedor-empty-field">
                   <select disabled>
                     <option>Nenhum cadastrado</option>

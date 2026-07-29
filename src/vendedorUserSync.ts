@@ -1,4 +1,4 @@
-import type { BoardState, Vendedor } from './types'
+import type { BoardState, OrderCard, Vendedor } from './types'
 import type { ManagedUser, SessionProfile } from './userRoles'
 import { canPlaceOrders } from './userRoles'
 
@@ -62,16 +62,46 @@ export function mergeVendedoresFromManagedUsers(
 
 export function findVendedorIdForSession(
   board: BoardState,
-  session: { email?: string; user?: string } | null,
+  session: SessionProfile | null,
 ): string | null {
-  if (!session?.email) return null
-  const email = session.email.trim().toLowerCase()
-  const byLink = board.vendedores.find((v) => v.email?.trim().toLowerCase() === email)
-  if (byLink) return byLink.id
+  if (!session) return null
+  const linked = findVendedorForManagedUser(board, managedUserFromSession(session))
+  if (linked) return linked.id
+
+  const email = session.email?.trim().toLowerCase()
+  if (email) {
+    const byLink = board.vendedores.find((v) => v.email?.trim().toLowerCase() === email)
+    if (byLink) return byLink.id
+  }
   const name = session.user?.trim().toLowerCase()
   if (!name) return null
   const byName = board.vendedores.find((v) => v.nome.trim().toLowerCase() === name)
   return byName?.id ?? null
+}
+
+/** Vendedor logado só enxerga pedidos vinculados a ele; demais perfis veem o quadro inteiro. */
+export function boardVisivelParaSession(
+  board: BoardState,
+  session: SessionProfile | null,
+): BoardState {
+  if (!session || session.role !== 'vendedor') return board
+  const vendedorId = findVendedorIdForSession(board, session)
+  if (!vendedorId) return { ...board, cards: [] }
+  return {
+    ...board,
+    cards: board.cards.filter((c) => c.vendedorId === vendedorId),
+  }
+}
+
+export function vendedorPodeAcessarPedido(
+  board: BoardState,
+  session: SessionProfile | null,
+  card: Pick<OrderCard, 'vendedorId'>,
+): boolean {
+  if (!session || session.role !== 'vendedor') return true
+  const vendedorId = findVendedorIdForSession(board, session)
+  if (!vendedorId) return false
+  return card.vendedorId === vendedorId
 }
 
 /** Garante linha no quadro para admin/vendedor logado (ex.: admin seed só no JWT). */

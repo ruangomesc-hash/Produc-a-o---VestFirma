@@ -1,5 +1,5 @@
 {
   "requireLogin": true,
   "apiBase": "/api",
-  "version": "2026-07-29-historico-admin"
+  "version": "2026-07-29-vendedor-seus-pedidos"
 }

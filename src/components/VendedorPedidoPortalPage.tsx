@@ -6,6 +6,7 @@ import { iniciarSinoVenda, prepararAudioVenda, pararSinoVenda } from '../vendaSi
 import type { CardFormData } from '../types'
 import type { SessionProfile } from '../userRoles'
 import { findVendedorIdForSession } from '../vendedorUserSync'
+import { canPlaceOrders } from '../userRoles'
 import { CardModal } from './CardModal'
 import { PortalVendaCelebracao } from './PortalVendaCelebracao'
 
@@ -15,7 +16,7 @@ type Props = {
 }
 
 export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
-  const { board, ready, addCard, addSegmento, sync } = useBoard()
+  const { board, ready, addCard, addSegmento, sync, upsertVendedorFromSession } = useBoard()
   const [modalOpen, setModalOpen] = useState(true)
   const [modalSession, setModalSession] = useState(0)
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
@@ -29,6 +30,11 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
     () => (ready ? findVendedorIdForSession(board, session) : null),
     [ready, board, session],
   )
+
+  useEffect(() => {
+    if (!ready || !session || !canPlaceOrders(session.role)) return
+    upsertVendedorFromSession(session)
+  }, [ready, session, upsertVendedorFromSession])
 
   const userLabel = session?.user ?? null
 
@@ -150,6 +156,8 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
         segmentos={board.segmentos ?? []}
         allowVendedorCadastro={false}
         preferredVendedorId={preferredVendedorId}
+        lockVendedorToSession
+        comentarioAutorNome={session?.user}
         onClose={() => setModalOpen(false)}
         onOpenVendedores={() => {}}
         onAddSegmento={addSegmento}

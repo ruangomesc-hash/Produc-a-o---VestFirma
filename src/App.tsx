@@ -10,7 +10,11 @@ import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
 import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
-import { findVendedorIdForSession } from './vendedorUserSync'
+import {
+  findVendedorIdForSession,
+  boardVisivelParaSession,
+  vendedorPodeAcessarPedido,
+} from './vendedorUserSync'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
@@ -171,12 +175,18 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   useEffect(() => {
     if (!ready || !session || !canPlaceOrders(session.role)) return
     if (sync.remote && sync.status === 'error') return
-    if (sync.remote && sync.status !== 'saved') return
     upsertVendedorFromSession(session)
   }, [ready, session, sync.remote, sync.status, upsertVendedorFromSession])
 
   const preferredVendedorId = useMemo(
     () => (session ? findVendedorIdForSession(board, session) : null),
+    [board, session],
+  )
+
+  const lockVendedorToSession = session?.role === 'vendedor'
+
+  const boardForSession = useMemo(
+    () => boardVisivelParaSession(board, session),
     [board, session],
   )
 
@@ -188,6 +198,18 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     if (!editingCard) return undefined
     return board.cards.find((c) => c.id === editingCard.id) ?? editingCard
   }, [board.cards, editingCard])
+
+  const openEdit = useCallback(
+    (card: OrderCard) => {
+      if (!vendedorPodeAcessarPedido(board, session, card)) return
+      setEditingCard(card)
+      setModalMode('edit')
+      setActiveColumnId(card.columnId)
+      setModalSession((n) => n + 1)
+      setModalOpen(true)
+    },
+    [board, session],
+  )
 
   const [view, setView] = useState<'kanban' | 'visao' | 'status' | 'vendedores' | 'historico'>(() => {
     const hash = window.location.hash.replace(/^#/, '')
@@ -255,14 +277,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     setModalMode('create')
     setActiveColumnId(columnId)
     setEditingCard(undefined)
-    setModalOpen(true)
-  }
-
-  const openEdit = (card: OrderCard) => {
-    setModalSession((n) => n + 1)
-    setModalMode('edit')
-    setEditingCard(card)
-    setActiveColumnId(card.columnId)
     setModalOpen(true)
   }
 
@@ -442,7 +456,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             </div>
           ) : null}
         <KanbanBoard
-          board={board}
+          board={boardForSession}
           dragEnabled={!modalOpen && !vendedoresOpen && !whatsappNotifyOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}
@@ -456,11 +470,11 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         </div>
       ) : view === 'visao' ? (
         <div id="panel-visao" className="app-panel" role="tabpanel" aria-labelledby="tab-visao-geral">
-          <VisaoGeralPanel board={board} tvMode={visaoTvMode} onExitTv={sairModoTv} />
+          <VisaoGeralPanel board={boardForSession} tvMode={visaoTvMode} onExitTv={sairModoTv} />
         </div>
       ) : view === 'vendedores' ? (
         <div id="panel-vendedores" className="app-panel" role="tabpanel" aria-labelledby="tab-vendedores">
-          <VendedoresOverviewPanel board={board} />
+          <VendedoresOverviewPanel board={boardForSession} />
         </div>
       ) : view === 'historico' ? (
         <div id="panel-historico" className="app-panel" role="tabpanel" aria-labelledby="tab-historico">
@@ -468,7 +482,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         </div>
       ) : (
         <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">
-          <SystemStatusPanel board={board} />
+          <SystemStatusPanel board={boardForSession} />
         </div>
       )}
 
@@ -481,6 +495,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         vendedores={board.vendedores}
         segmentos={board.segmentos ?? []}
         preferredVendedorId={preferredVendedorId}
+        lockVendedorToSession={lockVendedorToSession}
         comentarios={editingCardLive?.comentarios ?? []}
         comentarioAutorNome={session?.user ?? 'Equipe'}
         onAddComentario={

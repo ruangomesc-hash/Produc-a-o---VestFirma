@@ -8,7 +8,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState, OrderCard } from '../types'
 import { KanbanColumn } from './KanbanColumn'
@@ -41,6 +41,10 @@ export function KanbanBoard({
   const [activeCard, setActiveCard] = useState<OrderCard | null>(null)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [showAddColumn, setShowAddColumn] = useState(false)
+
+  useEffect(() => {
+    if (!canManageColumns) setShowAddColumn(false)
+  }, [canManageColumns])
 
   const sensors = useSensors(
     useSensor(TouchSensor, {
@@ -92,6 +96,7 @@ export function KanbanBoard({
 
   const submitColumn = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canManageColumns) return
     if (!newColumnTitle.trim()) return
     onAddColumn(newColumnTitle)
     setNewColumnTitle('')
