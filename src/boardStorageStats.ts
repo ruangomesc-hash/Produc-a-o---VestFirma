@@ -32,7 +32,11 @@ function logoBytesOnCard(card: OrderCard): { bytes: number; count: number } {
   let count = 0
   for (const field of [card.logoEnviadaCliente, card.logoProntaImpressao] as const) {
     if (field && field.length > 0) {
-      bytes += utf8ByteLength(field)
+      if (field.startsWith('/api/logos/')) {
+        bytes += 48
+      } else {
+        bytes += utf8ByteLength(field)
+      }
       count += 1
     }
   }

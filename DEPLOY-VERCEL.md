@@ -26,6 +26,8 @@ Use **Production**. Depois: **Redeploy** (obrigatório).
 
 **Blob** é opcional para **login** (sessão JWT + senha no env). Blob (ou equivalente) ainda é recomendado para **quadro** e **lista de usuários** persistirem.
 
+> **1000+ pedidos com logos:** a Vercel serverless limita o save a ~**4,5 MB** (quadro inteiro no body). Use **Render + Node** (`DEPLOY-RENDER.md`) — logos vão para disco e o JSON fica leve.
+
 ## Entrar
 
 - E-mail: `ruan.gomesc@gmail.com`

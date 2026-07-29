@@ -17,6 +17,8 @@ export function handleHealthApi(req, res, corsHeaders) {
   const requireLogin = process.env.REQUIRE_LOGIN === 'true'
   const webhook = Boolean(process.env.WHATSAPP_WEBHOOK_URL?.trim())
   const dataFile = process.env.BOARD_DATA_FILE || 'data/board.json'
+  const maxBodyMb = Number(process.env.MAX_BODY_MB || 80)
+  const logosExternal = process.env.EXTERNALIZE_BOARD_LOGOS !== '0'
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
   res.end(
@@ -24,6 +26,10 @@ export function handleHealthApi(req, res, corsHeaders) {
       ok: true,
       service: 'vestfirma-kanban',
       requireLogin,
+      sessionMode: 'node',
+      storage: 'filesystem',
+      logosExternal,
+      maxSaveBodyMb: maxBodyMb,
       whatsappWebhookConfigured: webhook,
       boardDataConfigured: Boolean(dataFile),
       timestamp: new Date().toISOString(),

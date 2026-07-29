@@ -19,16 +19,19 @@ import {
 import { handleNotifyApi } from './notify.mjs'
 import { handleHealthApi } from './health.mjs'
 import { handleUsersApi } from './users.mjs'
+import { externalizeBoardLogos, logoMime, resolveLogoFile } from './boardLogos.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 const DIST = path.join(ROOT, 'dist')
 const DATA_FILE = process.env.BOARD_DATA_FILE || path.join(ROOT, 'data', 'board.json')
+const LOGO_DIR =
+  process.env.BOARD_LOGO_DIR || path.join(path.dirname(DATA_FILE), 'logos')
 const REQUIRE_LOGIN = process.env.REQUIRE_LOGIN === 'true'
 const PORT = Number(process.env.PORT || 4199)
-const HOST = process.env.HOST || '127.0.0.1'
+const HOST = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1')
 
-const MAX_BODY = 80 * 1024 * 1024
+const MAX_BODY = Number(process.env.MAX_BODY_MB || 80) * 1024 * 1024
 
 async function readBody(req) {
   const chunks = []
@@ -73,10 +76,14 @@ async function handleBoardApi(req, res) {
 
   if (req.method === 'PUT' || req.method === 'POST') {
     const body = await readBody(req)
-    JSON.parse(body)
+    let board = JSON.parse(body)
+    if (process.env.EXTERNALIZE_BOARD_LOGOS !== '0') {
+      board = await externalizeBoardLogos(board, LOGO_DIR)
+    }
+    const out = JSON.stringify(board)
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     const tmp = `${DATA_FILE}.tmp`
-    await fs.writeFile(tmp, body, 'utf8')
+    await fs.writeFile(tmp, out, 'utf8')
     await fs.rename(tmp, DATA_FILE)
     res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ ok: true, savedAt: new Date().toISOString() }))
@@ -85,6 +92,41 @@ async function handleBoardApi(req, res) {
 
   res.writeHead(405, corsHeaders())
   res.end('Method Not Allowed')
+}
+
+async function handleLogoApi(req, res, url) {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, corsHeaders())
+    res.end()
+    return
+  }
+  if (req.method !== 'GET') {
+    res.writeHead(405, corsHeaders())
+    res.end('Method Not Allowed')
+    return
+  }
+
+  const m = url.pathname.match(/^\/api\/logos\/([a-zA-Z0-9-]+)\/(enviada|impressao)\/?$/i)
+  if (!m) {
+    res.writeHead(404, corsHeaders())
+    res.end('Not Found')
+    return
+  }
+
+  const resolved = await resolveLogoFile(LOGO_DIR, m[1], m[2].toLowerCase())
+  if (!resolved) {
+    res.writeHead(404, corsHeaders())
+    res.end('Not Found')
+    return
+  }
+
+  const data = await fs.readFile(resolved.full)
+  res.writeHead(200, {
+    ...corsHeaders(),
+    'Content-Type': logoMime[resolved.ext] || 'image/jpeg',
+    'Cache-Control': 'private, max-age=86400',
+  })
+  res.end(data)
 }
 
 const MIME = {
@@ -173,6 +215,11 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    if (url.pathname.startsWith('/api/logos/')) {
+      await handleLogoApi(req, res, url)
+      return
+    }
+
     if (url.pathname === '/api/notify' || url.pathname === '/api/notify.php') {
       await handleNotifyApi(req, res, readBody, corsHeaders)
       return
@@ -215,4 +262,5 @@ server.listen(PORT, HOST, () => {
     console.log(`VestFirma Kanban — http://${HOST}:${PORT}`)
   }
   console.log(`Quadro salvo em: ${DATA_FILE}`)
+  console.log(`Logos em: ${LOGO_DIR} (externalize ativo)`)
 })
