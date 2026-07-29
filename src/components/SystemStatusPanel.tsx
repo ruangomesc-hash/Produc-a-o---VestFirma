@@ -13,6 +13,8 @@ type Props = {
     cardId: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>
   onBoardRestored?: () => void
+  onRestoreFromSnapshot?: () => void
+  onClearLocalSnapshot?: () => void
 }
 
 function statusLabel(status: HealthCheck['status']) {
@@ -34,6 +36,8 @@ export function SystemStatusPanel({
   onRestoreArchived,
   onDeleteArchived,
   onBoardRestored,
+  onRestoreFromSnapshot,
+  onClearLocalSnapshot,
 }: Props) {
   const [checks, setChecks] = useState<HealthCheck[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -98,7 +102,14 @@ export function SystemStatusPanel({
 
         <BoardStorageMeter board={board} />
 
-        {showArchived ? <PedidosCheckupPanel board={board} onBoardRestored={onBoardRestored} /> : null}
+        {showArchived ? (
+          <PedidosCheckupPanel
+            board={board}
+            onBoardRestored={onBoardRestored}
+            onRestoreFromSnapshot={onRestoreFromSnapshot}
+            onClearLocalSnapshot={onClearLocalSnapshot}
+          />
+        ) : null}
 
         {showArchived && onRestoreArchived ? (
           <PedidosArquivadosPanel

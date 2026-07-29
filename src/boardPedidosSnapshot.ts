@@ -4,8 +4,11 @@ import { contagemPedidos } from './pedidosPolicy'
 const SNAPSHOT_LS_KEY = 'vestfirma-board-pedidos-snapshot'
 
 export function snapshotBoardPedidos(board: BoardState): void {
-  if (contagemPedidos(board) === 0) return
   try {
+    if (contagemPedidos(board) === 0) {
+      localStorage.removeItem(SNAPSHOT_LS_KEY)
+      return
+    }
     localStorage.setItem(SNAPSHOT_LS_KEY, JSON.stringify(board))
   } catch {
     /* quota */
@@ -25,6 +28,24 @@ export function loadBoardPedidosSnapshot(): BoardState | null {
 export function contagemPedidosNoSnapshot(): number {
   const snap = loadBoardPedidosSnapshot()
   return snap ? contagemPedidos(snap) : 0
+}
+
+/** Lista curta para o checkup (snapshot antigo no navegador). */
+export function previewPedidosNoSnapshot(limit = 5): { numeroPedido: string; cliente: string }[] {
+  const snap = loadBoardPedidosSnapshot()
+  if (!snap?.cards?.length) return []
+  return snap.cards.slice(0, limit).map((c) => ({
+    numeroPedido: c.numeroPedido,
+    cliente: c.cliente,
+  }))
+}
+
+export function clearPedidosSnapshot(): void {
+  try {
+    localStorage.removeItem(SNAPSHOT_LS_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Remove um pedido do snapshot local (após exclusão definitiva no servidor). */

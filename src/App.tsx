@@ -635,6 +635,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             onRestoreArchived={restoreArchivedCard}
             onDeleteArchived={permanentlyDeleteArchivedCard}
             onBoardRestored={() => void refreshBoardFromServer()}
+            onRestoreFromSnapshot={restoreFromPedidosSnapshot}
+            onClearLocalSnapshot={() => void refreshBoardFromServer()}
           />
         </div>
       )}

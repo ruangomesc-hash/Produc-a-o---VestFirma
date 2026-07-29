@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { analyzeBoardCheckup } from '../boardCheckup'
-import { contagemPedidosNoSnapshot } from '../boardPedidosSnapshot'
+import {
+  contagemPedidosNoSnapshot,
+  previewPedidosNoSnapshot,
+  clearPedidosSnapshot,
+} from '../boardPedidosSnapshot'
 import { contagemPedidos } from '../pedidosPolicy'
 import {
   fetchBoardBackups,
@@ -16,9 +20,16 @@ import type { BoardState } from '../types'
 type Props = {
   board: BoardState
   onBoardRestored?: () => void
+  onRestoreFromSnapshot?: () => void
+  onClearLocalSnapshot?: () => void
 }
 
-export function PedidosCheckupPanel({ board, onBoardRestored }: Props) {
+export function PedidosCheckupPanel({
+  board,
+  onBoardRestored,
+  onRestoreFromSnapshot,
+  onClearLocalSnapshot,
+}: Props) {
   const report = useMemo(() => analyzeBoardCheckup(board), [board])
   const [remoteTotal, setRemoteTotal] = useState<number | null>(null)
   const [remoteError, setRemoteError] = useState<string | null>(null)
@@ -31,8 +42,16 @@ export function PedidosCheckupPanel({ board, onBoardRestored }: Props) {
   const [backupsError, setBackupsError] = useState<string | null>(null)
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
+  const [snapshotRev, setSnapshotRev] = useState(0)
 
-  const snapshotTotal = contagemPedidosNoSnapshot()
+  const snapshotTotal = useMemo(
+    () => contagemPedidosNoSnapshot(),
+    [snapshotRev, board.cards.length],
+  )
+  const snapshotPreview = useMemo(
+    () => previewPedidosNoSnapshot(8),
+    [snapshotRev, board.cards.length],
+  )
 
   const refreshRemote = useCallback(async () => {
     if (!isRemoteSyncEnabled()) {
@@ -180,9 +199,65 @@ export function PedidosCheckupPanel({ board, onBoardRestored }: Props) {
           <dt>Backup automático (navegador)</dt>
           <dd>
             <strong>{snapshotTotal}</strong> pedido(s) no snapshot local
+            {snapshotTotal > 0 && remoteTotal === 0 && localTotal === 0 ? (
+              <span className="pedidos-checkup-diff">
+                {' '}
+                — cópia antiga; não está no servidor agora
+              </span>
+            ) : null}
           </dd>
         </div>
       </dl>
+
+      {snapshotTotal > 0 &&
+      (remoteTotal === 0 || localTotal === 0) &&
+      remoteTotal !== null &&
+      !remoteError ? (
+        <div className="pedidos-checkup-alert" role="status">
+          <p>
+            Este navegador guarda <strong>{snapshotTotal}</strong> pedido(s) num backup automático
+            (localStorage), mas o servidor e o quadro atual estão vazios. Isso{' '}
+            <strong>não</strong> é o pedido “ativo” — é resto de uma sessão anterior (ex.: antes de
+            apagar ou sincronizar).
+          </p>
+          {snapshotPreview.length > 0 ? (
+            <ul className="pedidos-checkup-backup-preview">
+              {snapshotPreview.map((p) => (
+                <li key={`${p.numeroPedido}-${p.cliente}`}>
+                  {p.numeroPedido} — {p.cliente}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="pedidos-checkup-restore-toolbar">
+            {onRestoreFromSnapshot ? (
+              <button
+                type="button"
+                className="btn primary small"
+                onClick={() => {
+                  onRestoreFromSnapshot()
+                  setSnapshotRev((n) => n + 1)
+                  onBoardRestored?.()
+                  void refreshRemote()
+                }}
+              >
+                Gravar estes pedidos no servidor
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn ghost small"
+              onClick={() => {
+                clearPedidosSnapshot()
+                onClearLocalSnapshot?.()
+                setSnapshotRev((n) => n + 1)
+              }}
+            >
+              Descartar cópia local
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {diff !== null && diff > 0 ? (
         <p className="pedidos-checkup-alert" role="alert">
