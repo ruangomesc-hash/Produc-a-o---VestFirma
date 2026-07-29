@@ -7,10 +7,11 @@ import {
 } from './authSession'
 import { requiresLogin } from './runtimeConfig'
 import type { SessionProfile } from './authSession'
+import type { ManagedUser } from './userRoles'
 import { UsuariosModal } from './components/UsuariosModal'
 import { isAdmin, fetchUsers } from './usersApi'
 import { USER_ROLE_LABELS, canPlaceOrders } from './userRoles'
-import { findVendedorIdForSession, boardVisivelParaSession, vendedorPodeAcessarPedido, vendedoresParaAtribuirPedido } from './vendedorUserSync'
+import { findVendedorIdForSession, boardVisivelParaSession, vendedorPodeAcessarPedido, vendedoresParaAtribuirPedido, vendedoresSelectFromUsers } from './vendedorUserSync'
 import { autorComentarioFromSession } from './pedidoComentarios'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
@@ -161,13 +162,24 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [usuariosOpen, setUsuariosOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
+  const [managedUsersReady, setManagedUsersReady] = useState(false)
+
+  const refreshManagedUsers = useCallback(() => {
+    if (!isAdmin(session)) return Promise.resolve()
+    return fetchUsers()
+      .then((users) => {
+        setManagedUsers(users)
+        setManagedUsersReady(true)
+        syncVendedoresFromManagedUsers(users)
+      })
+      .catch(() => {})
+  }, [session, syncVendedoresFromManagedUsers])
 
   useEffect(() => {
     if (!usuariosOpen || !isAdmin(session)) return
-    void fetchUsers()
-      .then((users) => syncVendedoresFromManagedUsers(users))
-      .catch(() => {})
-  }, [usuariosOpen, session, syncVendedoresFromManagedUsers])
+    void refreshManagedUsers()
+  }, [usuariosOpen, session, refreshManagedUsers])
 
   useEffect(() => {
     if (!ready || !session || !canPlaceOrders(session.role)) return
@@ -182,17 +194,17 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
   const lockVendedorToSession = session?.role === 'vendedor'
 
-  const vendedoresNoPedido = useMemo(
-    () => vendedoresParaAtribuirPedido(board.vendedores, session),
-    [board.vendedores, session],
-  )
+  const vendedoresNoPedido = useMemo(() => {
+    if (isAdmin(session) && managedUsersReady) {
+      return vendedoresSelectFromUsers(board, managedUsers)
+    }
+    return vendedoresParaAtribuirPedido(board.vendedores, session)
+  }, [board, managedUsers, managedUsersReady, session])
 
   useEffect(() => {
-    if (!ready || !session || !isAdmin(session)) return
-    void fetchUsers()
-      .then((users) => syncVendedoresFromManagedUsers(users))
-      .catch(() => {})
-  }, [ready, session, syncVendedoresFromManagedUsers])
+    if (!ready || !isAdmin(session)) return
+    void refreshManagedUsers()
+  }, [ready, session, refreshManagedUsers])
 
   const boardForSession = useMemo(
     () => boardVisivelParaSession(board, session),
@@ -616,8 +628,14 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         open={usuariosOpen}
         onClose={() => setUsuariosOpen(false)}
         vendedores={board.vendedores}
-        onUsersLoaded={syncVendedoresFromManagedUsers}
-        onUserCreated={upsertVendedorFromManagedUser}
+        onUsersLoaded={(users) => {
+          setManagedUsers(users)
+          syncVendedoresFromManagedUsers(users)
+        }}
+        onUserCreated={(user, contato) => {
+          upsertVendedorFromManagedUser(user, contato)
+          void refreshManagedUsers()
+        }}
         onEnsureVendedor={upsertVendedorFromManagedUser}
         onUpdateVendedorContato={updateVendedorContato}
         onUserDeleted={(user) => removeVendedorForManagedUser(user.id)}

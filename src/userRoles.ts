@@ -21,6 +21,8 @@ export type SessionProfile = {
   user: string
   email: string
   role: UserRole
+  /** Id em users.json (sessão / login). */
+  userId?: string
 }
 
 export type ManagedUser = {

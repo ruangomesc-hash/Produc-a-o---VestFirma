@@ -108,7 +108,13 @@ export async function probeSessionProfile(): Promise<SessionProfile | null> {
       headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
     })
     if (!res.ok) return null
-    const data = (await res.json()) as { ok?: boolean; user?: string; email?: string; role?: string }
+    const data = (await res.json()) as {
+      ok?: boolean
+      user?: string
+      email?: string
+      role?: string
+      userId?: string
+    }
     if (!data.ok) return null
     return parseProfile(data)
   } catch {
@@ -137,11 +143,13 @@ function parseProfile(data: {
   user?: string
   email?: string
   role?: string
+  userId?: string
 }): SessionProfile {
   return {
     user: data.user || data.email || 'Usuário',
     email: data.email || '',
     role: (data.role as SessionProfile['role']) || 'vendedor',
+    userId: data.userId || undefined,
   }
 }
 
@@ -187,6 +195,7 @@ export async function login(email: string, password: string): Promise<LoginResul
       user?: string
       email?: string
       role?: string
+      userId?: string
     }
 
     if (!data.token) {
@@ -258,7 +267,13 @@ export async function fetchSessionProfile(): Promise<SessionProfile | null> {
       return null
     }
     if (!res.ok) return null
-    const data = (await res.json()) as { ok?: boolean; user?: string; email?: string; role?: string }
+    const data = (await res.json()) as {
+      ok?: boolean
+      user?: string
+      email?: string
+      role?: string
+      userId?: string
+    }
     if (!data.ok) return null
     return parseProfile(data)
   } catch {

@@ -6,6 +6,20 @@ export function vendedorNomeFromUser(user: Pick<ManagedUser, 'name' | 'email'>):
   return name || user.email
 }
 
+function isEmailLikeId(id: string | undefined): boolean {
+  return Boolean(id?.includes('@'))
+}
+
+/** Id estável no quadro — nunca troca id real do users.json por e-mail legado. */
+export function resolveVendedorUserId(
+  user: Pick<ManagedUser, 'id' | 'email'>,
+  existing?: Vendedor | null,
+): string {
+  if (existing?.userId && !isEmailLikeId(existing.userId)) return existing.userId
+  if (!isEmailLikeId(user.id)) return user.id
+  return existing?.userId ?? user.id
+}
+
 export function findVendedorForManagedUser(
   board: BoardState,
   user: Pick<ManagedUser, 'id' | 'email'>,
@@ -15,8 +29,9 @@ export function findVendedorForManagedUser(
     board.vendedores.find(
       (v) =>
         v.userId === user.id ||
+        (v.userId && !isEmailLikeId(v.userId) && v.userId === user.id) ||
         (v.email && v.email.trim().toLowerCase() === email) ||
-        (!v.userId && !v.email && v.nome.trim().toLowerCase() === email),
+        (isEmailLikeId(user.id) && v.userId === user.id),
     ) ?? null
   )
 }
@@ -32,19 +47,26 @@ export function managedUserToVendedor(
   contato?: VendedorContatoPatch,
 ): Vendedor {
   const nome = vendedorNomeFromUser(user)
-  const whatsapp =
-    contato?.whatsapp?.trim() || existing?.whatsapp
-  const grupoWhatsapp =
-    contato?.grupoWhatsapp?.trim() || existing?.grupoWhatsapp
+  const whatsapp = contato?.whatsapp?.trim() || existing?.whatsapp
+  const grupoWhatsapp = contato?.grupoWhatsapp?.trim() || existing?.grupoWhatsapp
   return {
     id: existing?.id ?? crypto.randomUUID(),
     nome,
     email: user.email,
-    userId: user.id,
+    userId: resolveVendedorUserId(user, existing),
     managedRole: user.role,
     whatsapp: whatsapp || undefined,
     grupoWhatsapp: grupoWhatsapp || undefined,
   }
+}
+
+function vendedorAindaTemUsuario(v: Vendedor, usersById: Map<string, ManagedUser>, usersByEmail: Map<string, ManagedUser>): boolean {
+  if (!v.userId || v.userId === 'admin-seed') return true
+  if (usersById.has(v.userId)) return true
+  const em = v.email?.trim().toLowerCase()
+  if (em && usersByEmail.has(em)) return true
+  if (isEmailLikeId(v.userId) && usersByEmail.has(v.userId.toLowerCase())) return true
+  return false
 }
 
 /**
@@ -56,11 +78,11 @@ export function reconcileBoardVendedoresWithUsers(
   users: ManagedUser[],
 ): BoardState {
   const usersById = new Map(users.map((u) => [u.id, u]))
+  const usersByEmail = new Map(users.map((u) => [u.email.trim().toLowerCase(), u]))
 
-  let vendedores = board.vendedores.filter((v) => {
-    if (!v.userId || v.userId === 'admin-seed') return true
-    return usersById.has(v.userId)
-  })
+  let vendedores = board.vendedores.filter((v) =>
+    vendedorAindaTemUsuario(v, usersById, usersByEmail),
+  )
 
   for (const user of users) {
     if (user.role !== 'vendedor' && user.role !== 'admin') continue
@@ -73,7 +95,28 @@ export function reconcileBoardVendedoresWithUsers(
     }
   }
 
+  vendedores = vendedores.map((v) => {
+    const em = v.email?.trim().toLowerCase()
+    const byEm = em ? usersByEmail.get(em) : undefined
+    if (!byEm) return v
+    if (v.userId === byEm.id && v.managedRole === byEm.role) return v
+    return managedUserToVendedor(byEm, v)
+  })
+
   return { ...board, vendedores }
+}
+
+/** Lista para o select de pedido — sempre espelha usuários com perfil Vendedor. */
+export function vendedoresSelectFromUsers(board: BoardState, users: ManagedUser[]): Vendedor[] {
+  const synced = reconcileBoardVendedoresWithUsers(board, users)
+  const lista: Vendedor[] = []
+  for (const user of users) {
+    if (user.role !== 'vendedor') continue
+    const row =
+      findVendedorForManagedUser(synced, user) ?? managedUserToVendedor(user, null)
+    lista.push(row)
+  }
+  return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
 export function mergeVendedoresFromManagedUsers(
@@ -110,7 +153,12 @@ export function mergeVendedoresUnion(a: Vendedor[], b: Vendedor[]): Vendedor[] {
         ...prev,
         ...v,
         id: prev.id,
+        userId: resolveVendedorUserId(
+          { id: v.userId ?? prev.userId ?? '', email: v.email ?? prev.email ?? '' },
+          prev,
+        ),
         nome: v.nome?.trim() ? v.nome : prev.nome,
+        managedRole: v.managedRole ?? prev.managedRole,
       }
       out[targetIdx] = merged
       for (const k of keysFor(merged)) index.set(k, targetIdx)
@@ -126,7 +174,7 @@ export function mergeVendedoresUnion(a: Vendedor[], b: Vendedor[]): Vendedor[] {
   return out
 }
 
-/** Vendedores que podem receber pedido no select (admin/gerente). */
+/** Vendedores que podem receber pedido no select (admin/gerente) — fallback sem lista de usuários. */
 export function vendedoresParaAtribuirPedido(
   vendedores: Vendedor[],
   session: SessionProfile | null,
@@ -137,7 +185,8 @@ export function vendedoresParaAtribuirPedido(
     if (v.managedRole) return v.managedRole === 'vendedor'
     return true
   })
-  const lista = perfilVendedor.length > 0 ? perfilVendedor : vendedores.filter((v) => v.userId !== 'admin-seed')
+  const lista =
+    perfilVendedor.length > 0 ? perfilVendedor : vendedores.filter((v) => v.userId !== 'admin-seed')
   return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
@@ -185,10 +234,13 @@ export function vendedorPodeAcessarPedido(
   return card.vendedorId === vendedorId
 }
 
-/** Garante linha no quadro para admin/vendedor logado (ex.: admin seed só no JWT). */
+/** Garante linha no quadro para admin/vendedor logado. */
 export function managedUserFromSession(session: SessionProfile): ManagedUser {
+  const id =
+    session.userId ||
+    (session.role === 'admin' ? 'admin-seed' : session.email.trim().toLowerCase())
   return {
-    id: session.role === 'admin' ? 'admin-seed' : session.email,
+    id,
     email: session.email,
     name: session.user,
     role: session.role,

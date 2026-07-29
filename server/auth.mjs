@@ -35,6 +35,7 @@ export async function createSession(user) {
       user: user.name || user.email,
       email: user.email,
       role: user.role,
+      userId: user.id,
       expiresAt: new Date(expires).toISOString(),
     }
   }
@@ -56,6 +57,7 @@ export async function createSession(user) {
     user: user.name || user.email,
     email: user.email,
     role: user.role,
+    userId: user.id,
     expiresAt: new Date(expires).toISOString(),
   }
 }
@@ -249,7 +251,15 @@ export async function handleSessionApi(req, res) {
   }
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify({ ok: true, user: row.user, email: row.email || '', role: row.role || '' }))
+  res.end(
+    JSON.stringify({
+      ok: true,
+      user: row.user,
+      email: row.email || '',
+      role: row.role || '',
+      userId: row.userId || '',
+    }),
+  )
   return true
 }
 
