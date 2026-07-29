@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { countByStatus, runSystemHealthChecks, type HealthCheck } from '../systemHealth'
 import { BoardStorageMeter } from './BoardStorageMeter'
 import { PedidosArquivadosPanel } from './PedidosArquivadosPanel'
+import { PedidosCheckupPanel } from './PedidosCheckupPanel'
 import type { BoardState } from '../types'
 
 type Props = {
@@ -92,6 +93,8 @@ export function SystemStatusPanel({
         )}
 
         <BoardStorageMeter board={board} />
+
+        {showArchived ? <PedidosCheckupPanel board={board} /> : null}
 
         {showArchived && onRestoreArchived ? (
           <PedidosArquivadosPanel

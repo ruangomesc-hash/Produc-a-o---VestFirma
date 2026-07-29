@@ -24,8 +24,9 @@ import {
   findVendedorIdForSession,
   managedUserToVendedor,
   managedUserFromSession,
-  reconcileBoardVendedoresWithUsers,
+  boardAposSyncVendedoresCompleto,
   unifyVendedorRowsAndRelinkCards,
+  relinkOrphanVendedorIdsConservative,
   vendedorPodeAcessarPedido,
   type VendedorContatoPatch,
 } from '../vendedorUserSync'
@@ -40,15 +41,15 @@ function vendedoresListChanged(before: Vendedor[], after: Vendedor[]): boolean {
 }
 
 function boardAposSyncVendedores(board: BoardState, users: ManagedUser[]): BoardState {
-  return unifyVendedorRowsAndRelinkCards(reconcileBoardVendedoresWithUsers(board, users))
+  return boardAposSyncVendedoresCompleto(board, users)
 }
 
 async function boardComVendedoresDosUsuarios(board: BoardState): Promise<BoardState> {
   try {
     const users = await fetchUsers()
-    return boardAposSyncVendedores(board, users)
+    return boardAposSyncVendedoresCompleto(board, users)
   } catch {
-    return unifyVendedorRowsAndRelinkCards(board)
+    return relinkOrphanVendedorIdsConservative(unifyVendedorRowsAndRelinkCards(board))
   }
 }
 
@@ -594,7 +595,9 @@ export function useBoard() {
     try {
       const result = await loadBoard()
       const merged = mergeBoardPreservingPedidos(boardRef.current, result.board)
-      const unified = unifyVendedorRowsAndRelinkCards(merged)
+      const unified = relinkOrphanVendedorIdsConservative(
+        unifyVendedorRowsAndRelinkCards(merged),
+      )
       setBoard(unified)
       if (result.richerLocal) setLocalRestore(result.richerLocal)
       if (contagemPedidos(unified) > contagemPedidos(result.board)) {

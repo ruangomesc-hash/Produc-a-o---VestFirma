@@ -247,7 +247,13 @@ export function pedidoPertenceAoVendedorSession(
   if (!row || !card.vendedorId) return false
   if (card.vendedorId === row.id) return true
   const cardRow = board.vendedores.find((v) => v.id === card.vendedorId)
-  if (!cardRow) return false
+  if (!cardRow) {
+    const salesRows = board.vendedores.filter(
+      (v) => v.userId !== 'admin-seed' && v.managedRole !== 'admin',
+    )
+    if (salesRows.length === 1 && salesRows[0].id === row.id) return true
+    return false
+  }
   return sameVendedorPerson(cardRow, row)
 }
 
@@ -297,6 +303,57 @@ export function unifyVendedorRowsAndRelinkCards(board: BoardState): BoardState {
   }
 
   return { ...board, vendedores: Array.from(byId.values()), cards }
+}
+
+/**
+ * Pedidos com vendedorId de linha removida do quadro — relink conservador para a linha atual do mesmo e-mail.
+ */
+export function relinkOrphanVendedorIdsConservative(board: BoardState): BoardState {
+  const known = new Set(board.vendedores.map((v) => v.id))
+  const orphanIds = [
+    ...new Set(
+      board.cards.map((c) => c.vendedorId).filter((id): id is string => Boolean(id && !known.has(id))),
+    ),
+  ]
+  if (orphanIds.length === 0) return board
+
+  const salesRows = board.vendedores.filter(
+    (v) => v.userId !== 'admin-seed' && v.managedRole !== 'admin',
+  )
+
+  let cards = board.cards
+  let changed = false
+
+  for (const O of orphanIds) {
+    if (salesRows.length === 1) {
+      const target = salesRows[0].id
+      cards = cards.map((c) => (c.vendedorId === O ? { ...c, vendedorId: target } : c))
+      changed = true
+      continue
+    }
+
+    for (const v of salesRows) {
+      const em = v.email?.trim().toLowerCase()
+      if (!em) continue
+      const sameEmail = salesRows.filter((x) => x.email?.trim().toLowerCase() === em)
+      if (sameEmail.length !== 1) continue
+      const vOwn = board.cards.filter((c) => c.vendedorId === v.id).length
+      const oCount = board.cards.filter((c) => c.vendedorId === O).length
+      if (vOwn === 0 && oCount > 0) {
+        cards = cards.map((c) => (c.vendedorId === O ? { ...c, vendedorId: v.id } : c))
+        changed = true
+        break
+      }
+    }
+  }
+
+  return changed ? { ...board, cards } : board
+}
+
+export function boardAposSyncVendedoresCompleto(board: BoardState, users: ManagedUser[]): BoardState {
+  let next = unifyVendedorRowsAndRelinkCards(reconcileBoardVendedoresWithUsers(board, users))
+  next = relinkOrphanVendedorIdsConservative(next)
+  return next
 }
 
 export function findVendedorIdForSession(

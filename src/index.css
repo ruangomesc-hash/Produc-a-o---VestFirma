@@ -2779,6 +2779,117 @@ textarea {
   gap: 0.45rem;
 }
 
+.pedidos-checkup {
+  margin: 1.25rem 0 1.5rem;
+  padding: 1.1rem 1.15rem;
+  background: rgba(26, 34, 45, 0.92);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.pedidos-checkup-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+
+.pedidos-checkup-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.pedidos-checkup-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  max-width: 52rem;
+}
+
+.pedidos-checkup-stats {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+}
+
+.pedidos-checkup-stats dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+
+.pedidos-checkup-stats dd {
+  margin: 0;
+}
+
+.pedidos-checkup-alert {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  font-size: 0.85rem;
+}
+
+.pedidos-checkup-warns {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pedidos-checkup-ok {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pedidos-checkup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.pedidos-checkup-table th,
+.pedidos-checkup-table td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pedidos-checkup-tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+}
+
+.pedidos-checkup-subtitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.pedidos-checkup-exclusoes ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.pedidos-checkup-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 .storage-meter {
   margin: 1.25rem 0 1.5rem;
   padding: 1.1rem 1.15rem;

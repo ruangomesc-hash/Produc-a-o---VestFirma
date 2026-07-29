@@ -1,9 +1,22 @@
 /**
  * GET /api/health — diagnóstico do servidor (sem expor segredos).
  */
+import fs from 'node:fs/promises'
 import { getBoardPaths } from './dataPaths.mjs'
 import { useJwtSessions } from './sessionToken.mjs'
 import { countUsersOnDisk } from './usersRepair.mjs'
+
+async function countBoardOnDisk(boardFile) {
+  try {
+    const raw = await fs.readFile(boardFile, 'utf8')
+    const data = JSON.parse(raw)
+    const cards = Array.isArray(data?.cards) ? data.cards : []
+    const arquivados = cards.filter((c) => c?.arquivadoEm).length
+    return { total: cards.length, arquivados, ativos: cards.length - arquivados }
+  } catch {
+    return null
+  }
+}
 
 export async function handleHealthApi(req, res, corsHeaders) {
   if (req.method === 'OPTIONS') {
@@ -28,6 +41,7 @@ export async function handleHealthApi(req, res, corsHeaders) {
   )
 
   const usersOnDisk = await countUsersOnDisk()
+  const boardCounts = paths.boardFile ? await countBoardOnDisk(paths.boardFile) : null
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
   if (req.method === 'HEAD') {
@@ -48,8 +62,11 @@ export async function handleHealthApi(req, res, corsHeaders) {
       adminPasswordConfigured: adminPwdConfigured,
       storageNote: paths.storageNote || undefined,
       onRender: process.env.RENDER === 'true',
-      buildTag: 'users-persist-v3',
+      buildTag: 'board-checkup-v1',
       usersOnDisk,
+      boardCardsTotal: boardCounts?.total,
+      boardCardsActive: boardCounts?.ativos,
+      boardCardsArchived: boardCounts?.arquivados,
       whatsappWebhookConfigured: webhook,
       timestamp: new Date().toISOString(),
     }),

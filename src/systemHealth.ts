@@ -24,6 +24,11 @@ type ServerHealth = {
   onRender?: boolean
   storage?: string
   logosExternal?: boolean
+  usersOnDisk?: number
+  boardCardsTotal?: number
+  boardCardsActive?: number
+  boardCardsArchived?: number
+  buildTag?: string
 }
 
 export type ServerSaveLimitInfo = SaveLimitInfo
@@ -156,7 +161,10 @@ export async function runSystemHealthChecks(board: BoardState): Promise<HealthCh
       checks.push({
         id: 'server-health',
         title: 'Servidor VestFirma',
-        status: 'ok',
+        status:
+          serverHealth.usersOnDisk === 1 && serverHealth.requireLogin
+            ? 'warn'
+            : 'ok',
         summary: serverHealth.onRender
           ? 'Respondendo na Render (/api/health)'
           : 'Respondendo (/api/health)',
@@ -166,6 +174,15 @@ export async function runSystemHealthChecks(board: BoardState): Promise<HealthCh
             : null,
           serverHealth.maxSaveBodyMb
             ? `Limite de salvamento: ${serverHealth.maxSaveBodyMb} MB por requisição.`
+            : null,
+          typeof serverHealth.boardCardsTotal === 'number'
+            ? `Pedidos no disco: ${serverHealth.boardCardsTotal} (${serverHealth.boardCardsActive ?? '?'} no kanban, ${serverHealth.boardCardsArchived ?? 0} arquivados).`
+            : null,
+          typeof serverHealth.usersOnDisk === 'number'
+            ? `Usuários gravados: ${serverHealth.usersOnDisk}.`
+            : null,
+          serverHealth.usersOnDisk === 1
+            ? 'Só 1 usuário no servidor — confira se vendedores estão em Usuários (senão podem não logar ou ver pedidos vazios).'
             : null,
         ]
           .filter(Boolean)
