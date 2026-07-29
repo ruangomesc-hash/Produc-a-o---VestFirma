@@ -289,6 +289,15 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   }, [])
 
   useEffect(() => {
+    if (visaoTvMode) {
+      document.documentElement.classList.add('visao-tv-active')
+    } else {
+      document.documentElement.classList.remove('visao-tv-active')
+    }
+    return () => document.documentElement.classList.remove('visao-tv-active')
+  }, [visaoTvMode])
+
+  useEffect(() => {
     const onFullscreenChange = () => {
       if (!document.fullscreenElement && visaoTvMode) {
         setVisaoTvMode(false)
@@ -535,7 +544,12 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         />
         </div>
       ) : view === 'visao' ? (
-        <div id="panel-visao" className="app-panel" role="tabpanel" aria-labelledby="tab-visao-geral">
+        <div
+          id="panel-visao"
+          className={`app-panel${visaoTvMode ? ' app-panel--tv' : ''}`}
+          role="tabpanel"
+          aria-labelledby="tab-visao-geral"
+        >
           <VisaoGeralPanel board={boardForSession} tvMode={visaoTvMode} onExitTv={sairModoTv} />
         </div>
       ) : view === 'vendedores' ? (

@@ -4087,63 +4087,132 @@ textarea {
 }
 
 .app-visao-tv {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100dvh;
+  height: 100svh;
+  max-height: 100dvh;
+  max-height: 100svh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+html.visao-tv-active {
+  overflow: hidden;
+  height: 100%;
+}
+
+html.visao-tv-active body {
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+}
+
+.app-visao-tv .app-panel--tv {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-visao-tv .visao-geral {
   padding: 0;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--vestfirma-gold);
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow: hidden;
   flex-direction: column;
 }
 
 .app-visao-tv .visao-geral-inner {
   flex: 1;
   min-height: 0;
+  height: auto;
+  max-height: none;
+  overflow: hidden;
   border-radius: 0;
   border: none;
   box-shadow: none;
   background: var(--vestfirma-gold);
-  padding: 1.25rem 1.5rem 1.5rem;
+  padding: clamp(0.4rem, 1.2vh, 1.25rem) clamp(0.65rem, 2vw, 1.5rem)
+    clamp(0.45rem, 1.2vh, 1.25rem);
+  display: flex;
+  flex-direction: column;
 }
 
 .visao-geral--tv .visao-geral-top {
   padding-right: 0;
+  flex-shrink: 0;
+  margin-bottom: clamp(0.35rem, 1vh, 1rem);
+  padding-bottom: clamp(0.35rem, 1vh, 0.85rem);
+}
+
+.visao-geral--tv .visao-tv-logo-bar {
+  flex-shrink: 0;
+  padding-top: clamp(0.35rem, 1.2vh, 0.85rem);
+  padding-bottom: clamp(0.35rem, 1vh, 0.85rem);
 }
 
 .visao-geral--tv .visao-geral-title {
-  font-size: clamp(1.5rem, 2.8vw, 2.25rem);
+  font-size: clamp(1rem, 2.8vmin, 2.25rem);
 }
 
 .visao-geral--tv .visao-tv-logo {
-  height: clamp(2rem, 3.5vh, 2.75rem);
+  height: clamp(1.5rem, 3.5vmin, 2.75rem);
 }
 
 .visao-geral--tv .visao-total-pill {
-  font-size: clamp(0.85rem, 1.5vw, 1.05rem);
-  padding: 0.5rem 0.9rem;
+  font-size: clamp(0.72rem, 1.6vmin, 1.05rem);
+  padding: clamp(0.3rem, 0.8vmin, 0.5rem) clamp(0.5rem, 1.2vmin, 0.9rem);
 }
 
 .visao-geral--tv .visao-card-title {
-  font-size: clamp(0.95rem, 1.8vw, 1.35rem);
+  font-size: clamp(0.62rem, 1.75vmin, 1.35rem);
+  flex-shrink: 0;
 }
 
 .visao-geral--tv .visao-metric-value {
-  font-size: clamp(3rem, 11vh, 6.5rem);
+  font-size: clamp(1.15rem, 7.5vmin, 6.5rem);
+  line-height: 1.05;
 }
 
 .visao-geral--tv .visao-metric-value.solo {
-  font-size: clamp(3.5rem, 14vh, 7.5rem);
+  font-size: clamp(1.35rem, 9vmin, 7.5rem);
 }
 
 .visao-geral--tv .visao-metric-label {
-  font-size: clamp(0.72rem, 1.4vw, 0.95rem);
+  font-size: clamp(0.52rem, 1.45vmin, 0.95rem);
+  line-height: 1.2;
 }
 
 .visao-geral--tv .visao-grid {
-  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: clamp(0.35rem, 1vmin, 1rem);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.82fr);
+  grid-auto-rows: unset;
+}
+
+.visao-geral--tv .visao-card {
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(0.35rem, 1.1vmin, 1rem);
+  gap: clamp(0.25rem, 0.8vmin, 0.65rem);
+}
+
+.visao-geral--tv .visao-card-metrics,
+.visao-geral--tv .visao-card-logistica {
+  flex: 1;
+  min-height: 0;
+}
+
+.visao-geral--tv .visao-metric {
+  padding: clamp(0.25rem, 0.8vmin, 0.5rem);
+  min-height: 0;
 }
 
 .visao-grid {
@@ -4177,48 +4246,48 @@ textarea {
 }
 
 @media (max-width: 899px) {
-  .visao-geral {
+  .visao-geral:not(.visao-geral--tv) {
     overflow: auto;
   }
 
-  .visao-geral-inner {
+  .visao-geral:not(.visao-geral--tv) .visao-geral-inner {
     min-height: calc(100dvh - var(--board-height-offset));
   }
 
-  .visao-grid {
+  .visao-geral:not(.visao-geral--tv) .visao-grid {
     grid-template-columns: 1fr;
     grid-template-rows: none;
     grid-auto-rows: minmax(132px, auto);
   }
 
-  .visao-card,
-  .visao-card:nth-child(4),
-  .visao-card:nth-child(5),
-  .visao-card--wide {
+  .visao-geral:not(.visao-geral--tv) .visao-card,
+  .visao-geral:not(.visao-geral--tv) .visao-card:nth-child(4),
+  .visao-geral:not(.visao-geral--tv) .visao-card:nth-child(5),
+  .visao-geral:not(.visao-geral--tv) .visao-card--wide {
     grid-column: auto;
     min-height: 132px;
   }
 }
 
 @media (max-width: 899px) and (orientation: landscape) {
-  .visao-geral-inner {
+  .visao-geral:not(.visao-geral--tv) .visao-geral-inner {
     min-height: auto;
   }
 
-  .visao-grid {
+  .visao-geral:not(.visao-geral--tv) .visao-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-auto-rows: minmax(108px, 1fr);
   }
 
-  .visao-card--wide {
+  .visao-geral:not(.visao-geral--tv) .visao-card--wide {
     grid-column: 1 / -1;
   }
 
-  .visao-metric-value {
+  .visao-geral:not(.visao-geral--tv) .visao-metric-value {
     font-size: clamp(1.75rem, 12vw, 2.75rem);
   }
 
-  .visao-metric-value.solo {
+  .visao-geral:not(.visao-geral--tv) .visao-metric-value.solo {
     font-size: clamp(2rem, 14vw, 3.25rem);
   }
 }
@@ -4228,19 +4297,19 @@ textarea {
     --column-width: min(320px, calc(100vw - 3rem));
   }
 
-  .visao-grid {
+  .visao-geral:not(.visao-geral--tv) .visao-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: none;
     grid-auto-rows: minmax(140px, 1fr);
   }
 
-  .visao-card,
-  .visao-card:nth-child(4),
-  .visao-card:nth-child(5) {
+  .visao-geral:not(.visao-geral--tv) .visao-card,
+  .visao-geral:not(.visao-geral--tv) .visao-card:nth-child(4),
+  .visao-geral:not(.visao-geral--tv) .visao-card:nth-child(5) {
     grid-column: auto;
   }
 
-  .visao-card--wide {
+  .visao-geral:not(.visao-geral--tv) .visao-card--wide {
     grid-column: 1 / -1;
   }
 }
@@ -4251,27 +4320,27 @@ textarea {
     --board-height-offset: 5.5rem;
   }
 
-  .visao-grid {
+  .visao-geral:not(.visao-geral--tv) .visao-grid {
     grid-template-columns: repeat(6, 1fr);
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr);
   }
 
-  .visao-card {
+  .visao-geral:not(.visao-geral--tv) .visao-card {
     grid-column: span 2;
   }
 
-  .visao-card:nth-child(4),
-  .visao-card:nth-child(5) {
+  .visao-geral:not(.visao-geral--tv) .visao-card:nth-child(4),
+  .visao-geral:not(.visao-geral--tv) .visao-card:nth-child(5) {
     grid-column: span 3;
   }
 
-  .visao-card--wide {
+  .visao-geral:not(.visao-geral--tv) .visao-card--wide {
     grid-column: 1 / -1;
   }
 }
 
 @media (min-width: 900px) {
-  .visao-geral-inner {
+  .visao-geral:not(.visao-geral--tv) .visao-geral-inner {
     min-height: calc(100dvh - var(--board-height-offset));
   }
 }
@@ -4562,46 +4631,67 @@ textarea {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 
-  .visao-geral {
+  .visao-geral:not(.visao-geral--tv) {
     padding: 0.5rem max(0.65rem, env(safe-area-inset-right, 0px))
       max(0.65rem, env(safe-area-inset-bottom, 0px)) max(0.65rem, env(safe-area-inset-left, 0px));
   }
 
-  .visao-geral-inner {
+  .visao-geral:not(.visao-geral--tv) .visao-geral-inner {
     border-radius: 12px;
     padding: 0.85rem 0.85rem 1rem;
     min-height: calc(100dvh - var(--board-height-offset));
   }
 
-  .visao-geral-top {
+  .visao-geral:not(.visao-geral--tv) .visao-geral-top {
     flex-direction: column;
     align-items: stretch;
     gap: 0.65rem;
   }
 
-  .visao-geral-totais {
+  .visao-geral:not(.visao-geral--tv) .visao-geral-totais {
     justify-content: flex-start;
   }
 
-  .visao-tv-logo-bar {
+  .visao-geral--tv .visao-tv-logo-bar {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: none;
+    justify-items: stretch;
+  }
+
+  .visao-geral--tv .visao-tv-logo-bar-brand {
+    grid-column: 2;
+    grid-row: auto;
+  }
+
+  .visao-geral--tv .visao-tv-logo-bar-actions {
+    grid-column: 3;
+    grid-row: auto;
+    justify-self: end;
+  }
+
+  .visao-geral--tv .visao-tv-logo-bar-spacer {
+    display: block;
+  }
+
+  .visao-geral:not(.visao-geral--tv) .visao-tv-logo-bar {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     justify-items: center;
     gap: 0.65rem;
   }
 
-  .visao-tv-logo-bar-brand {
+  .visao-geral:not(.visao-geral--tv) .visao-tv-logo-bar-brand {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .visao-tv-logo-bar-actions {
+  .visao-geral:not(.visao-geral--tv) .visao-tv-logo-bar-actions {
     grid-column: 1;
     grid-row: 2;
     justify-self: center;
   }
 
-  .visao-tv-logo-bar-spacer {
+  .visao-geral:not(.visao-geral--tv) .visao-tv-logo-bar-spacer {
     display: none;
   }
 
