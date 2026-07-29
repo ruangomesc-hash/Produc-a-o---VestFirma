@@ -70,8 +70,9 @@ async function handleBoardApi(req, res) {
     return
   }
 
+  let session = null
   if (REQUIRE_LOGIN) {
-    const session = await requireSession(req, res)
+    session = await requireSession(req, res)
     if (!session) return
   }
 
@@ -105,6 +106,41 @@ async function handleBoardApi(req, res) {
       String(req.headers['x-vestfirma-force-board'] || req.headers['X-Vestfirma-Force-Board'] || '') ===
       '1'
 
+    const removeRaw =
+      req.headers['x-vestfirma-remove-archived-cards'] ||
+      req.headers['X-Vestfirma-Remove-Archived-Cards'] ||
+      ''
+    const removeArchivedIds = String(removeRaw)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    if (removeArchivedIds.length > 0) {
+      if (!session || session.role !== 'admin') {
+        res.writeHead(403, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({ error: 'Só o administrador pode apagar pedidos arquivados.' }))
+        return
+      }
+      for (const id of removeArchivedIds) {
+        const card = existing?.cards?.find((c) => c.id === id)
+        if (!card) {
+          res.writeHead(400, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ error: `Pedido não encontrado: ${id}` }))
+          return
+        }
+        if (!card.arquivadoEm) {
+          res.writeHead(400, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+          res.end(
+            JSON.stringify({
+              error: 'Só é permitido apagar pedidos que já estão arquivados.',
+              cardId: id,
+            }),
+          )
+          return
+        }
+      }
+    }
+
     if (board?.demo === true && existingCount > 0) {
       res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(
@@ -130,20 +166,27 @@ async function handleBoardApi(req, res) {
       return
     }
 
-    board = mergeBoardPreservingPedidos(existing, board)
+    board = mergeBoardPreservingPedidos(existing, board, removeArchivedIds)
     const mergedCount = countBoardCards(board)
     if (!force && existingCount > 0 && mergedCount < existingCount) {
-      res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(
-        JSON.stringify({
-          ok: false,
-          code: 'BOARD_CARDS_LOST',
-          error: 'Recusado: este save removeria pedidos já gravados.',
-          existingCards: existingCount,
-          mergedCards: mergedCount,
-        }),
-      )
-      return
+      const removed = existingCount - mergedCount
+      const allowed =
+        removeArchivedIds.length > 0 &&
+        removed === removeArchivedIds.length &&
+        session?.role === 'admin'
+      if (!allowed) {
+        res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(
+          JSON.stringify({
+            ok: false,
+            code: 'BOARD_CARDS_LOST',
+            error: 'Recusado: este save removeria pedidos já gravados.',
+            existingCards: existingCount,
+            mergedCards: mergedCount,
+          }),
+        )
+        return
+      }
     }
 
     if (process.env.EXTERNALIZE_BOARD_LOGOS !== '0') {

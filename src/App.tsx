@@ -163,6 +163,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     addPedidoComentario,
     archiveCard,
     restoreArchivedCard,
+    permanentlyDeleteArchivedCard,
     moveCard,
   } = useBoard()
 
@@ -632,6 +633,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             board={board}
             showArchived={isAdmin(session)}
             onRestoreArchived={restoreArchivedCard}
+            onDeleteArchived={permanentlyDeleteArchivedCard}
           />
         </div>
       )}

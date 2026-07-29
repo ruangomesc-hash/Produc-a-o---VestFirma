@@ -160,10 +160,16 @@ export function useBoard() {
   const persist = useCallback(
     (
       next: BoardState,
-      opts?: { forceRemote?: boolean; skipRemote?: boolean; immediate?: boolean },
+      opts?: {
+        forceRemote?: boolean
+        skipRemote?: boolean
+        immediate?: boolean
+        permanentlyRemoveArchivedCardIds?: string[]
+      },
     ) => {
+      const removeIds = opts?.permanentlyRemoveArchivedCardIds?.filter(Boolean) ?? []
       setBoard((prev) => {
-        const safe = mergeBoardPreservingPedidos(prev, next)
+        const safe = mergeBoardPreservingPedidos(prev, next, removeIds)
         const delay = opts?.immediate ? 0 : 400
         if (saveTimer.current) clearTimeout(saveTimer.current)
         saveTimer.current = setTimeout(() => {
@@ -173,6 +179,7 @@ export function useBoard() {
             const result = await saveBoard(payload, {
               forceRemote: opts?.forceRemote,
               skipRemote: opts?.skipRemote,
+              permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
             })
             if (result.ok) {
               snapshotBoardPedidos(payload)
@@ -501,6 +508,27 @@ export function useBoard() {
     [board, persist],
   )
 
+  const permanentlyDeleteArchivedCard = useCallback(
+    (cardId: string) => {
+      if (getAuditActor()?.role !== 'admin') return
+      const alvo = board.cards.find((c) => c.id === cardId)
+      if (!alvo?.arquivadoEm) return
+      persist(
+        {
+          ...board,
+          cards: board.cards.filter((c) => c.id !== cardId),
+        },
+        { immediate: true, permanentlyRemoveArchivedCardIds: [cardId] },
+      )
+      recordAudit({
+        action: 'pedido.excluido',
+        summary: `Apagou definitivamente o pedido arquivado ${alvo.numeroPedido} — ${alvo.cliente}`,
+        meta: { cardId, numeroPedido: alvo.numeroPedido },
+      })
+    },
+    [board, persist],
+  )
+
   const moveCard = useCallback(
     (cardId: string, columnId: string) => {
       const existing = board.cards.find((c) => c.id === cardId)
@@ -602,6 +630,7 @@ export function useBoard() {
     addPedidoComentario,
     archiveCard,
     restoreArchivedCard,
+    permanentlyDeleteArchivedCard,
     moveCard,
   }
 }

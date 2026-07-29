@@ -227,6 +227,8 @@ export type SaveBoardOptions = {
   skipRemote?: boolean
   /** Grava imediatamente (ex.: novo pedido). */
   immediate?: boolean
+  /** Apagar pedidos arquivados do JSON (admin; servidor valida). */
+  permanentlyRemoveArchivedCardIds?: string[]
 }
 
 export type LoadBoardResult = {
@@ -327,6 +329,7 @@ export async function saveBoard(
   options?: SaveBoardOptions,
 ): Promise<SaveBoardResult> {
   let normalized = normalizeBoard(state)
+  const removeIds = options?.permanentlyRemoveArchivedCardIds?.filter(Boolean) ?? []
 
   const idbRaw = await loadBoardFromIdb()
   const idb = idbRaw ? normalizeBoard(idbRaw as LegacyBoardRaw) : null
@@ -334,7 +337,7 @@ export async function saveBoard(
   const idbUsable = idb && !idbLegacy?.demo ? idb : null
 
   if (idbUsable) {
-    normalized = mergeBoardPreservingPedidos(idbUsable, normalized)
+    normalized = mergeBoardPreservingPedidos(idbUsable, normalized, removeIds)
   }
 
   if (isRemoteSyncEnabled() && !options?.skipRemote && !options?.forceRemote) {
@@ -342,7 +345,7 @@ export async function saveBoard(
       const remoteRaw = await fetchRemoteBoard()
       if (remoteRaw) {
         const remote = normalizeBoard(remoteRaw)
-        normalized = mergeBoardPreservingPedidos(remote, normalized)
+        normalized = mergeBoardPreservingPedidos(remote, normalized, removeIds)
       }
     } catch {
       /* servidor também faz merge */
@@ -379,7 +382,10 @@ export async function saveBoard(
   }
 
   try {
-    await saveRemoteBoard(normalized, { force: options?.forceRemote })
+    await saveRemoteBoard(normalized, {
+      force: options?.forceRemote,
+      permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
+    })
     return { ok: true, remote: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Falha ao salvar no servidor'

@@ -12,6 +12,7 @@ const ACTION_META: Record<string, { label: string; tone: AuditActionTone }> = {
   'pedido.comentario': { label: 'Comentário', tone: 'pedido' },
   'pedido.arquivado': { label: 'Arquivo', tone: 'pedido' },
   'pedido.restaurado': { label: 'Pedido', tone: 'pedido' },
+  'pedido.excluido': { label: 'Exclusão', tone: 'pedido' },
   'coluna.criada': { label: 'Coluna', tone: 'quadro' },
   'coluna.removida': { label: 'Coluna', tone: 'quadro' },
   'quadro.restaurado': { label: 'Quadro', tone: 'quadro' },

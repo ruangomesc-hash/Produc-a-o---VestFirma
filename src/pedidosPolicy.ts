@@ -50,20 +50,29 @@ function mergeBoardShell(
 export function mergeBoardPreservingPedidos(
   existing: BoardState | null | undefined,
   incoming: BoardState,
+  removeCardIds: string[] = [],
 ): BoardState {
   const shell = mergeBoardShell(existing, incoming)
+  const removeSet = new Set(removeCardIds.filter(Boolean))
   if (!existing?.cards?.length) {
-    return { ...incoming, ...shell }
+    const cards = (incoming.cards ?? []).filter((c) => !c?.id || !removeSet.has(c.id))
+    return { ...incoming, ...shell, cards }
   }
 
   const byId = new Map<string, OrderCard>()
   const legacy: OrderCard[] = []
   for (const c of existing.cards) {
-    if (c?.id) byId.set(c.id, c)
-    else legacy.push(c)
+    if (c?.id) {
+      if (removeSet.has(c.id)) continue
+      byId.set(c.id, c)
+    } else legacy.push(c)
   }
   for (const c of incoming.cards ?? []) {
     if (!c?.id) continue
+    if (removeSet.has(c.id)) {
+      byId.delete(c.id)
+      continue
+    }
     const prev = byId.get(c.id)
     byId.set(c.id, prev ? mergeOrderCard(prev, c) : c)
   }

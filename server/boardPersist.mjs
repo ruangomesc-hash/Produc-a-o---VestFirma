@@ -41,20 +41,28 @@ function mergeOrderCard(existing, incoming) {
   return { ...incoming, ...existing }
 }
 
-export function mergeBoardPreservingPedidos(existing, incoming) {
+export function mergeBoardPreservingPedidos(existing, incoming, removeCardIds = []) {
   const shell = mergeBoardShell(existing, incoming)
+  const removeSet = new Set(Array.isArray(removeCardIds) ? removeCardIds.filter(Boolean) : [])
   if (!existing?.cards?.length) {
-    return { ...incoming, ...shell }
+    const cards = (incoming.cards ?? []).filter((c) => !c?.id || !removeSet.has(c.id))
+    return { ...incoming, ...shell, cards }
   }
 
   const byId = new Map()
   const legacy = []
   for (const c of existing.cards) {
-    if (c?.id) byId.set(c.id, c)
-    else legacy.push(c)
+    if (c?.id) {
+      if (removeSet.has(c.id)) continue
+      byId.set(c.id, c)
+    } else legacy.push(c)
   }
   for (const c of incoming.cards ?? []) {
     if (!c?.id) continue
+    if (removeSet.has(c.id)) {
+      byId.delete(c.id)
+      continue
+    }
     const prev = byId.get(c.id)
     byId.set(c.id, prev ? mergeOrderCard(prev, c) : c)
   }

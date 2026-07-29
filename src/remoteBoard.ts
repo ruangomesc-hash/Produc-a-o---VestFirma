@@ -59,6 +59,8 @@ export async function fetchRemoteBoard(
 
 export type RemoteBoardSaveOptions = {
   force?: boolean
+  /** IDs de pedidos arquivados removidos permanentemente (só admin; header no PUT). */
+  permanentlyRemoveArchivedCardIds?: string[]
 }
 
 export async function saveRemoteBoard(
@@ -73,6 +75,8 @@ export async function saveRemoteBoard(
     ...authHeaders(),
   }
   if (options?.force) headers['X-Vestfirma-Force-Board'] = '1'
+  const removeIds = options?.permanentlyRemoveArchivedCardIds?.filter(Boolean) ?? []
+  if (removeIds.length) headers['X-Vestfirma-Remove-Archived-Cards'] = removeIds.join(',')
 
   const res = await fetch(`${base}${boardEndpoint()}`, {
     method: 'PUT',
