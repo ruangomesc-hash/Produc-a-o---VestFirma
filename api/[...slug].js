@@ -10,6 +10,10 @@ const ADMIN_NAME = process.env.SEED_ADMIN_NAME || 'Administrador'
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14)
 const REQUIRE_LOGIN = process.env.REQUIRE_LOGIN === 'true' || process.env.VERCEL === '1'
 const BLOB_PREFIX = 'vestfirma/'
+const USER_ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
+
+const BLOB_FIX =
+  'Vercel → Storage → Create Blob Store → Environment Variables: BLOB_READ_WRITE_TOKEN → Redeploy.'
 
 function jsonError(res, status, payload) {
   res.status(status).json({
@@ -119,7 +123,9 @@ async function blobReadText(name) {
 
 async function blobWriteText(name, text) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error('Blob não configurado na Vercel (Storage → Blob)')
+    const err = new Error('Blob não configurado na Vercel (Storage → Blob)')
+    err.code = 'BLOB_NOT_CONFIGURED'
+    throw err
   }
   const { put } = await import('@vercel/blob')
   await put(`${BLOB_PREFIX}${name}`, text, {
@@ -170,6 +176,30 @@ function randomPassword(length = 12) {
     out += chars[crypto.randomInt(0, chars.length)]
   }
   return out
+}
+
+async function saveUsersList(list) {
+  await blobWriteJson('users.json', { users: list })
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase()
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function userPublic(user, includePassword) {
+  const row = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: user.createdAt || '',
+  }
+  if (includePassword) row.password = user.password
+  return row
 }
 
 async function verifyLoginUser(username, password) {
@@ -319,26 +349,56 @@ export default async function handler(req, res) {
     if (route === 'users') {
       const session = parseToken(readBearer(req))
       if (!session || session.role !== 'admin') {
-        res.status(403).json({ error: 'Acesso restrito ao administrador' })
+        jsonError(res, 403, {
+          code: 'FORBIDDEN',
+          error: 'Acesso restrito ao administrador.',
+          fix: 'Entre com a conta admin (ruan.gomesc@gmail.com).',
+        })
         return
       }
       if (req.method === 'GET') {
         const users = await loadUsersList()
-        res.status(200).json({ users })
+        res.status(200).json({ users: users.map((u) => userPublic(u, true)) })
         return
       }
       if (req.method === 'POST') {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          jsonError(res, 503, {
+            code: 'BLOB_NOT_CONFIGURED',
+            error: 'Não dá para cadastrar usuários: armazenamento Blob não está ativo.',
+            fix: BLOB_FIX,
+            detail: '/api/health retorna storage: "none" sem o token.',
+          })
+          return
+        }
         const data = await parseJsonBody(req)
-        const email = String(data.email || '').trim().toLowerCase()
+        const email = normalizeEmail(data.email)
         const role = String(data.role || '')
-        const name = String(data.name || email)
-        if (!email || role === 'admin') {
-          res.status(400).json({ error: 'Perfil ou e-mail inválido' })
+        const name = String(data.name || '').trim() || email
+        if (!email || !isValidEmail(email)) {
+          jsonError(res, 400, {
+            code: 'INVALID_EMAIL',
+            error: 'E-mail inválido.',
+            fix: 'Use formato completo, ex.: francejunior@vestfirma.com.br',
+            detail: email || '(vazio)',
+          })
+          return
+        }
+        if (!USER_ROLES.includes(role) || role === 'admin') {
+          jsonError(res, 400, {
+            code: 'INVALID_ROLE',
+            error: 'Perfil inválido para novo acesso.',
+            fix: 'Escolha Gerente, Expedição, Impressão ou Vendedor.',
+          })
           return
         }
         const list = await loadUsersList()
-        if (list.some((u) => String(u.email).toLowerCase() === email)) {
-          res.status(400).json({ error: 'E-mail já cadastrado' })
+        if (list.some((u) => normalizeEmail(u.email) === email)) {
+          jsonError(res, 400, {
+            code: 'EMAIL_EXISTS',
+            error: 'Este e-mail já está cadastrado.',
+            fix: 'Use outro e-mail ou exclua o acesso antigo na tabela.',
+          })
           return
         }
         const user = {
@@ -350,11 +410,99 @@ export default async function handler(req, res) {
           createdAt: new Date().toISOString(),
         }
         list.push(user)
-        await blobWriteJson('users.json', { users: list })
-        res.status(200).json({ user })
+        await saveUsersList(list)
+        res.status(200).json({ user: userPublic(user, true) })
         return
       }
-      res.status(405).json({ error: 'Method Not Allowed' })
+      if (req.method === 'PUT') {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          jsonError(res, 503, {
+            code: 'BLOB_NOT_CONFIGURED',
+            error: 'Não dá para alterar usuários sem Vercel Blob.',
+            fix: BLOB_FIX,
+          })
+          return
+        }
+        const data = await parseJsonBody(req)
+        const id = String(data.id || '')
+        if (!id) {
+          jsonError(res, 400, { code: 'MISSING_ID', error: 'id obrigatório.' })
+          return
+        }
+        const list = await loadUsersList()
+        const idx = list.findIndex((u) => u.id === id)
+        if (idx < 0) {
+          jsonError(res, 400, { code: 'NOT_FOUND', error: 'Usuário não encontrado.' })
+          return
+        }
+        const user = list[idx]
+        if (user.role === 'admin') {
+          jsonError(res, 400, {
+            code: 'ADMIN_LOCKED',
+            error: 'Não é possível alterar o administrador geral por aqui.',
+          })
+          return
+        }
+        if (data.email != null) {
+          const email = normalizeEmail(data.email)
+          if (!isValidEmail(email)) {
+            jsonError(res, 400, { code: 'INVALID_EMAIL', error: 'E-mail inválido.', fix: 'Use @dominio.com' })
+            return
+          }
+          if (list.some((u) => u.id !== id && normalizeEmail(u.email) === email)) {
+            jsonError(res, 400, { code: 'EMAIL_EXISTS', error: 'Este e-mail já está cadastrado.' })
+            return
+          }
+          user.email = email
+        }
+        if (data.role != null) {
+          const role = String(data.role)
+          if (!USER_ROLES.includes(role) || role === 'admin') {
+            jsonError(res, 400, { code: 'INVALID_ROLE', error: 'Perfil inválido.' })
+            return
+          }
+          user.role = role
+        }
+        if (data.name != null && String(data.name).trim()) user.name = String(data.name).trim()
+        if (data.regeneratePassword) user.password = randomPassword(12)
+        list[idx] = user
+        await saveUsersList(list)
+        res.status(200).json({ user: userPublic(user, true) })
+        return
+      }
+      if (req.method === 'DELETE') {
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+          jsonError(res, 503, {
+            code: 'BLOB_NOT_CONFIGURED',
+            error: 'Não dá para excluir usuários sem Vercel Blob.',
+            fix: BLOB_FIX,
+          })
+          return
+        }
+        const id = String(req.query?.id || '').trim()
+        if (!id) {
+          jsonError(res, 400, { code: 'MISSING_ID', error: 'id obrigatório na query ?id=' })
+          return
+        }
+        const list = await loadUsersList()
+        const target = list.find((u) => u.id === id)
+        if (!target) {
+          jsonError(res, 400, { code: 'NOT_FOUND', error: 'Usuário não encontrado.' })
+          return
+        }
+        if (target.role === 'admin') {
+          jsonError(res, 400, { code: 'ADMIN_LOCKED', error: 'Não é possível excluir o administrador geral.' })
+          return
+        }
+        if (id === session.userId) {
+          jsonError(res, 400, { code: 'SELF_DELETE', error: 'Você não pode excluir a si mesmo.' })
+          return
+        }
+        await saveUsersList(list.filter((u) => u.id !== id))
+        res.status(200).json({ ok: true })
+        return
+      }
+      jsonError(res, 405, { code: 'METHOD_NOT_ALLOWED', error: 'Método não permitido em /api/users.' })
       return
     }
 
@@ -368,6 +516,16 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('[vestfirma-api]', route, err)
     const msg = err instanceof Error ? err.message : String(err)
+    const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : ''
+    if (code === 'BLOB_NOT_CONFIGURED' || /blob/i.test(msg)) {
+      jsonError(res, 503, {
+        code: 'BLOB_NOT_CONFIGURED',
+        error: 'Armazenamento Vercel Blob não configurado.',
+        fix: BLOB_FIX,
+        detail: msg,
+      })
+      return
+    }
     jsonError(res, 500, {
       code: 'SERVER_ERROR',
       error: 'Erro interno na API.',

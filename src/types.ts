@@ -17,6 +17,9 @@ export interface HistoricoEtapaEntry {
 export interface Vendedor {
   id: string
   nome: string
+  /** Vínculo com usuário de login (perfil Vendedor em Usuários) */
+  userId?: string
+  email?: string
   /** WhatsApp com DDD — usado para marcar o vendedor no grupo */
   whatsapp?: string
   /**

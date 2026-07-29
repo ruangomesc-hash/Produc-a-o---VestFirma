@@ -8,6 +8,12 @@ import { mesclarSegmentos } from '../segmentosEmpresa'
 import { notifyUnauthorized } from '../authSession'
 import { loadBoard, normalizeBoard, saveBoard } from '../storage'
 import type { BoardState, CardFormData, OrderCard } from '../types'
+import type { ManagedUser } from '../userRoles'
+import {
+  findVendedorForManagedUser,
+  managedUserToVendedor,
+  mergeVendedoresFromManagedUsers,
+} from '../vendedorUserSync'
 
 export type BoardSyncState = {
   remote: boolean
@@ -210,6 +216,46 @@ export function useBoard() {
     [board, persist],
   )
 
+  const upsertVendedorFromManagedUser = useCallback(
+    (user: ManagedUser) => {
+      if (user.role !== 'vendedor') return
+      const existing = findVendedorForManagedUser(board, user)
+      const next = managedUserToVendedor(user, existing)
+      if (existing) {
+        persist({
+          ...board,
+          vendedores: board.vendedores.map((v) => (v.id === existing.id ? next : v)),
+        })
+        return
+      }
+      const nomeTaken = board.vendedores.some(
+        (v) => v.nome.trim().toLowerCase() === next.nome.trim().toLowerCase(),
+      )
+      if (nomeTaken) return
+      persist({
+        ...board,
+        vendedores: [...board.vendedores, next],
+      })
+    },
+    [board, persist],
+  )
+
+  const removeVendedorForManagedUser = useCallback(
+    (userId: string) => {
+      const linked = board.vendedores.find((v) => v.userId === userId)
+      if (linked) removeVendedor(linked.id)
+    },
+    [board, removeVendedor, board.vendedores],
+  )
+
+  const syncVendedoresFromManagedUsers = useCallback(
+    (users: ManagedUser[]) => {
+      const merged = mergeVendedoresFromManagedUsers(board, users)
+      if (merged.vendedores !== board.vendedores) persist(merged)
+    },
+    [board, persist],
+  )
+
   const addSegmento = useCallback(
     (nome: string): string | null => {
       const trimmed = nome.trim()
@@ -318,6 +364,9 @@ export function useBoard() {
     addVendedor,
     updateVendedorContato,
     removeVendedor,
+    upsertVendedorFromManagedUser,
+    removeVendedorForManagedUser,
+    syncVendedoresFromManagedUsers,
     addSegmento,
     addCard,
     updateCard,

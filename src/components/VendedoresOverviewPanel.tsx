@@ -116,7 +116,8 @@ export function VendedoresOverviewPanel({ board }: Props) {
 
           {linhas.length === 0 ? (
             <p className="vendedor-overview-empty">
-              Nenhum vendedor cadastrado. Use <strong>Vendedores</strong> no topo para cadastrar.
+              Nenhum vendedor cadastrado. Use <strong>Usuários</strong> (perfil Vendedor) e configure
+              WhatsApp em <strong>Vendedores</strong>.
             </p>
           ) : (
             <div className="vendedor-rankings">

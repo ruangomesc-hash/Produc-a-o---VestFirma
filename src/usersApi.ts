@@ -1,3 +1,4 @@
+import { formatApiErrorMessage, readApiJson } from './apiErrors'
 import type { ManagedUser, SessionProfile, UserRole } from './userRoles'
 import { CREATABLE_ROLES } from './userRoles'
 import { authHeaders, ensureAuthConfigReady, handleAuthResponse } from './authSession'
@@ -19,8 +20,9 @@ export async function fetchUsers(): Promise<ManagedUser[]> {
     headers: { Accept: 'application/json', ...authHeaders() },
   })
   handleAuthResponse(res.status)
-  const data = (await res.json().catch(() => ({}))) as { users?: ManagedUser[]; error?: string }
-  if (!res.ok) throw new Error(data.error || 'Falha ao carregar usuários')
+  const { json } = await readApiJson(res)
+  const data = json as { users?: ManagedUser[] }
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao carregar usuários'))
   return data.users || []
 }
 
@@ -39,8 +41,18 @@ export async function createManagedUser(input: {
     body: JSON.stringify(input),
   })
   handleAuthResponse(res.status)
-  const data = (await res.json().catch(() => ({}))) as { user?: ManagedUser; error?: string }
-  if (!res.ok || !data.user) throw new Error(data.error || 'Falha ao criar usuário')
+  const { json } = await readApiJson(res)
+  const data = json as { user?: ManagedUser }
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao criar usuário'))
+  if (!data.user) {
+    throw new Error(
+      formatApiErrorMessage(
+        res,
+        { error: 'Resposta sem dados do usuário criado.', fix: 'Redeploy da API /api/users.' },
+        'Falha ao criar usuário',
+      ),
+    )
+  }
   return data.user
 }
 
@@ -61,8 +73,10 @@ export async function updateManagedUser(input: {
     body: JSON.stringify(input),
   })
   handleAuthResponse(res.status)
-  const data = (await res.json().catch(() => ({}))) as { user?: ManagedUser; error?: string }
-  if (!res.ok || !data.user) throw new Error(data.error || 'Falha ao atualizar usuário')
+  const { json } = await readApiJson(res)
+  const data = json as { user?: ManagedUser }
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
+  if (!data.user) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
   return data.user
 }
 
@@ -76,8 +90,8 @@ export async function deleteManagedUser(id: string): Promise<void> {
     headers: { Accept: 'application/json', ...authHeaders() },
   })
   handleAuthResponse(res.status)
-  const data = (await res.json().catch(() => ({}))) as { error?: string }
-  if (!res.ok) throw new Error(data.error || 'Falha ao excluir usuário')
+  const { json } = await readApiJson(res)
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao excluir usuário'))
 }
 
 export type { SessionProfile, ManagedUser, UserRole }

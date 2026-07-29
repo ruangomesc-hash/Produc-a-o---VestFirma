@@ -4,15 +4,17 @@ import { colunaParaNovoPedido } from '../defaultBoard'
 import { useBoard } from '../hooks/useBoard'
 import { iniciarSinoVenda, prepararAudioVenda, pararSinoVenda } from '../vendaSino'
 import type { CardFormData } from '../types'
+import type { SessionProfile } from '../userRoles'
+import { findVendedorIdForSession } from '../vendedorUserSync'
 import { CardModal } from './CardModal'
 import { PortalVendaCelebracao } from './PortalVendaCelebracao'
 
 type Props = {
-  user: string | null
+  session: SessionProfile | null
   onLogout: () => void | Promise<void>
 }
 
-export function VendedorPedidoPortalPage({ user, onLogout }: Props) {
+export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
   const { board, ready, addCard, addSegmento, sync } = useBoard()
   const [modalOpen, setModalOpen] = useState(true)
   const [modalSession, setModalSession] = useState(0)
@@ -22,6 +24,13 @@ export function VendedorPedidoPortalPage({ user, onLogout }: Props) {
     () => (ready ? colunaParaNovoPedido(board) : null),
     [ready, board],
   )
+
+  const preferredVendedorId = useMemo(
+    () => (ready ? findVendedorIdForSession(board, session) : null),
+    [ready, board, session],
+  )
+
+  const userLabel = session?.user ?? null
 
   useEffect(() => {
     if (!ready) return
@@ -110,7 +119,7 @@ export function VendedorPedidoPortalPage({ user, onLogout }: Props) {
                   : 'Sincronizado'}
             </span>
           )}
-          {user && <span className="stat-pill">{user}</span>}
+          {userLabel && <span className="stat-pill">{userLabel}</span>}
           {requiresLogin() && (
             <button type="button" className="btn ghost" onClick={() => void onLogout()}>
               Sair
@@ -140,6 +149,7 @@ export function VendedorPedidoPortalPage({ user, onLogout }: Props) {
         vendedores={board.vendedores}
         segmentos={board.segmentos ?? []}
         allowVendedorCadastro={false}
+        preferredVendedorId={preferredVendedorId}
         onClose={() => setModalOpen(false)}
         onOpenVendedores={() => {}}
         onAddSegmento={addSegmento}

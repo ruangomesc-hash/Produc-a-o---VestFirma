@@ -15,6 +15,7 @@ function buildForm(
   mode: 'create' | 'edit',
   initial: OrderCard | undefined,
   vendedores: Vendedor[],
+  preferredVendedorId?: string | null,
 ): CardFormData {
   if (mode === 'edit' && initial) {
     return {
@@ -50,6 +51,8 @@ function buildForm(
   }
   if (vendedores.length === 1) {
     base.vendedorId = vendedores[0].id
+  } else if (preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)) {
+    base.vendedorId = preferredVendedorId
   }
   return base
 }
@@ -66,6 +69,8 @@ type Props = {
   onOpenVendedores: () => void
   onAddSegmento: (nome: string) => string | null
   allowVendedorCadastro?: boolean
+  /** Portal do vendedor: pré-seleciona o vendedor ligado ao login */
+  preferredVendedorId?: string | null
   /** Portal: dispara o sino no clique de enviar (antes de gravar). */
   onVendaCelebrar?: () => void
 }
@@ -82,9 +87,12 @@ export function CardModal({
   onOpenVendedores,
   onAddSegmento,
   allowVendedorCadastro = true,
+  preferredVendedorId = null,
   onVendaCelebrar,
 }: Props) {
-  const [form, setForm] = useState<CardFormData>(() => buildForm(mode, initial, vendedores))
+  const [form, setForm] = useState<CardFormData>(() =>
+    buildForm(mode, initial, vendedores, preferredVendedorId),
+  )
   const [quantidadeInput, setQuantidadeInput] = useState(() =>
     String(mode === 'edit' && initial ? initial.quantidade : 1),
   )
@@ -101,14 +109,14 @@ export function CardModal({
   useEffect(() => {
     if (!open || initSession.current === session) return
     initSession.current = session
-    const next = buildForm(mode, initial, vendedores)
+    const next = buildForm(mode, initial, vendedores, preferredVendedorId)
     setForm(next)
     setQuantidadeInput(String(next.quantidade))
     setLogoError(null)
     setAddingSegmento(false)
     setNovoSegmentoNome('')
     setAlert(null)
-  }, [open, session, mode, initial, vendedores])
+  }, [open, session, mode, initial, vendedores, preferredVendedorId])
 
   useEffect(() => {
     if (open && mode === 'create' && onVendaCelebrar) prepararAudioVenda()

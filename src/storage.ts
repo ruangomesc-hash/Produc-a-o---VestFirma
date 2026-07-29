@@ -85,6 +85,8 @@ export function normalizeBoard(raw: BoardState | undefined | null): BoardState {
   const vendedores = [...(raw.vendedores ?? [])].map((v) => ({
     id: v.id,
     nome: v.nome,
+    userId: v.userId || undefined,
+    email: v.email?.trim() || undefined,
     whatsapp: v.whatsapp?.trim() || undefined,
     grupoWhatsapp: v.grupoWhatsapp?.trim() || undefined,
   }))

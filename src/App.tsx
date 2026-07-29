@@ -3,7 +3,7 @@ import { logout, fetchSessionProfile, ensureAuthConfigReady } from './authSessio
 import { requiresLogin } from './runtimeConfig'
 import type { SessionProfile } from './authSession'
 import { UsuariosModal } from './components/UsuariosModal'
-import { isAdmin } from './usersApi'
+import { isAdmin, fetchUsers } from './usersApi'
 import { USER_ROLE_LABELS } from './userRoles'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
@@ -101,7 +101,7 @@ function AuthenticatedRoot({
     return <PortalFestaPreviewPage user={userLabel} onLogout={onLogout} />
   }
   if (isPortalPedidoRoute()) {
-    return <VendedorPedidoPortalPage user={userLabel} onLogout={onLogout} />
+    return <VendedorPedidoPortalPage session={session} onLogout={onLogout} />
   }
   return <AuthenticatedApp session={session} onLogout={onLogout} />
 }
@@ -117,9 +117,11 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     ready,
     addColumn,
     removeColumn,
-    addVendedor,
     updateVendedorContato,
     removeVendedor,
+    upsertVendedorFromManagedUser,
+    removeVendedorForManagedUser,
+    syncVendedoresFromManagedUsers,
     addSegmento,
     addCard,
     updateCard,
@@ -135,6 +137,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [vendedoresOpen, setVendedoresOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [usuariosOpen, setUsuariosOpen] = useState(false)
+
+  useEffect(() => {
+    if (!vendedoresOpen || !isAdmin(session)) return
+    void fetchUsers()
+      .then((users) => syncVendedoresFromManagedUsers(users))
+      .catch(() => {})
+  }, [vendedoresOpen, session, syncVendedoresFromManagedUsers])
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
@@ -394,9 +403,17 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         open={vendedoresOpen}
         vendedores={board.vendedores}
         onClose={() => setVendedoresOpen(false)}
-        onAdd={addVendedor}
         onUpdateContato={updateVendedorContato}
         onRemove={removeVendedor}
+        canManageUsers={isAdmin(session)}
+        onOpenUsuarios={
+          isAdmin(session)
+            ? () => {
+                setVendedoresOpen(false)
+                setUsuariosOpen(true)
+              }
+            : undefined
+        }
       />
 
       <WhatsAppNotifyModal
@@ -404,7 +421,15 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onClose={() => setWhatsappNotifyOpen(false)}
       />
 
-      <UsuariosModal open={usuariosOpen} onClose={() => setUsuariosOpen(false)} />
+      <UsuariosModal
+        open={usuariosOpen}
+        onClose={() => setUsuariosOpen(false)}
+        onUsersLoaded={syncVendedoresFromManagedUsers}
+        onUserCreated={upsertVendedorFromManagedUser}
+        onUserDeleted={(user) => {
+          if (user.role === 'vendedor') removeVendedorForManagedUser(user.id)
+        }}
+      />
 
       <ConfirmModal
         open={demoConfirm === 'load'}

@@ -85,11 +85,31 @@ try {
     }
 } catch (InvalidArgumentException $e) {
     http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()]);
+    echo json_encode([
+        'ok' => false,
+        'code' => 'VALIDATION',
+        'error' => $e->getMessage(),
+        'fix' => 'Corrija o formulário e tente de novo.',
+    ]);
+    exit;
+} catch (RuntimeException $e) {
+    http_response_code(500);
+    echo json_encode([
+        'ok' => false,
+        'code' => 'STORAGE_ERROR',
+        'error' => $e->getMessage(),
+        'fix' => 'Confira permissão de escrita em data/users.json no servidor.',
+    ]);
     exit;
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Falha ao processar usuários']);
+    echo json_encode([
+        'ok' => false,
+        'code' => 'SERVER_ERROR',
+        'error' => 'Falha ao processar usuários.',
+        'detail' => $e->getMessage(),
+        'fix' => 'Veja logs PHP do hosting.',
+    ]);
     exit;
 }
 

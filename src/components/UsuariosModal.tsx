@@ -13,6 +13,9 @@ import { AlertModal } from './AlertModal'
 type Props = {
   open: boolean
   onClose: () => void
+  onUsersLoaded?: (users: ManagedUser[]) => void
+  onUserCreated?: (user: ManagedUser) => void
+  onUserDeleted?: (user: ManagedUser) => void
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -24,7 +27,13 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function UsuariosModal({ open, onClose }: Props) {
+export function UsuariosModal({
+  open,
+  onClose,
+  onUsersLoaded,
+  onUserCreated,
+  onUserDeleted,
+}: Props) {
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,18 +42,21 @@ export function UsuariosModal({ open, onClose }: Props) {
   const [newName, setNewName] = useState('')
   const [newRole, setNewRole] = useState<UserRole>('vendedor')
   const [creating, setCreating] = useState(false)
+  const [showPasswords, setShowPasswords] = useState(false)
 
   const reload = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      setUsers(await fetchUsers())
+      const list = await fetchUsers()
+      setUsers(list)
+      onUsersLoaded?.(list)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [onUsersLoaded])
 
   useEffect(() => {
     if (!open) return
@@ -56,16 +68,22 @@ export function UsuariosModal({ open, onClose }: Props) {
     setCreating(true)
     setError(null)
     try {
-      await createManagedUser({
+      const roleCreated = newRole
+      const created = await createManagedUser({
         email: newEmail.trim(),
         role: newRole,
         name: newName.trim() || undefined,
       })
+      onUserCreated?.(created)
       setNewEmail('')
       setNewName('')
       setNewRole('vendedor')
       await reload()
-      setAlertMessage('Usuário criado. Copie a senha abaixo e envie para a pessoa.')
+      setAlertMessage(
+        roleCreated === 'vendedor'
+          ? 'Usuário criado e adicionado à lista Vendedores do quadro. Copie a senha abaixo. Configure WhatsApp em Vendedores.'
+          : 'Usuário criado. Copie a senha abaixo e envie para a pessoa.',
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao criar')
     } finally {
@@ -101,8 +119,9 @@ export function UsuariosModal({ open, onClose }: Props) {
 
             <div className="usuarios-body">
               <p className="usuarios-hint">
-                Cada perfil entra com <strong>e-mail</strong> e <strong>senha</strong>. As senhas ficam
-                visíveis aqui para você copiar e enviar. Não compartilhe este painel fora do admin.
+                Cada perfil entra com <strong>e-mail</strong> e <strong>senha</strong>. Perfil{' '}
+                <strong>Vendedor</strong> também entra na lista <strong>Vendedores</strong> do quadro
+                (login + pedidos); WhatsApp e grupo você configura em Vendedores.
               </p>
 
               <form className="usuarios-create" onSubmit={(e) => void handleCreate(e)}>
@@ -149,6 +168,16 @@ export function UsuariosModal({ open, onClose }: Props) {
                 <p className="usuarios-loading">Carregando…</p>
               ) : (
                 <div className="usuarios-table-wrap">
+                  <div className="usuarios-table-toolbar">
+                    <button
+                      type="button"
+                      className="btn ghost btn-xs"
+                      onClick={() => setShowPasswords((v) => !v)}
+                      aria-pressed={showPasswords}
+                    >
+                      {showPasswords ? 'Ocultar senhas' : 'Mostrar senhas'}
+                    </button>
+                  </div>
                   <table className="usuarios-table">
                     <thead>
                       <tr>
@@ -164,9 +193,11 @@ export function UsuariosModal({ open, onClose }: Props) {
                         <UsuarioRow
                           key={u.id}
                           user={u}
+                          showPassword={showPasswords}
                           onChanged={reload}
                           onAlert={setAlertMessage}
                           onError={setError}
+                          onUserDeleted={onUserDeleted}
                         />
                       ))}
                     </tbody>
@@ -189,16 +220,22 @@ export function UsuariosModal({ open, onClose }: Props) {
 
 function UsuarioRow({
   user,
+  showPassword,
   onChanged,
   onAlert,
   onError,
+  onUserDeleted,
 }: {
   user: ManagedUser
+  showPassword: boolean
   onChanged: () => Promise<void>
   onAlert: (msg: string) => void
   onError: (msg: string | null) => void
+  onUserDeleted?: (user: ManagedUser) => void
 }) {
   const isAdmin = user.role === 'admin'
+  const [rowVisible, setRowVisible] = useState(false)
+  const passwordVisible = showPassword || rowVisible
 
   const copyPassword = async () => {
     const ok = await copyText(user.password)
@@ -228,6 +265,7 @@ function UsuarioRow({
     onError(null)
     try {
       await deleteManagedUser(user.id)
+      onUserDeleted?.(user)
       await onChanged()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Falha ao excluir')
@@ -242,7 +280,23 @@ function UsuarioRow({
       </td>
       <td>{USER_ROLE_LABELS[user.role]}</td>
       <td>
-        <span className="usuarios-password">{user.password}</span>
+        <div className="usuarios-password-cell">
+          <span
+            className={`usuarios-password ${passwordVisible ? '' : 'usuarios-password--masked'}`}
+            aria-hidden={!passwordVisible}
+          >
+            {passwordVisible ? user.password : '••••••••••••'}
+          </span>
+          <button
+            type="button"
+            className="btn ghost btn-xs usuarios-password-toggle"
+            onClick={() => setRowVisible((v) => !v)}
+            aria-label={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+            title={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+          >
+            {passwordVisible ? 'Ocultar' : 'Ver'}
+          </button>
+        </div>
         <div className="usuarios-password-actions">
           <button type="button" className="btn ghost btn-xs" onClick={() => void copyPassword()}>
             Copiar senha
