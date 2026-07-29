@@ -225,9 +225,15 @@ export function CardModal({
 
   if (!open && !alert) return null
 
+  const showComentariosAside = mode === 'edit' && Boolean(onAddComentario)
+
   const dialog = open ? (
     <div className="modal-backdrop modal-backdrop-pedido" role="presentation">
-      <div className="modal modal-pedido" role="dialog" aria-labelledby="card-modal-title">
+      <div
+        className={`modal modal-pedido ${showComentariosAside ? 'modal-pedido--wide' : ''}`}
+        role="dialog"
+        aria-labelledby="card-modal-title"
+      >
         <header className="modal-header">
           <h2 id="card-modal-title">
             {mode === 'create' ? 'Novo pedido' : 'Editar pedido'}
@@ -238,7 +244,11 @@ export function CardModal({
         </header>
 
         <form className="modal-form" onSubmit={handleSubmit}>
-          <div className="form-grid">
+          <div
+            className={`modal-pedido-body ${showComentariosAside ? 'modal-pedido-body--split' : ''}`}
+          >
+            <div className="modal-pedido-main">
+              <div className="form-grid">
             <label className="field span-2">
               <span>Cliente *</span>
               <input
@@ -457,13 +467,18 @@ export function CardModal({
                 <CardHistoricoTimeline entries={initial.historicoEtapa} defaultOpen />
               </div>
             ) : null}
+              </div>
+            </div>
 
-            {mode === 'edit' && onAddComentario ? (
-              <CardComentariosSection
-                comentarios={comentarios}
-                onAdd={onAddComentario}
-                autorNome={comentarioAutorNome}
-              />
+            {showComentariosAside ? (
+              <aside className="modal-pedido-comentarios" aria-label="Comentários do pedido">
+                <CardComentariosSection
+                  layout="aside"
+                  comentarios={comentarios}
+                  onAdd={onAddComentario!}
+                  autorNome={comentarioAutorNome}
+                />
+              </aside>
             ) : null}
           </div>
 
