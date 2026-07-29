@@ -589,7 +589,12 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           role="tabpanel"
           aria-labelledby="tab-visao-geral"
         >
-          <VisaoGeralPanel board={boardForSession} tvMode={visaoTvMode} onExitTv={sairModoTv} />
+          <VisaoGeralPanel
+            board={boardForSession}
+            session={session}
+            tvMode={visaoTvMode}
+            onExitTv={sairModoTv}
+          />
         </div>
       ) : view === 'vendedores' ? (
         <div id="panel-vendedores" className="app-panel" role="tabpanel" aria-labelledby="tab-vendedores">

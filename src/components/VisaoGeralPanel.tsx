@@ -1,10 +1,13 @@
 import { useMemo } from 'react'
 import { etapaDevePiscar, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
+import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState } from '../types'
+import type { SessionProfile } from '../userRoles'
 
 type Props = {
   board: BoardState
+  session?: SessionProfile | null
   tvMode?: boolean
   onExitTv?: () => void
 }
@@ -18,16 +21,21 @@ const TEMA_POR_COLUNA: Record<string, string> = {
   'liberado-logistica': 'visao-card--logistica visao-card--wide',
 }
 
-export function VisaoGeralPanel({ board, tvMode = false, onExitTv }: Props) {
+export function VisaoGeralPanel({ board, session = null, tvMode = false, onExitTv }: Props) {
   const agora = useRelogioPrazo()
+  const escopoVendedor = session?.role === 'vendedor'
 
   const cardsByColumn = useMemo(() => {
     const map = new Map<string, typeof board.cards>()
     for (const col of board.columns) map.set(col.id, [])
     const fallback = board.columns[0]?.id
     for (const card of board.cards) {
+      if (!pedidoVisivelNoKanban(card)) continue
       const columnId = map.has(card.columnId) ? card.columnId : fallback
-      if (columnId) map.get(columnId)!.push(card)
+      if (!columnId) continue
+      map.get(columnId)!.push(
+        columnId === card.columnId ? card : { ...card, columnId },
+      )
     }
     return map
   }, [board.columns, board.cards])
@@ -74,6 +82,11 @@ export function VisaoGeralPanel({ board, tvMode = false, onExitTv }: Props) {
         <header className="visao-geral-top">
           <div className="visao-geral-brand">
             <h1 className="visao-geral-title">Visão geral</h1>
+            {escopoVendedor ? (
+              <p className="visao-equipe-sub">Seus pedidos no fluxo — igual ao kanban (sem arquivados).</p>
+            ) : (
+              <p className="visao-equipe-sub">Totais do quadro em tempo real — sem pedidos arquivados.</p>
+            )}
           </div>
           <div className="visao-geral-totais">
             <span className="visao-total-pill no-prazo">{totais.noPrazo} no prazo</span>
