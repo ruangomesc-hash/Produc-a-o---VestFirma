@@ -1,0 +1,35 @@
+---
+description: Regra máxima — usuários nunca podem ser apagados sem confirmação explícita do admin
+alwaysApply: true
+---
+
+# Usuários nunca apagados (VestFirma)
+
+**Prioridade absoluta**, junto com a regra de pedidos.
+
+## Proibido (inclui agente de IA / Cursor)
+
+- **O agente de IA nunca apaga usuários** de `users.json` / API `/api/users`, **mesmo que o usuário peça em uma tarefa genérica** — só implementa proteções, merge, backup e restauração **no código**, sem executar remoção de dados reais.
+- Gravar `users.json` com **menos usuários** sem fluxo de exclusão confirmado (`DELETE` + header `X-Vestfirma-Confirm-User-Delete`).
+- Usar `replace: true` em `mutateUsersStore` para “restaurar” ou sincronizar — **sempre merge por id**, exceto exclusão explícita confirmada.
+- Deploy ou seed que **substitua** a lista inteira de usuários por só o admin quando já existiam outros cadastros.
+- Desativar backup, merge ou bloqueios de wipe de usuários sem pedido **explícito** do usuário citando perda de dados aceita.
+
+## Quem pode excluir usuário (UI)
+
+- **Somente administrador** — botão **Excluir acesso** no painel Usuários.
+- Exige **digitar o e-mail** do usuário na confirmação (proteção contra clique acidental).
+- Servidor exige header **`X-Vestfirma-Confirm-User-Delete`** com o id do usuário.
+
+## Obrigatório
+
+- Servidor: **`mutateUsersStore`** com `assertUserDeleteAllowed` — recusa reduzir contagem sem `explicitUserDeleteId`.
+- Servidor: **`ensureUsersSeeded`** e **`listUsers`** mesclam de backup em vez de substituir.
+- Servidor: **backup** antes de gravar `users.json`.
+- Cliente: **merge** ao carregar usuários; não sobrescrever lista local com resposta vazia se havia cadastros.
+- **Histórico de auditoria** (`/api/audit`): registrar criação, alteração e exclusão de usuários.
+
+## UI
+
+- Não oferecer “apagar todos os usuários” nem atalhos de limpeza em massa.
+- Restaurar de backup = **adicionar ausentes**, nunca remover quem já está cadastrado.

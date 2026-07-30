@@ -10,6 +10,14 @@ import {
 } from './authSession'
 import { getApiBase } from './runtimeConfig'
 import { getAuditActor } from './auditContext'
+import {
+  loadManagedUsersFromIdb,
+  rememberManagedUser,
+  rememberManagedUsers,
+  saveManagedUsersToIdb,
+  usersMissingOnServer,
+} from './managedUsersCache'
+import { mergeManagedUsers } from './mergeManagedUsers'
 
 export { CREATABLE_ROLES }
 
@@ -32,6 +40,7 @@ export async function fetchUsers(): Promise<ManagedUser[]> {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
 
+  const cached = await loadManagedUsersFromIdb()
   const authGen = getAuthGeneration()
   const res = await fetch(`${base}${apiPath('users')}`, {
     headers: { Accept: 'application/json', ...authHeaders() },
@@ -40,7 +49,70 @@ export async function fetchUsers(): Promise<ManagedUser[]> {
   const { json } = await readApiJson(res)
   const data = json as { users?: ManagedUser[] }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao carregar usuários'))
-  return data.users || []
+
+  const serverUsers = data.users || []
+  let merged = mergeManagedUsers(cached, serverUsers)
+
+  const missing = usersMissingOnServer(cached, serverUsers)
+  if (missing.length > 0 && isAdmin(getAuditActor())) {
+    try {
+      const sync = await syncMissingManagedUsersToServer(missing)
+      if (sync.added > 0) {
+        const again = await fetch(`${base}${apiPath('users')}`, {
+          headers: { Accept: 'application/json', ...authHeaders() },
+        })
+        handleAuthResponse(again.status, authGen)
+        const againJson = await readApiJson(again)
+        if (again.ok) {
+          const againData = againJson.json as { users?: ManagedUser[] }
+          merged = mergeManagedUsers(merged, againData.users || [])
+        }
+      }
+    } catch {
+      /* mantém merge local — melhor que sumir */
+    }
+  }
+
+  await rememberManagedUsers(merged)
+  return merged
+}
+
+export async function syncMissingManagedUsersToServer(
+  users: ManagedUser[],
+): Promise<{ added: number; message: string }> {
+  requireAdminActor()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
+  if (!base) throw new Error('API não configurada')
+  if (!users.length) return { added: 0, message: 'Nada para sincronizar.' }
+
+  const authGen = getAuthGeneration()
+  const res = await fetch(`${base}${apiPath('users')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify({
+      action: 'sync-missing',
+      users: users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        password: u.password,
+        createdAt: u.createdAt,
+      })),
+    }),
+  })
+  handleAuthResponse(res.status, authGen)
+  const { json } = await readApiJson(res)
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao sincronizar usuários'))
+  const data = json as { added?: number; message?: string }
+  if ((data.added ?? 0) > 0) {
+    recordAudit({
+      action: 'usuarios.sincronizados',
+      summary: data.message || `Sincronizou ${data.added} usuário(s) do navegador para o servidor`,
+    })
+  }
+  return { added: data.added ?? 0, message: data.message || 'Sincronizado.' }
 }
 
 export async function createManagedUser(input: {
@@ -72,6 +144,7 @@ export async function createManagedUser(input: {
       ),
     )
   }
+  await rememberManagedUser(data.user)
   recordAudit({
     action: 'usuario.criado',
     summary: `Criou usuário ${data.user.email} (${data.user.role})`,
@@ -103,6 +176,7 @@ export async function updateManagedUser(input: {
   const data = json as { user?: ManagedUser }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
   if (!data.user) throw new Error(formatApiErrorMessage(res, json, 'Falha ao atualizar usuário'))
+  await rememberManagedUser(data.user)
   recordAudit({
     action: 'usuario.atualizado',
     summary: `Atualizou usuário ${data.user.email}`,
@@ -120,11 +194,17 @@ export async function deleteManagedUser(id: string): Promise<void> {
   const authGen = getAuthGeneration()
   const res = await fetch(`${base}${apiPath('users')}?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    headers: { Accept: 'application/json', ...authHeaders() },
+    headers: {
+      Accept: 'application/json',
+      'X-Vestfirma-Confirm-User-Delete': id,
+      ...authHeaders(),
+    },
   })
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao excluir usuário'))
+  const cached = await loadManagedUsersFromIdb()
+  await saveManagedUsersToIdb(cached.filter((u) => u.id !== id))
   recordAudit({
     action: 'usuario.excluido',
     summary: `Excluiu usuário (id ${id})`,

@@ -10,6 +10,7 @@ import {
   countUsersOnDisk,
 } from './usersRepair.mjs'
 import { mergeUsersById, recoverUsersFromBackups } from './usersRecover.mjs'
+import { syncBoardVendedorFromUser } from './usersBoardSync.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
 
@@ -48,7 +49,7 @@ export async function ensureUsersSeeded() {
       console.warn(
         `[vestfirma] users.json vazio — restaurando ${recovered.length} usuário(s) de backup`,
       )
-      await mutateUsersStore(() => recovered, { replace: true })
+      await mutateUsersStore((users) => mergeUsersById(users, recovered))
       return
     }
     console.warn('[vestfirma] users.json existe mas está sem usuários — não recriar admin automaticamente')
@@ -60,15 +61,17 @@ export async function ensureUsersSeeded() {
     console.warn(
       `[vestfirma] users.json ausente — restaurando ${recovered.length} usuário(s) de backup`,
     )
-    await mutateUsersStore(() => recovered, { replace: true })
+    await mutateUsersStore((users) => mergeUsersById(users, recovered))
     return
   }
 
   const email = SEED_ADMIN_EMAIL
   const password = SEED_ADMIN_PASSWORD || randomPassword(12)
 
-  await mutateUsersStore(
-    () => [
+  await mutateUsersStore((users) => {
+    if (users.length > 0) return users
+    return [
+      ...users,
       {
         id: crypto.randomBytes(8).toString('hex'),
         email,
@@ -77,9 +80,8 @@ export async function ensureUsersSeeded() {
         password,
         createdAt: new Date().toISOString(),
       },
-    ],
-    { replace: true },
-  )
+    ]
+  })
 }
 
 export async function listUsers() {
@@ -94,7 +96,7 @@ export async function listUsers() {
         `[vestfirma] users.json com ${users.length} usuário(s) — mesclando ${recovered.length} do backup`,
       )
       users = mergeUsersById(users, recovered)
-      await mutateUsersStore(() => users, { replace: true })
+      await mutateUsersStore((current) => mergeUsersById(current, recovered))
     }
   }
 
@@ -154,7 +156,57 @@ export async function createUser(email, role, name) {
     throw new Error('Cadastro não persistiu no servidor — tente de novo')
   }
 
+  if (user.role === 'vendedor') {
+    try {
+      await syncBoardVendedorFromUser(user)
+    } catch (err) {
+      console.warn('[vestfirma] Falha ao sincronizar vendedor no quadro:', err)
+    }
+  }
+
   return created
+}
+
+/** Admin reenvia logins que existem no navegador mas sumiram do disco do servidor. */
+export async function syncMissingUsersFromClient(incoming) {
+  const list = Array.isArray(incoming) ? incoming : []
+  const valid = list.filter(
+    (u) =>
+      u?.id &&
+      u?.email &&
+      u?.role &&
+      ROLES.includes(u.role) &&
+      u.role !== 'admin' &&
+      String(u.password || '').trim(),
+  )
+  if (valid.length === 0) {
+    const data = await loadRaw()
+    return { added: 0, total: data.users?.length ?? 0, message: 'Nada para sincronizar.' }
+  }
+
+  const before = (await loadRaw()).users ?? []
+  const beforeIds = new Set(before.map((u) => u.id))
+  const merged = await mutateUsersStore((current) => mergeUsersById(current, valid))
+  const added = merged.filter((u) => !beforeIds.has(u.id)).length
+
+  for (const u of valid) {
+    if (u.role === 'vendedor') {
+      try {
+        await syncBoardVendedorFromUser(u)
+      } catch (err) {
+        console.warn('[vestfirma] sync vendedor no quadro:', err)
+      }
+    }
+  }
+
+  return {
+    added,
+    total: merged.length,
+    message:
+      added > 0
+        ? `Sincronizou ${added} usuário(s) que estavam só no navegador.`
+        : 'Usuários já estavam no servidor.',
+  }
 }
 
 export async function updateUser(id, { email, role, name, regeneratePassword }) {
@@ -189,9 +241,15 @@ export async function updateUser(id, { email, role, name, regeneratePassword }) 
   return updated
 }
 
-export async function deleteUser(id, currentUserId, session) {
+export async function deleteUser(id, currentUserId, session, confirmHeader) {
   if (!session || session.role !== 'admin') {
     throw new Error('Apenas o administrador pode excluir usuários')
+  }
+  const confirm = String(confirmHeader || '').trim()
+  if (!confirm || confirm !== id) {
+    throw new Error(
+      'Confirmação de exclusão obrigatória (header X-Vestfirma-Confirm-User-Delete).',
+    )
   }
 
   await mutateUsersStore(
@@ -201,11 +259,10 @@ export async function deleteUser(id, currentUserId, session) {
       const user = users[idx]
       if (user.role === 'admin') throw new Error('Não é possível excluir o administrador geral')
       if (id === currentUserId) throw new Error('Você não pode excluir a si mesmo')
-      console.warn(`[vestfirma] Admin excluiu usuário ${user.email} (${user.id})`)
-      users.splice(idx, 1)
-      return users
+      console.warn(`[vestfirma] Admin excluiu usuário ${user.email} (${user.id}) — confirmado`)
+      return users.filter((u) => u.id !== id)
     },
-    { replace: true },
+    { replace: true, explicitUserDeleteId: id },
   )
 }
 
@@ -332,9 +389,21 @@ export async function handleUsersApi(req, res, readBody, requireSession, corsHea
     if (req.method === 'POST') {
       const body = await readBody(req)
       const data = JSON.parse(body)
+      if (data.action === 'sync-missing') {
+        const result = await syncMissingUsersFromClient(data.users)
+        res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({ ok: true, ...result }))
+        return true
+      }
       const user = await createUser(data.email, data.role, data.name)
+      const stats = await getUsersStoreStats()
       res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(JSON.stringify({ user: userPublic(user, true) }))
+      res.end(
+        JSON.stringify({
+          user: userPublic(user, true),
+          usersCount: stats.count,
+        }),
+      )
       return true
     }
 
@@ -355,7 +424,13 @@ export async function handleUsersApi(req, res, readBody, requireSession, corsHea
     if (req.method === 'DELETE') {
       const url = new URL(req.url || '/', `http://${req.headers.host}`)
       const id = url.searchParams.get('id') || ''
-      await deleteUser(id, session.userId || '', session)
+      await deleteUser(
+        id,
+        session.userId || '',
+        session,
+        req.headers['x-vestfirma-confirm-user-delete'] ||
+          req.headers['X-Vestfirma-Confirm-User-Delete'],
+      )
       res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ ok: true }))
       return true

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { ensureStorageReady, getDataDir } from './dataPaths.mjs'
+import { assertUserDeleteAllowed } from './dataProtection.mjs'
 
 const USERS_FILE = 'users.json'
 const MAX_BACKUPS = 32
@@ -110,10 +111,11 @@ async function writeUsersAtomic(users) {
 
 /**
  * @param {(users: object[]) => object[] | Promise<object[]>} mutate
- * @param {{ replace?: boolean }} opts — replace=true grava a lista exata (exclusão); senão faz merge por id.
+ * @param {{ replace?: boolean; explicitUserDeleteId?: string }} opts
  */
 export function mutateUsersStore(mutate, opts = {}) {
   const replace = Boolean(opts.replace)
+  const explicitUserDeleteId = opts.explicitUserDeleteId || ''
   writeChain = writeChain.then(async () => {
     const disk = await loadUsersData()
     const current = disk.users ?? []
@@ -135,6 +137,7 @@ export function mutateUsersStore(mutate, opts = {}) {
       }
       merged = mergeUsersById(againUsers, next)
     }
+    assertUserDeleteAllowed(current, merged, explicitUserDeleteId || undefined)
     const file = usersPath()
     if (await pathExists(file)) {
       try {

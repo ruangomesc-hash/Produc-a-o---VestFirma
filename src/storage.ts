@@ -422,6 +422,7 @@ export async function saveBoard(
     await saveRemoteBoard(normalized, {
       force: options?.forceRemote || removingArchived,
       permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
+      confirmRemovePedidoIds: removeIds.length ? removeIds : undefined,
     })
     snapshotBoardPedidos(normalized)
     return { ok: true, remote: true }

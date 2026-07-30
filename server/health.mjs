@@ -61,6 +61,10 @@ export async function handleHealthApi(req, res, corsHeaders) {
       maxSaveBodyMb: maxBodyMb,
       adminPasswordConfigured: adminPwdConfigured,
       storageNote: paths.storageNote || undefined,
+      persistentDiskLikely: Boolean(
+        paths.dataDir?.includes('/opt/render/project/src/data') ||
+          paths.storageNote?.includes('persistente'),
+      ),
       onRender: process.env.RENDER === 'true',
       buildTag: 'board-checkup-v1',
       usersOnDisk,

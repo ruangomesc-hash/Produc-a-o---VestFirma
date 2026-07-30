@@ -122,6 +122,27 @@ async function handleBoardApi(req, res) {
         res.end(JSON.stringify({ error: 'Só o administrador pode apagar pedidos arquivados.' }))
         return
       }
+      const confirmRaw =
+        req.headers['x-vestfirma-confirm-remove-pedido'] ||
+        req.headers['X-Vestfirma-Confirm-Remove-Pedido'] ||
+        ''
+      const confirmRemoveIds = String(confirmRaw)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const confirmOk =
+        confirmRemoveIds.length === removeArchivedIds.length &&
+        removeArchivedIds.every((id) => confirmRemoveIds.includes(id))
+      if (!confirmOk) {
+        res.writeHead(400, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(
+          JSON.stringify({
+            error:
+              'Confirmação de exclusão obrigatória (header X-Vestfirma-Confirm-Remove-Pedido).',
+          }),
+        )
+        return
+      }
       for (const id of removeArchivedIds) {
         const card = existing?.cards?.find((c) => c.id === id)
         if (!card) {

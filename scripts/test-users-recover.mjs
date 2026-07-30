@@ -4,8 +4,32 @@ import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { recoverUsersFromBackups, mergeUsersById } from '../server/usersRecover.mjs'
+import { assertUserDeleteAllowed } from '../server/dataProtection.mjs'
+import { __resetStoragePathsForTests } from '../server/dataPaths.mjs'
+
+test('assertUserDeleteAllowed: bloqueia redução sem exclusão explícita', () => {
+  const current = [
+    { id: '1', email: 'a@test.com' },
+    { id: '2', email: 'b@test.com' },
+  ]
+  assert.throws(
+    () => assertUserDeleteAllowed(current, [{ id: '1', email: 'a@test.com' }]),
+    /PROTEÇÃO/,
+  )
+})
+
+test('assertUserDeleteAllowed: permite exclusão com id confirmado', () => {
+  const current = [
+    { id: '1', email: 'a@test.com' },
+    { id: '2', email: 'b@test.com' },
+  ]
+  assert.doesNotThrow(() =>
+    assertUserDeleteAllowed(current, [{ id: '1', email: 'a@test.com' }], '2'),
+  )
+})
 
 test('recoverUsersFromBackups: usa backup quando users.json sumiu', async () => {
+  __resetStoragePathsForTests()
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-users-'))
   process.env.BOARD_DATA_DIR = dir
   const file = path.join(dir, 'users.json')
@@ -36,4 +60,30 @@ test('mergeUsersById: nunca perde usuários existentes', () => {
   ]
   const merged = mergeUsersById(a, b)
   assert.equal(merged.length, 2)
+})
+
+test('syncMissingUsersFromClient: grava usuários enviados pelo navegador', async () => {
+  __resetStoragePathsForTests()
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-users-sync-'))
+  process.env.BOARD_DATA_DIR = dir
+  const file = path.join(dir, 'users.json')
+  await fs.writeFile(
+    file,
+    JSON.stringify({
+      users: [{ id: 'adm', email: 'admin@test.com', role: 'admin', password: 'x' }],
+    }),
+    'utf8',
+  )
+  const { syncMissingUsersFromClient } = await import('../server/users.mjs')
+  const france = {
+    id: 'fr1',
+    email: 'france@vestfirma.com',
+    name: 'France',
+    role: 'vendedor',
+    password: 'senha123',
+  }
+  const result = await syncMissingUsersFromClient([france])
+  assert.equal(result.added, 1)
+  const raw = JSON.parse(await fs.readFile(file, 'utf8'))
+  assert.ok(raw.users.some((u) => u.email === 'france@vestfirma.com'))
 })

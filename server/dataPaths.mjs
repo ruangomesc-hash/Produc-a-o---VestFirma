@@ -134,3 +134,11 @@ export async function ensureStorageReady() {
   if (!initDone) await initStoragePaths()
   return getBoardPaths()
 }
+
+/** Só testes — permite trocar BOARD_DATA_DIR entre casos. */
+export function __resetStoragePathsForTests() {
+  dataDir = null
+  boardFile = null
+  logoDir = null
+  initDone = false
+}

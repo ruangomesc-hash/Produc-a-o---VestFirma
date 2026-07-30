@@ -132,7 +132,7 @@ export async function restoreMissingUsersFromBackup(backupFile) {
   }
 
   const { mutateUsersStore } = await import('./usersPersist.mjs')
-  await mutateUsersStore(() => merged, { replace: true })
+  await mutateUsersStore((current) => mergeUsersById(current, fromBackup))
 
   return {
     added,

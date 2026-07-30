@@ -103,7 +103,7 @@ export function corsHeaders() {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, Authorization, X-Vestfirma-Force-Board, X-Vestfirma-Remove-Archived-Cards',
+      'Content-Type, Authorization, X-Vestfirma-Force-Board, X-Vestfirma-Remove-Archived-Cards, X-Vestfirma-Confirm-User-Delete, X-Vestfirma-Confirm-Remove-Pedido',
   }
 }
 

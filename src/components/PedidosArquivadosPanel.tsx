@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { formatarDataHora, tituloColuna } from '../historicoEtapa'
 import type { BoardState, OrderCard } from '../types'
-import { ConfirmModal } from './ConfirmModal'
 
 type Props = {
   board: BoardState
@@ -11,6 +10,7 @@ type Props = {
 
 export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
   const [deleteConfirm, setDeleteConfirm] = useState<OrderCard | null>(null)
+  const [deleteNumero, setDeleteNumero] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
 
@@ -47,7 +47,8 @@ export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
         {onDelete ? (
           <>
             {' '}
-            <strong>Apagar</strong> remove o pedido de forma permanente.
+            <strong>Apagar</strong> remove o pedido de forma permanente (exige confirmar o número do
+            pedido).
           </>
         ) : null}
       </p>
@@ -63,40 +64,102 @@ export function PedidosArquivadosPanel({ board, onRestore, onDelete }: Props) {
               card={c}
               board={board}
               onRestore={onRestore}
-              onRequestDelete={onDelete ? () => setDeleteConfirm(c) : undefined}
+              onRequestDelete={onDelete ? () => {
+                setDeleteConfirm(c)
+                setDeleteNumero('')
+                setDeleteError(null)
+              } : undefined}
             />
           ))}
         </ul>
       </section>
 
-      <ConfirmModal
-        open={Boolean(deleteConfirm && onDelete)}
-        title="Apagar pedido definitivamente?"
-        message={
-          deleteConfirm
-            ? `O pedido ${deleteConfirm.numeroPedido} (${deleteConfirm.cliente}) será removido do servidor. Esta ação não pode ser desfeita — diferente de arquivar, os dados deixam de existir no sistema.`
-            : ''
-        }
-        confirmLabel={deleteBusy ? 'Apagando…' : 'Sim, apagar definitivamente'}
-        cancelLabel="Cancelar"
-        destructive
-        onCancel={() => {
-          if (!deleteBusy) setDeleteConfirm(null)
-        }}
-        onConfirm={() => {
-          if (!deleteConfirm || !onDelete || deleteBusy) return
-          setDeleteBusy(true)
-          setDeleteError(null)
-          void onDelete(deleteConfirm.id).then((result) => {
-            setDeleteBusy(false)
-            if (result.ok) {
+      {deleteConfirm && onDelete ? (
+        <div
+          className="confirm-modal-backdrop"
+          role="presentation"
+          onClick={() => {
+            if (!deleteBusy) {
               setDeleteConfirm(null)
-            } else {
-              setDeleteError(result.error)
+              setDeleteNumero('')
             }
-          })
-        }}
-      />
+          }}
+        >
+          <div
+            className="confirm-modal"
+            role="alertdialog"
+            aria-labelledby="delete-pedido-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="confirm-modal-brand">
+              <img
+                src={`${import.meta.env.BASE_URL}vestfirma-logo.png`}
+                alt="VestFirma"
+                className="confirm-modal-logo"
+              />
+            </header>
+            <div className="confirm-modal-body">
+              <h2 id="delete-pedido-title" className="confirm-modal-title">
+                Apagar pedido definitivamente?
+              </h2>
+              <p className="confirm-message">
+                O pedido <strong>{deleteConfirm.numeroPedido}</strong> ({deleteConfirm.cliente}) será
+                removido do servidor. Esta ação não pode ser desfeita — diferente de arquivar, os
+                dados deixam de existir no sistema. Para confirmar, digite o{' '}
+                <strong>número do pedido</strong> abaixo.
+              </p>
+              <label className="usuarios-search">
+                <span>Número do pedido</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={deleteNumero}
+                  onChange={(e) => setDeleteNumero(e.target.value)}
+                  placeholder={String(deleteConfirm.numeroPedido)}
+                  autoComplete="off"
+                />
+              </label>
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="btn confirm-cancel"
+                  disabled={deleteBusy}
+                  onClick={() => {
+                    setDeleteConfirm(null)
+                    setDeleteNumero('')
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn primary confirm-danger"
+                  disabled={
+                    deleteBusy ||
+                    deleteNumero.trim() !== String(deleteConfirm.numeroPedido).trim()
+                  }
+                  onClick={() => {
+                    if (!deleteConfirm || deleteBusy) return
+                    setDeleteBusy(true)
+                    setDeleteError(null)
+                    void onDelete(deleteConfirm.id).then((result) => {
+                      setDeleteBusy(false)
+                      if (result.ok) {
+                        setDeleteConfirm(null)
+                        setDeleteNumero('')
+                      } else {
+                        setDeleteError(result.error)
+                      }
+                    })
+                  }}
+                >
+                  {deleteBusy ? 'Apagando…' : 'Sim, apagar definitivamente'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }
@@ -121,21 +184,15 @@ function PedidoArquivadoRow({
           {card.numeroPedido} — {card.cliente}
         </strong>
         <span className="pedidos-arquivados-meta">
-          Etapa: {etapa}
-          {card.arquivadoEm ? (
-            <>
-              {' '}
-              · Arquivado em {formatarDataHora(card.arquivadoEm)}
-            </>
-          ) : null}
+          Arquivado em {formatarDataHora(card.arquivadoEm ?? '')} · Etapa: {etapa}
         </span>
       </div>
       <div className="pedidos-arquivados-actions">
-        <button type="button" className="btn ghost small" onClick={() => onRestore(card.id)}>
+        <button type="button" className="btn" onClick={() => onRestore(card.id)}>
           Restaurar no kanban
         </button>
         {onRequestDelete ? (
-          <button type="button" className="btn ghost small danger-text" onClick={onRequestDelete}>
+          <button type="button" className="btn danger" onClick={onRequestDelete}>
             Apagar definitivamente
           </button>
         ) : null}
