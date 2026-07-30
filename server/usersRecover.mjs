@@ -57,6 +57,22 @@ export async function recoverUsersFromBackups() {
   return candidates[0]
 }
 
+function mergeUserRecords(prev, incoming) {
+  if (!prev) return incoming
+  if (!incoming) return prev
+  const tPrev = Date.parse(prev.createdAt || '') || 0
+  const tIn = Date.parse(incoming.createdAt || '') || 0
+  const newer = tIn >= tPrev ? incoming : prev
+  const older = tIn >= tPrev ? prev : incoming
+  const merged = { ...older, ...newer }
+  const pwd =
+    String(newer.password || '').trim() ||
+    String(prev.password || '').trim() ||
+    String(incoming.password || '').trim()
+  if (pwd) merged.password = pwd
+  return merged
+}
+
 export function mergeUsersById(a, b) {
   const byId = new Map()
   for (const u of a ?? []) {
@@ -64,10 +80,25 @@ export function mergeUsersById(a, b) {
   }
   for (const u of b ?? []) {
     if (!u?.id) continue
-    const prev = byId.get(u.id)
-    byId.set(u.id, prev ? { ...prev, ...u } : u)
+    byId.set(u.id, mergeUserRecords(byId.get(u.id), u))
   }
   return Array.from(byId.values())
+}
+
+/** Só adiciona usuários ausentes — nunca sobrescreve cadastro já no disco. */
+export function mergeUsersAddingMissingOnly(current, incoming) {
+  const list = [...(current ?? [])]
+  for (const u of incoming ?? []) {
+    if (!u?.id && !u?.email) continue
+    const em = String(u.email || '').trim().toLowerCase()
+    const exists = list.some(
+      (x) =>
+        x.id === u.id ||
+        (em && String(x.email || '').trim().toLowerCase() === em),
+    )
+    if (!exists) list.push(u)
+  }
+  return list
 }
 
 export async function listUsersBackupSummaries() {

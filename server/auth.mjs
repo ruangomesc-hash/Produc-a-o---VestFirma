@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { readJsonStore, writeJsonStore } from './storageAdapter.mjs'
 import { issueSessionToken, parseSessionToken, useJwtSessions } from './sessionToken.mjs'
-import { ensureUsersSeeded, verifyUserPassword } from './users.mjs'
+import { ensureUsersSeeded, verifyUserPassword, userExistsOnServer } from './users.mjs'
 
 const SESSIONS_STORE = 'sessions.json'
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 14)
@@ -197,16 +197,22 @@ export async function handleLoginApi(req, res, readBody) {
 
     const user = await verifyCredentials(username, password)
     if (!user) {
+      const normUser = username.trim().toLowerCase()
+      const isAdminAttempt = normUser === adminEmail
+      const exists = isAdminAttempt || (await userExistsOnServer(username))
       loginJsonError(res, 401, {
-        code: 'AUTH_INVALID',
-        error:
-          username.toLowerCase() === adminEmail
-            ? 'Senha incorreta para o administrador.'
-            : 'E-mail ou senha incorretos.',
-        fix:
-          username.toLowerCase() === adminEmail
-            ? 'Confira SEED_ADMIN_PASSWORD no Render (sem aspas extras) e redeploy.'
-            : 'Peça um acesso em Usuários ou confira e-mail e senha.',
+        code: exists ? 'AUTH_INVALID' : 'USER_NOT_REGISTERED',
+        error: isAdminAttempt
+          ? 'Senha incorreta para o administrador.'
+          : exists
+            ? 'Senha incorreta para este e-mail.'
+            : 'Este e-mail não está cadastrado no servidor.',
+        fix: isAdminAttempt
+          ? 'Confira SEED_ADMIN_PASSWORD no Render (sem aspas extras) e redeploy.'
+          : exists
+            ? 'Peça ao administrador: Usuários → Regenerar senha → copie e envie de novo.'
+            : 'Administrador: cadastre em Usuários (perfil Vendedor). Se já cadastrou, confira deploy e disco persistente na Render.',
+        detail: normUser,
       })
       return true
     }

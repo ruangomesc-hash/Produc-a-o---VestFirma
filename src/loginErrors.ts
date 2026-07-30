@@ -18,6 +18,7 @@ export type LoginFailure = {
 
 const CODE_LABELS: Record<string, string> = {
   AUTH_INVALID: 'Credenciais recusadas',
+  USER_NOT_REGISTERED: 'E-mail não cadastrado no servidor',
   AUTH_MISSING_FIELDS: 'Campos obrigatórios',
   API_NOT_FOUND: 'API não encontrada',
   API_NOT_JSON: 'Resposta inválida da API',

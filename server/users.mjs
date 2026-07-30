@@ -9,7 +9,7 @@ import {
   repairUsersMissingFromBoard,
   countUsersOnDisk,
 } from './usersRepair.mjs'
-import { mergeUsersById, recoverUsersFromBackups } from './usersRecover.mjs'
+import { mergeUsersById, recoverUsersFromBackups, mergeUsersAddingMissingOnly } from './usersRecover.mjs'
 import { syncBoardVendedorFromUser } from './usersBoardSync.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
@@ -91,12 +91,20 @@ export async function listUsers() {
 
   if (users.length <= 1) {
     const recovered = await recoverUsersFromBackups()
-    if (recovered.length > users.length) {
+    const missing = recovered.filter(
+      (r) =>
+        !users.some(
+          (u) =>
+            u.id === r.id ||
+            normalizeEmail(u.email) === normalizeEmail(r.email),
+        ),
+    )
+    if (missing.length > 0) {
       console.warn(
-        `[vestfirma] users.json com ${users.length} usuário(s) — mesclando ${recovered.length} do backup`,
+        `[vestfirma] users.json com ${users.length} usuário(s) — adicionando ${missing.length} ausente(s) do backup (sem sobrescrever senhas)`,
       )
-      users = mergeUsersById(users, recovered)
-      await mutateUsersStore((current) => mergeUsersById(current, recovered))
+      users = mergeUsersById(users, missing)
+      await mutateUsersStore((current) => mergeUsersAddingMissingOnly(current, missing))
     }
   }
 
@@ -324,6 +332,16 @@ export async function handleUsersBackupsApi(req, res, readBody, requireSession, 
   return true
 }
 
+export async function userExistsOnServer(email) {
+  const norm = normalizeEmail(email)
+  if (!norm) return false
+  await ensureUsersSeeded()
+  const data = await loadRaw()
+  if (findUserByEmail(data.users ?? [], norm)) return true
+  const recovered = await recoverUsersFromBackups()
+  return Boolean(findUserByEmail(recovered, norm))
+}
+
 export async function verifyUserPassword(email, password) {
   const norm = normalizeEmail(email)
   const pwd = String(password).trim()
@@ -342,8 +360,27 @@ export async function verifyUserPassword(email, password) {
   }
 
   await ensureUsersSeeded()
-  const users = await listUsers()
-  const user = findUserByEmail(users, email)
+
+  async function findOnDisk() {
+    const data = await loadRaw()
+    return findUserByEmail(data.users ?? [], norm)
+  }
+
+  let user = await findOnDisk()
+
+  if (!user) {
+    const recovered = await recoverUsersFromBackups()
+    const onDisk = (await loadRaw()).users ?? []
+    const missing = mergeUsersAddingMissingOnly(onDisk, recovered).filter(
+      (u) => !onDisk.some((x) => x.id === u.id),
+    )
+    if (missing.length > 0) {
+      console.warn(`[vestfirma] Login: restaurando ${missing.length} usuário(s) ausente(s) do backup`)
+      await mutateUsersStore((current) => mergeUsersAddingMissingOnly(current, missing))
+      user = await findOnDisk()
+    }
+  }
+
   if (user) {
     const stored = String(user.password || '')
     if (stored !== '' && stored === pwd) return user
