@@ -7,6 +7,8 @@ import type { Vendedor } from '../types'
 import {
   deleteManagedUser,
   fetchUsers,
+  fetchUsersBackups,
+  restoreUsersFromBackup,
   updateManagedUser,
 } from '../usersApi'
 import { mergeManagedUsers } from '../mergeManagedUsers'
@@ -83,6 +85,11 @@ export function UsuariosModal({
   const [error, setError] = useState<string | null>(null)
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [showPasswords, setShowPasswords] = useState(false)
+  const [restoreBusy, setRestoreBusy] = useState(false)
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ManagedUser | null>(null)
+  const [deleteEmail, setDeleteEmail] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const onUsersLoadedRef = useRef(onUsersLoaded)
   onUsersLoadedRef.current = onUsersLoaded
   const seedUsersRef = useRef(seedUsers)
@@ -108,6 +115,31 @@ export function UsuariosModal({
       setLoading(false)
     }
   }, [notifyUsersLoaded])
+
+  const restoreMissingUsers = useCallback(async () => {
+    setRestoreBusy(true)
+    setRestoreMessage(null)
+    setError(null)
+    try {
+      const data = await fetchUsersBackups()
+      const best = data.backups.find((b) => b.missingCount > 0)
+      if (!best) {
+        setRestoreMessage('Nenhum backup com usuários ausentes encontrado.')
+        return
+      }
+      const result = await restoreUsersFromBackup(best.file)
+      setRestoreMessage(result.message)
+      await reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao restaurar usuários')
+    } finally {
+      setRestoreBusy(false)
+    }
+  }, [reload])
+
+  useEffect(() => {
+    if (deleteTarget) setDeleteEmail('')
+  }, [deleteTarget])
 
   useEffect(() => {
     if (!open) return
@@ -169,6 +201,27 @@ export function UsuariosModal({
                 onSuccessAlert={setAlertMessage}
               />
 
+              {users.length <= 1 && !loading ? (
+                <div className="board-restore-banner" role="alert">
+                  <p>
+                    <strong>Faltam usuários?</strong> Se France, Junior ou outros sumiram após deploy,
+                    restaure do backup automático do servidor — ninguém é apagado sem confirmação
+                    explícita.
+                  </p>
+                  <div className="board-restore-actions">
+                    <button
+                      type="button"
+                      className="btn primary small"
+                      disabled={restoreBusy}
+                      onClick={() => void restoreMissingUsers()}
+                    >
+                      {restoreBusy ? 'Restaurando…' : 'Restaurar usuários do backup'}
+                    </button>
+                  </div>
+                  {restoreMessage ? <p className="usuarios-hint">{restoreMessage}</p> : null}
+                </div>
+              ) : null}
+
               {error && (
                 <p className="usuarios-error" role="alert">
                   {error}
@@ -223,6 +276,7 @@ export function UsuariosModal({
                           onAlert={setAlertMessage}
                           onError={setError}
                           onUserDeleted={onUserDeleted}
+                          onRequestDelete={setDeleteTarget}
                           onUpdateVendedorContato={onUpdateVendedorContato}
                           onEnsureVendedor={onEnsureVendedor}
                         />
@@ -246,6 +300,78 @@ export function UsuariosModal({
         message={alertMessage || ''}
         onClose={() => setAlertMessage(null)}
       />
+
+      {deleteTarget ? (
+        <div
+          className="modal-backdrop confirm-backdrop"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleteBusy) setDeleteTarget(null)
+          }}
+        >
+          <div className="confirm-modal" role="alertdialog" onClick={(e) => e.stopPropagation()}>
+            <header className="confirm-modal-brand">
+              <img
+                src={`${import.meta.env.BASE_URL}vestfirma-logo.png`}
+                alt="VestFirma"
+                className="confirm-modal-logo"
+              />
+            </header>
+            <div className="confirm-modal-body">
+              <h2 className="confirm-modal-title">Excluir acesso?</h2>
+              <p className="confirm-message">
+                Isso remove o login de <strong>{deleteTarget.email}</strong> do servidor. Para
+                confirmar, digite o e-mail abaixo (proteção contra clique acidental).
+              </p>
+              <label className="usuarios-search">
+                <span>E-mail do usuário</span>
+                <input
+                  type="email"
+                  value={deleteEmail}
+                  onChange={(e) => setDeleteEmail(e.target.value)}
+                  placeholder={deleteTarget.email}
+                  autoComplete="off"
+                />
+              </label>
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className="btn confirm-cancel"
+                  disabled={deleteBusy}
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn primary confirm-danger"
+                  disabled={
+                    deleteBusy ||
+                    deleteEmail.trim().toLowerCase() !== deleteTarget.email.trim().toLowerCase()
+                  }
+                  onClick={() => {
+                    setDeleteBusy(true)
+                    setError(null)
+                    void deleteManagedUser(deleteTarget.id)
+                      .then(async () => {
+                        onUserDeleted?.(deleteTarget)
+                        setDeleteTarget(null)
+                        setDeleteEmail('')
+                        await reload()
+                      })
+                      .catch((err) => {
+                        setError(err instanceof Error ? err.message : 'Falha ao excluir')
+                      })
+                      .finally(() => setDeleteBusy(false))
+                  }}
+                >
+                  {deleteBusy ? 'Excluindo…' : 'Sim, excluir acesso'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }
@@ -258,7 +384,7 @@ function UsuarioRow({
   onChanged,
   onAlert,
   onError,
-  onUserDeleted,
+  onRequestDelete,
   onUpdateVendedorContato,
   onEnsureVendedor,
 }: {
@@ -270,6 +396,7 @@ function UsuarioRow({
   onAlert: (msg: string) => void
   onError: (msg: string | null) => void
   onUserDeleted?: (user: ManagedUser) => void
+  onRequestDelete?: (user: ManagedUser) => void
   onUpdateVendedorContato?: Props['onUpdateVendedorContato']
   onEnsureVendedor?: Props['onEnsureVendedor']
 }) {
@@ -334,20 +461,12 @@ function UsuarioRow({
     }
   }
 
-  const remove = async () => {
+  const remove = () => {
     if (!canDeleteUsers) {
       onError('Apenas o administrador geral pode excluir usuários.')
       return
     }
-    if (!window.confirm(`Excluir acesso de ${user.email}?`)) return
-    onError(null)
-    try {
-      await deleteManagedUser(user.id)
-      onUserDeleted?.(user)
-      await onChanged()
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Falha ao excluir')
-    }
+    onRequestDelete?.(user)
   }
 
   return (
@@ -428,7 +547,7 @@ function UsuarioRow({
           </span>
         ) : null}
         {!isAdmin && canDeleteUsers ? (
-          <button type="button" className="btn ghost btn-xs danger-text" onClick={() => void remove()}>
+          <button type="button" className="btn ghost btn-xs danger-text" onClick={remove}>
             Excluir
           </button>
         ) : null}

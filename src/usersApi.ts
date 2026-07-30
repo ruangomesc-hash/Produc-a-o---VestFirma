@@ -132,6 +132,63 @@ export async function deleteManagedUser(id: string): Promise<void> {
   })
 }
 
+export async function fetchUsersBackups(): Promise<{
+  currentCount: number
+  backups: {
+    file: string
+    label: string
+    total: number
+    missingCount: number
+    preview: { id: string; email: string; name?: string; role?: string }[]
+  }[]
+}> {
+  requireAdminActor()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
+  if (!base) throw new Error('API não configurada')
+
+  const authGen = getAuthGeneration()
+  const res = await fetch(`${base}${apiPath('users/backups')}`, {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  })
+  handleAuthResponse(res.status, authGen)
+  const { json } = await readApiJson(res)
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao listar backups de usuários'))
+  return json as {
+    currentCount: number
+    backups: {
+      file: string
+      label: string
+      total: number
+      missingCount: number
+      preview: { id: string; email: string; name?: string; role?: string }[]
+    }[]
+  }
+}
+
+export async function restoreUsersFromBackup(backup: string): Promise<{ message: string; added: number }> {
+  requireAdminActor()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
+  if (!base) throw new Error('API não configurada')
+
+  const authGen = getAuthGeneration()
+  const res = await fetch(`${base}${apiPath('users/backups')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify({ backup }),
+  })
+  handleAuthResponse(res.status, authGen)
+  const { json } = await readApiJson(res)
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao restaurar usuários'))
+  const data = json as { message?: string; added?: number }
+  recordAudit({
+    action: 'usuarios.restaurados',
+    summary: data.message || `Restaurou ${data.added ?? 0} usuário(s) de backup`,
+  })
+  return { message: data.message || 'Usuários restaurados.', added: data.added ?? 0 }
+}
+
 export type { SessionProfile, ManagedUser, UserRole }
 
 export function isAdmin(profile: SessionProfile | null): boolean {

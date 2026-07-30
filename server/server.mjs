@@ -22,7 +22,7 @@ const {
 } = await import('./auth.mjs')
 const { handleNotifyApi } = await import('./notify.mjs')
 const { handleHealthApi } = await import('./health.mjs')
-const { handleUsersApi } = await import('./users.mjs')
+const { handleUsersApi, handleUsersBackupsApi } = await import('./users.mjs')
 const { handleAuditApi } = await import('./audit.mjs')
 const { externalizeBoardLogos, logoMime, resolveLogoFile } = await import('./boardLogos.mjs')
 const {
@@ -356,6 +356,11 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/health' || url.pathname === '/api/health.php') {
       await handleHealthApi(req, res, corsHeaders)
+      return
+    }
+
+    if (url.pathname === '/api/users/backups') {
+      await handleUsersBackupsApi(req, res, readBody, requireSession, corsHeaders)
       return
     }
 

@@ -5,7 +5,11 @@ import {
   mutateUsersStore,
   usersStoreFileExists,
 } from './usersPersist.mjs'
-import { repairUsersMissingFromBoard, countUsersOnDisk } from './usersRepair.mjs'
+import {
+  repairUsersMissingFromBoard,
+  countUsersOnDisk,
+} from './usersRepair.mjs'
+import { mergeUsersById, recoverUsersFromBackups } from './usersRecover.mjs'
 
 export const ROLES = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
 
@@ -39,7 +43,24 @@ export async function ensureUsersSeeded() {
   if (exists) {
     const data = await loadRaw()
     if (data.users.length > 0) return
+    const recovered = await recoverUsersFromBackups()
+    if (recovered.length > 0) {
+      console.warn(
+        `[vestfirma] users.json vazio — restaurando ${recovered.length} usuário(s) de backup`,
+      )
+      await mutateUsersStore(() => recovered, { replace: true })
+      return
+    }
     console.warn('[vestfirma] users.json existe mas está sem usuários — não recriar admin automaticamente')
+    return
+  }
+
+  const recovered = await recoverUsersFromBackups()
+  if (recovered.length > 0) {
+    console.warn(
+      `[vestfirma] users.json ausente — restaurando ${recovered.length} usuário(s) de backup`,
+    )
+    await mutateUsersStore(() => recovered, { replace: true })
     return
   }
 
@@ -64,7 +85,20 @@ export async function ensureUsersSeeded() {
 export async function listUsers() {
   await ensureUsersSeeded()
   const data = await loadRaw()
-  const repaired = await repairUsersMissingFromBoard(data.users)
+  let users = data.users ?? []
+
+  if (users.length <= 1) {
+    const recovered = await recoverUsersFromBackups()
+    if (recovered.length > users.length) {
+      console.warn(
+        `[vestfirma] users.json com ${users.length} usuário(s) — mesclando ${recovered.length} do backup`,
+      )
+      users = mergeUsersById(users, recovered)
+      await mutateUsersStore(() => users, { replace: true })
+    }
+  }
+
+  const repaired = await repairUsersMissingFromBoard(users)
   return repaired
 }
 
@@ -167,11 +201,55 @@ export async function deleteUser(id, currentUserId, session) {
       const user = users[idx]
       if (user.role === 'admin') throw new Error('Não é possível excluir o administrador geral')
       if (id === currentUserId) throw new Error('Você não pode excluir a si mesmo')
+      console.warn(`[vestfirma] Admin excluiu usuário ${user.email} (${user.id})`)
       users.splice(idx, 1)
       return users
     },
     { replace: true },
   )
+}
+
+export async function handleUsersBackupsApi(req, res, readBody, requireSession, corsHeaders) {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, corsHeaders())
+    res.end()
+    return true
+  }
+
+  const session = await requireSession(req, res)
+  if (!session) return true
+  if (!requireAdminSession(session, res, corsHeaders)) return true
+
+  try {
+    const { listUsersBackupSummaries, restoreMissingUsersFromBackup } = await import(
+      './usersRecover.mjs'
+    )
+
+    if (req.method === 'GET') {
+      const data = await listUsersBackupSummaries()
+      res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify(data))
+      return true
+    }
+
+    if (req.method === 'POST') {
+      const body = await readBody(req)
+      const data = JSON.parse(body || '{}')
+      const result = await restoreMissingUsersFromBackup(String(data.backup || 'users.json.bak'))
+      res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ ok: true, ...result }))
+      return true
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Falha ao restaurar usuários'
+    res.writeHead(400, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify({ error: msg }))
+    return true
+  }
+
+  res.writeHead(405, corsHeaders())
+  res.end('Method Not Allowed')
+  return true
 }
 
 export async function verifyUserPassword(email, password) {
