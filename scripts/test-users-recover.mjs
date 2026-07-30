@@ -32,6 +32,7 @@ test('recoverUsersFromBackups: usa backup quando users.json sumiu', async () => 
   __resetStoragePathsForTests()
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-users-'))
   process.env.BOARD_DATA_DIR = dir
+  process.env.VESTFIRMA_TEST_ISOLATE_DATA = '1'
   const file = path.join(dir, 'users.json')
   const backupsDir = path.join(dir, 'backups')
   await fs.mkdir(backupsDir, { recursive: true })
@@ -66,6 +67,7 @@ test('syncMissingUsersFromClient: grava usuários enviados pelo navegador', asyn
   __resetStoragePathsForTests()
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-users-sync-'))
   process.env.BOARD_DATA_DIR = dir
+  process.env.VESTFIRMA_TEST_ISOLATE_DATA = '1'
   const file = path.join(dir, 'users.json')
   await fs.writeFile(
     file,

@@ -361,6 +361,14 @@ export function requireAdminSession(row, res, corsHeaders) {
   return true
 }
 
+function noStoreHeaders(corsHeaders) {
+  return {
+    ...corsHeaders(),
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    Pragma: 'no-cache',
+  }
+}
+
 export async function handleUsersApi(req, res, readBody, requireSession, corsHeaders) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders())
@@ -381,7 +389,7 @@ export async function handleUsersApi(req, res, readBody, requireSession, corsHea
   try {
     if (req.method === 'GET') {
       const users = await listUsers()
-      res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.writeHead(200, { ...noStoreHeaders(corsHeaders), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ users: users.map((u) => userPublic(u, true)) }))
       return true
     }
@@ -391,17 +399,18 @@ export async function handleUsersApi(req, res, readBody, requireSession, corsHea
       const data = JSON.parse(body)
       if (data.action === 'sync-missing') {
         const result = await syncMissingUsersFromClient(data.users)
-        res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.writeHead(200, { ...noStoreHeaders(corsHeaders), 'Content-Type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify({ ok: true, ...result }))
         return true
       }
       const user = await createUser(data.email, data.role, data.name)
       const stats = await getUsersStoreStats()
-      res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.writeHead(200, { ...noStoreHeaders(corsHeaders), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(
         JSON.stringify({
           user: userPublic(user, true),
           usersCount: stats.count,
+          persisted: stats.count >= 2 || user.role !== 'vendedor',
         }),
       )
       return true

@@ -7,13 +7,6 @@
       "role": "admin",
       "password": "@Vestfirma26!",
       "createdAt": "2026-07-29T01:30:14.182Z"
-    },
-    {
-      "id": "fr1",
-      "email": "france@vestfirma.com",
-      "name": "France",
-      "role": "vendedor",
-      "password": "senha123"
     }
   ]
 }

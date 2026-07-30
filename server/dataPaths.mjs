@@ -14,6 +14,15 @@ let initDone = false
 
 const RENDER_APP_DATA = '/opt/render/project/src/data'
 
+async function pathExists(p) {
+  try {
+    await fs.access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function canWriteDirectory(dir) {
   try {
     await fs.mkdir(dir, { recursive: true })
@@ -43,9 +52,98 @@ function defaultLocalDataDir() {
   return path.join(ROOT, 'data')
 }
 
+async function readUsersCount(dir) {
+  try {
+    const raw = await fs.readFile(path.join(dir, 'users.json'), 'utf8')
+    if (!raw.trim()) return 0
+    const data = JSON.parse(raw)
+    return Array.isArray(data.users) ? data.users.length : 0
+  } catch {
+    return 0
+  }
+}
+
+async function readBoardCardsCount(dir) {
+  try {
+    const raw = await fs.readFile(path.join(dir, 'board.json'), 'utf8')
+    if (!raw.trim()) return 0
+    const data = JSON.parse(raw)
+    return Array.isArray(data.cards) ? data.cards.length : 0
+  } catch {
+    return 0
+  }
+}
+
+/** Quanto dado real existe nesta pasta — evita escolher disco efêmero vazio. */
+async function scoreDataDir(dir, envDirResolved) {
+  if (!(await canWriteDirectory(dir))) return -1
+  const users = await readUsersCount(dir)
+  const cards = await readBoardCardsCount(dir)
+  let score = users * 1000 + cards * 10
+  if (dir === RENDER_APP_DATA || dir.includes('render/project/src/data')) score += 50
+  if (dir === '/var/data') score += 40
+  if (envDirResolved && dir === envDirResolved) score += 300
+  return score
+}
+
+async function copyIfMissing(from, to) {
+  if (!(await pathExists(from))) return false
+  if (await pathExists(to)) return false
+  await fs.mkdir(path.dirname(to), { recursive: true })
+  await fs.copyFile(from, to)
+  return true
+}
+
+/** Copia users/board/backups de pastas secundárias para a pasta escolhida. */
+async function migrateDataIntoChosen(chosen, others) {
+  let migrated = 0
+  const files = ['users.json', 'board.json']
+  for (const other of others) {
+    if (other === chosen) continue
+    for (const name of files) {
+      const from = path.join(other, name)
+      const to = path.join(chosen, name)
+      const fromUsers = name === 'users.json' ? await readUsersCount(other) : 0
+      const toUsers = name === 'users.json' ? await readUsersCount(chosen) : 0
+      const fromCards = name === 'board.json' ? await readBoardCardsCount(other) : 0
+      const toCards = name === 'board.json' ? await readBoardCardsCount(chosen) : 0
+      const fromBetter =
+        name === 'users.json' ? fromUsers > toUsers : fromCards > toCards
+      if (fromBetter && (await pathExists(from))) {
+        await fs.mkdir(path.dirname(to), { recursive: true })
+        if (await pathExists(to)) {
+          await fs.copyFile(to, `${to}.pre-migrate.bak`)
+        }
+        await fs.copyFile(from, to)
+        migrated++
+        console.warn(`[vestfirma] Migrou ${name} de ${other} → ${chosen}`)
+      } else {
+        await copyIfMissing(from, to)
+      }
+      await copyIfMissing(`${from}.bak`, `${to}.bak`)
+    }
+    const fromBackups = path.join(other, 'backups')
+    const toBackups = path.join(chosen, 'backups')
+    if (await pathExists(fromBackups)) {
+      await fs.mkdir(toBackups, { recursive: true })
+      const names = await fs.readdir(fromBackups)
+      for (const n of names) {
+        const dest = path.join(toBackups, n)
+        if (!(await pathExists(dest))) {
+          await fs.copyFile(path.join(fromBackups, n), dest)
+          migrated++
+        }
+      }
+    }
+  }
+  if (migrated > 0) {
+    console.warn(`[vestfirma] Migração concluída: ${migrated} arquivo(s) → ${chosen}`)
+  }
+}
+
 /**
  * Escolhe onde gravar board/users/logos.
- * Ignora BOARD_DATA_* do painel se a pasta não for gravável (evita EACCES em /var/data).
+ * Prefere a pasta com MAIS dados (users.json / board.json), não só a primeira gravável.
  */
 export async function initStoragePaths() {
   if (initDone && dataDir) return getBoardPaths()
@@ -56,25 +154,49 @@ export async function initStoragePaths() {
   const fromEnvFile = envBoard ? path.dirname(path.resolve(envBoard)) : null
 
   const candidates = uniquePaths([
-    process.env.RENDER === 'true' ? RENDER_APP_DATA : null,
+    RENDER_APP_DATA,
     envDir,
     fromEnvFile,
     '/var/data',
     defaultLocalDataDir(),
-    RENDER_APP_DATA,
   ])
 
-  let chosen = null
-  for (const dir of candidates) {
-    if (await canWriteDirectory(dir)) {
-      chosen = dir
-      break
+  const envDirResolved = envDir ? path.resolve(envDir) : null
+
+  if (process.env.VESTFIRMA_TEST_ISOLATE_DATA === '1' && envDirResolved) {
+    if (!(await canWriteDirectory(envDirResolved))) {
+      throw new Error(`Pasta de teste não gravável: ${envDirResolved}`)
     }
+    dataDir = envDirResolved
+    boardFile =
+      envBoard && path.dirname(path.resolve(envBoard)) === envDirResolved
+        ? path.resolve(envBoard)
+        : path.join(envDirResolved, 'board.json')
+    logoDir = path.join(envDirResolved, 'logos')
+    process.env.BOARD_DATA_DIR = dataDir
+    process.env.BOARD_DATA_FILE = boardFile
+    process.env.BOARD_LOGO_DIR = logoDir
+    storageNote = `Teste isolado em ${dataDir}`
+    await fs.mkdir(logoDir, { recursive: true })
+    initDone = true
+    return getBoardPaths()
   }
 
-  if (!chosen) {
+  const scored = []
+  for (const dir of candidates) {
+    const score = await scoreDataDir(dir, envDirResolved)
+    if (score >= 0) scored.push({ dir, score })
+  }
+
+  if (scored.length === 0) {
     throw new Error('Nenhuma pasta gravável para dados do VestFirma.')
   }
+
+  scored.sort((a, b) => b.score - a.score)
+  const chosen = scored[0].dir
+  const others = scored.slice(1).map((s) => s.dir)
+
+  await migrateDataIntoChosen(chosen, others)
 
   dataDir = chosen
   boardFile =
@@ -90,15 +212,16 @@ export async function initStoragePaths() {
   process.env.BOARD_DATA_FILE = boardFile
   process.env.BOARD_LOGO_DIR = logoDir
 
-  const wanted = envDir || fromEnvFile
-  const wantedResolved = wanted ? path.resolve(wanted) : null
-  if (wantedResolved && wantedResolved !== chosen) {
-    storageNote = `Pasta ${wanted} sem permissão; usando ${chosen}.`
-    console.warn('[vestfirma]', storageNote)
-  } else if (chosen === RENDER_APP_DATA || chosen.includes('render/project/src/data')) {
-    storageNote = 'Disco/pasta persistente na Render ativa.'
+  const usersNow = await readUsersCount(chosen)
+  const onRenderMount =
+    chosen === RENDER_APP_DATA || chosen.includes('render/project/src/data')
+  if (onRenderMount) {
+    storageNote = 'Disco persistente Render (/opt/render/project/src/data).'
   } else if (process.env.RENDER === 'true') {
-    storageNote = 'Dados graváveis OK (confira disco persistente no painel Render).'
+    storageNote = `ATENÇÃO Render: dados em ${chosen} — monte disco em /opt/render/project/src/data.`
+    console.warn('[vestfirma]', storageNote)
+  } else if (chosen === '/var/data') {
+    storageNote = 'Dados em /var/data (disco persistente).'
   } else {
     storageNote = `Dados em ${chosen}`
   }
@@ -109,11 +232,11 @@ export async function initStoragePaths() {
   console.log('[vestfirma] BOARD_DATA_DIR =', dataDir)
   console.log('[vestfirma] BOARD_DATA_FILE =', boardFile)
   console.log('[vestfirma] BOARD_LOGO_DIR =', logoDir)
+  console.log('[vestfirma] users.json nesta pasta:', usersNow, 'usuário(s)')
 
   return getBoardPaths()
 }
 
-/** Sempre usa pasta já validada — nunca /var/data só porque está no env. */
 export function getDataDir() {
   if (dataDir) return dataDir
   return defaultLocalDataDir()

@@ -189,7 +189,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         })
         setManagedUsersReady(true)
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[vestfirma] falha ao carregar usuários:', err)
+      })
   }, [session, syncVendedoresFromManagedUsers])
 
   const handleUsersLoaded = useCallback(

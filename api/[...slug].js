@@ -167,7 +167,20 @@ async function defaultUsers() {
 async function loadUsersList() {
   const data = await blobReadJson('users.json')
   if (data?.users?.length) return data.users
-  return defaultUsers()
+  return []
+}
+
+function mergeUsersById(a, b) {
+  const byId = new Map()
+  for (const u of a ?? []) {
+    if (u?.id) byId.set(u.id, u)
+  }
+  for (const u of b ?? []) {
+    if (!u?.id) continue
+    const prev = byId.get(u.id)
+    byId.set(u.id, prev ? { ...prev, ...u } : u)
+  }
+  return Array.from(byId.values())
 }
 
 function randomPassword(length = 12) {
@@ -358,6 +371,7 @@ export default async function handler(req, res) {
         return
       }
       if (req.method === 'GET') {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
         const users = await loadUsersList()
         res.status(200).json({ users: users.map((u) => userPublic(u, true)) })
         return
@@ -373,6 +387,32 @@ export default async function handler(req, res) {
           return
         }
         const data = await parseJsonBody(req)
+        if (data.action === 'sync-missing') {
+          const incoming = Array.isArray(data.users) ? data.users : []
+          const valid = incoming.filter(
+            (u) =>
+              u?.id &&
+              u?.email &&
+              u?.role &&
+              USER_ROLES.includes(u.role) &&
+              u.role !== 'admin' &&
+              String(u.password || '').trim(),
+          )
+          const before = await loadUsersList()
+          const merged = mergeUsersById(before, valid)
+          const added = merged.filter((u) => !before.some((x) => x.id === u.id)).length
+          await saveUsersList(merged)
+          res.status(200).json({
+            ok: true,
+            added,
+            total: merged.length,
+            message:
+              added > 0
+                ? `Sincronizou ${added} usuário(s) do navegador.`
+                : 'Usuários já estavam no Blob.',
+          })
+          return
+        }
         const email = normalizeEmail(data.email)
         const role = String(data.role || '')
         const name = String(data.name || '').trim() || email

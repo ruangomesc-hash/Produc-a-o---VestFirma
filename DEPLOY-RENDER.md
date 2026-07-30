@@ -39,7 +39,9 @@ Na **Render** você roda o **servidor Node** do projeto (`server/server.mjs`), q
 
 6. **Instance type:** pelo menos **512 MB RAM** (Starter). Para muitos acessos simultâneos, 1 GB+.
 
-7. **Disk (importante):** em **Disks**, anexe um **Persistent Disk** (ex. 1–10 GB) e monte em `/var/data`.
+7. **Disk (importante):** em **Disks**, anexe um **Persistent Disk** (ex. 5 GB) e monte em **`/opt/render/project/src/data`** (igual ao `render.yaml`).
+
+   > Se montar em `/var/data`, o servidor ainda tenta usar essa pasta — mas o Blueprint oficial usa `/opt/render/project/src/data`.
 
 ---
 

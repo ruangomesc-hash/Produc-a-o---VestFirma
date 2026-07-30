@@ -81,8 +81,27 @@ function vestfirma_users_save_raw(string $path, array $data): void {
     }
     $tmp = $path . '.tmp';
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    if ($json === false || file_put_contents($tmp, $json, LOCK_EX) === false) {
+    if ($json === false) {
+        throw new RuntimeException('Falha ao serializar usuários');
+    }
+    $fp = fopen($tmp, 'cb');
+    if ($fp === false) {
         throw new RuntimeException('Falha ao gravar usuários');
+    }
+    try {
+        if (!flock($fp, LOCK_EX)) {
+            throw new RuntimeException('Falha ao bloquear usuários para gravação');
+        }
+        if (ftruncate($fp, 0) === false) {
+            throw new RuntimeException('Falha ao preparar usuários');
+        }
+        if (fwrite($fp, $json) === false) {
+            throw new RuntimeException('Falha ao gravar usuários');
+        }
+        fflush($fp);
+    } finally {
+        flock($fp, LOCK_UN);
+        fclose($fp);
     }
     if (!rename($tmp, $path)) {
         @unlink($tmp);
@@ -188,12 +207,13 @@ function vestfirma_users_create(array $config, string $email, string $role, stri
     if ($email === '' || !vestfirma_is_valid_login_email($email)) {
         throw new InvalidArgumentException('E-mail inválido');
     }
+
+    $path = vestfirma_users_path($config);
+    $data = vestfirma_users_load_raw($path);
     if (vestfirma_user_find_by_email($config, $email) !== null) {
         throw new InvalidArgumentException('Este e-mail já está cadastrado');
     }
 
-    $path = vestfirma_users_path($config);
-    $data = vestfirma_users_load_raw($path);
     $user = [
         'id' => bin2hex(random_bytes(8)),
         'email' => $email,
@@ -204,6 +224,18 @@ function vestfirma_users_create(array $config, string $email, string $role, stri
     ];
     $data['users'][] = $user;
     vestfirma_users_save_raw($path, $data);
+
+    $verify = vestfirma_users_load_raw($path);
+    $ok = false;
+    foreach ($verify['users'] as $row) {
+        if (($row['id'] ?? '') === $user['id']) {
+            $ok = true;
+            break;
+        }
+    }
+    if (!$ok) {
+        throw new RuntimeException('Cadastro não persistiu em users.json');
+    }
     return $user;
 }
 

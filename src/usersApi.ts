@@ -35,41 +35,54 @@ function apiPath(segment: string): string {
   return `/${clean}`
 }
 
-export async function fetchUsers(): Promise<ManagedUser[]> {
-  await ensureAuthConfigReady()
+function usersFetchInit(extra: RequestInit = {}): RequestInit {
+  return {
+    cache: 'no-store',
+    ...extra,
+    headers: {
+      Accept: 'application/json',
+      ...(extra.headers as Record<string, string> | undefined),
+      ...authHeaders(),
+    },
+  }
+}
+
+async function fetchUsersFromServer(authGen: number): Promise<ManagedUser[]> {
   const base = getApiBase()
   if (!base) throw new Error('API não configurada')
-
-  const cached = await loadManagedUsersFromIdb()
-  const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users')}`, {
-    headers: { Accept: 'application/json', ...authHeaders() },
-  })
+  const res = await fetch(`${base}${apiPath('users')}`, usersFetchInit())
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   const data = json as { users?: ManagedUser[] }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao carregar usuários'))
+  return data.users || []
+}
 
-  const serverUsers = data.users || []
+export async function fetchUsers(): Promise<ManagedUser[]> {
+  await ensureAuthConfigReady()
+  const cached = await loadManagedUsersFromIdb()
+  const authGen = getAuthGeneration()
+
+  let serverUsers: ManagedUser[] = []
+  try {
+    serverUsers = await fetchUsersFromServer(authGen)
+  } catch (err) {
+    if (cached.length > 0) return cached
+    throw err
+  }
+
   let merged = mergeManagedUsers(cached, serverUsers)
 
-  const missing = usersMissingOnServer(cached, serverUsers)
+  const missing = usersMissingOnServer(merged, serverUsers)
   if (missing.length > 0 && isAdmin(getAuditActor())) {
     try {
       const sync = await syncMissingManagedUsersToServer(missing)
       if (sync.added > 0) {
-        const again = await fetch(`${base}${apiPath('users')}`, {
-          headers: { Accept: 'application/json', ...authHeaders() },
-        })
-        handleAuthResponse(again.status, authGen)
-        const againJson = await readApiJson(again)
-        if (again.ok) {
-          const againData = againJson.json as { users?: ManagedUser[] }
-          merged = mergeManagedUsers(merged, againData.users || [])
-        }
+        serverUsers = await fetchUsersFromServer(authGen)
+        merged = mergeManagedUsers(merged, serverUsers)
       }
-    } catch {
-      /* mantém merge local — melhor que sumir */
+    } catch (syncErr) {
+      console.warn('[vestfirma] sync usuários:', syncErr)
     }
   }
 
@@ -87,21 +100,24 @@ export async function syncMissingManagedUsersToServer(
   if (!users.length) return { added: 0, message: 'Nada para sincronizar.' }
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users')}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify({
-      action: 'sync-missing',
-      users: users.map((u) => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        password: u.password,
-        createdAt: u.createdAt,
-      })),
+  const res = await fetch(
+    `${base}${apiPath('users')}`,
+    usersFetchInit({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'sync-missing',
+        users: users.map((u) => ({
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          password: u.password,
+          createdAt: u.createdAt,
+        })),
+      }),
     }),
-  })
+  )
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao sincronizar usuários'))
@@ -126,14 +142,17 @@ export async function createManagedUser(input: {
   if (!base) throw new Error('API não configurada')
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users')}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify(input),
-  })
+  const res = await fetch(
+    `${base}${apiPath('users')}`,
+    usersFetchInit({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  )
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
-  const data = json as { user?: ManagedUser }
+  const data = json as { user?: ManagedUser; usersCount?: number }
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao criar usuário'))
   if (!data.user) {
     throw new Error(
@@ -144,10 +163,39 @@ export async function createManagedUser(input: {
       ),
     )
   }
+
   await rememberManagedUser(data.user)
+
+  let onServer = false
+  try {
+    const serverUsers = await fetchUsersFromServer(authGen)
+    onServer = serverUsers.some(
+      (u) =>
+        u.id === data.user!.id ||
+        u.email.trim().toLowerCase() === data.user!.email.trim().toLowerCase(),
+    )
+  } catch {
+    /* tenta sync abaixo */
+  }
+
+  if (!onServer) {
+    await syncMissingManagedUsersToServer([data.user])
+    const serverUsers = await fetchUsersFromServer(authGen)
+    onServer = serverUsers.some(
+      (u) =>
+        u.id === data.user!.id ||
+        u.email.trim().toLowerCase() === data.user!.email.trim().toLowerCase(),
+    )
+    if (!onServer) {
+      throw new Error(
+        'Cadastro não persistiu no servidor após tentativa de sincronização. Confira disco persistente na Render (/opt/render/project/src/data) e redeploy.',
+      )
+    }
+  }
+
   recordAudit({
     action: 'usuario.criado',
-    summary: `Criou usuário ${data.user.email} (${data.user.role})`,
+    summary: `Criou usuário ${data.user.email} (${data.user.role}) — ${data.usersCount ?? '?'} no servidor`,
     meta: { userId: data.user.id },
   })
   return data.user
@@ -166,11 +214,14 @@ export async function updateManagedUser(input: {
   if (!base) throw new Error('API não configurada')
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users')}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify(input),
-  })
+  const res = await fetch(
+    `${base}${apiPath('users')}`,
+    usersFetchInit({
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  )
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   const data = json as { user?: ManagedUser }
@@ -192,14 +243,13 @@ export async function deleteManagedUser(id: string): Promise<void> {
   if (!base) throw new Error('API não configurada')
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users')}?id=${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
-      'X-Vestfirma-Confirm-User-Delete': id,
-      ...authHeaders(),
-    },
-  })
+  const res = await fetch(
+    `${base}${apiPath('users')}?id=${encodeURIComponent(id)}`,
+    usersFetchInit({
+      method: 'DELETE',
+      headers: { 'X-Vestfirma-Confirm-User-Delete': id },
+    }),
+  )
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao excluir usuário'))
@@ -228,9 +278,7 @@ export async function fetchUsersBackups(): Promise<{
   if (!base) throw new Error('API não configurada')
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users/backups')}`, {
-    headers: { Accept: 'application/json', ...authHeaders() },
-  })
+  const res = await fetch(`${base}${apiPath('users/backups')}`, usersFetchInit())
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao listar backups de usuários'))
@@ -253,11 +301,14 @@ export async function restoreUsersFromBackup(backup: string): Promise<{ message:
   if (!base) throw new Error('API não configurada')
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users/backups')}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify({ backup }),
-  })
+  const res = await fetch(
+    `${base}${apiPath('users/backups')}`,
+    usersFetchInit({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backup }),
+    }),
+  )
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao restaurar usuários'))
@@ -281,11 +332,14 @@ export async function repairUsersFromBoard(): Promise<{
   if (!base) throw new Error('API não configurada')
 
   const authGen = getAuthGeneration()
-  const res = await fetch(`${base}${apiPath('users/backups')}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify({ action: 'repair-from-board' }),
-  })
+  const res = await fetch(
+    `${base}${apiPath('users/backups')}`,
+    usersFetchInit({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'repair-from-board' }),
+    }),
+  )
   handleAuthResponse(res.status, authGen)
   const { json } = await readApiJson(res)
   if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao recriar usuários do quadro'))
@@ -300,6 +354,7 @@ export async function repairUsersFromBoard(): Promise<{
       action: 'usuarios.restaurados',
       summary: data.message || `Recriou ${data.added} usuário(s) do quadro`,
     })
+    if (data.created?.length) await rememberManagedUsers(data.created)
   }
   return {
     message: data.message || 'Concluído.',

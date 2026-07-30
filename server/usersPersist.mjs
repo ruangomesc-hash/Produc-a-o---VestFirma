@@ -105,8 +105,21 @@ async function writeUsersAtomic(users) {
   const json = JSON.stringify({ users }, null, 2)
   const tmp = `${file}.tmp`
   await fs.mkdir(path.dirname(file), { recursive: true })
-  await fs.writeFile(tmp, json, 'utf8')
+  const fh = await fs.open(tmp, 'w')
+  try {
+    await fh.writeFile(json, 'utf8')
+    await fh.sync()
+  } finally {
+    await fh.close()
+  }
   await fs.rename(tmp, file)
+  try {
+    const verifyFh = await fs.open(file, 'r')
+    await verifyFh.sync()
+    await verifyFh.close()
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
