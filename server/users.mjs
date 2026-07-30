@@ -235,6 +235,21 @@ export async function handleUsersBackupsApi(req, res, readBody, requireSession, 
     if (req.method === 'POST') {
       const body = await readBody(req)
       const data = JSON.parse(body || '{}')
+      if (data.action === 'repair-from-board') {
+        const { repairUsersFromBoardReport } = await import('./usersRepair.mjs')
+        const result = await repairUsersFromBoardReport()
+        res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(
+          JSON.stringify({
+            ok: true,
+            added: result.added,
+            message: result.message,
+            vendedoresNoQuadro: result.vendedoresNoQuadro,
+            created: result.created.map((u) => userPublic(u, true)),
+          }),
+        )
+        return true
+      }
       const result = await restoreMissingUsersFromBackup(String(data.backup || 'users.json.bak'))
       res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ ok: true, ...result }))

@@ -189,6 +189,46 @@ export async function restoreUsersFromBackup(backup: string): Promise<{ message:
   return { message: data.message || 'Usuários restaurados.', added: data.added ?? 0 }
 }
 
+export async function repairUsersFromBoard(): Promise<{
+  message: string
+  added: number
+  vendedoresNoQuadro: number
+  created: ManagedUser[]
+}> {
+  requireAdminActor()
+  await ensureAuthConfigReady()
+  const base = getApiBase()
+  if (!base) throw new Error('API não configurada')
+
+  const authGen = getAuthGeneration()
+  const res = await fetch(`${base}${apiPath('users/backups')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify({ action: 'repair-from-board' }),
+  })
+  handleAuthResponse(res.status, authGen)
+  const { json } = await readApiJson(res)
+  if (!res.ok) throw new Error(formatApiErrorMessage(res, json, 'Falha ao recriar usuários do quadro'))
+  const data = json as {
+    message?: string
+    added?: number
+    vendedoresNoQuadro?: number
+    created?: ManagedUser[]
+  }
+  if ((data.added ?? 0) > 0) {
+    recordAudit({
+      action: 'usuarios.restaurados',
+      summary: data.message || `Recriou ${data.added} usuário(s) do quadro`,
+    })
+  }
+  return {
+    message: data.message || 'Concluído.',
+    added: data.added ?? 0,
+    vendedoresNoQuadro: data.vendedoresNoQuadro ?? 0,
+    created: data.created ?? [],
+  }
+}
+
 export type { SessionProfile, ManagedUser, UserRole }
 
 export function isAdmin(profile: SessionProfile | null): boolean {

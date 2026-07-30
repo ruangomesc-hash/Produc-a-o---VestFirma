@@ -9,6 +9,7 @@ import {
   fetchUsers,
   fetchUsersBackups,
   restoreUsersFromBackup,
+  repairUsersFromBoard,
   updateManagedUser,
 } from '../usersApi'
 import { mergeManagedUsers } from '../mergeManagedUsers'
@@ -123,15 +124,46 @@ export function UsuariosModal({
     try {
       const data = await fetchUsersBackups()
       const best = data.backups.find((b) => b.missingCount > 0)
-      if (!best) {
-        setRestoreMessage('Nenhum backup com usuários ausentes encontrado.')
+      if (best) {
+        const result = await restoreUsersFromBackup(best.file)
+        setRestoreMessage(result.message)
+        await reload()
         return
       }
-      const result = await restoreUsersFromBackup(best.file)
-      setRestoreMessage(result.message)
-      await reload()
+      const fromBoard = await repairUsersFromBoard()
+      if (fromBoard.added > 0) {
+        const names = fromBoard.created.map((u) => u.name || u.email).join(', ')
+        setRestoreMessage(`${fromBoard.message} (${names}) — copie as senhas abaixo.`)
+        await reload()
+        return
+      }
+      setRestoreMessage(
+        `Nenhum backup de users.json com cadastros extras (${data.backups.length} arquivo(s) verificado(s)). ` +
+          `${fromBoard.message} ` +
+          `Cadastre France e Junior de novo no formulário acima (perfil Vendedor + WhatsApp + grupo).`,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao restaurar usuários')
+    } finally {
+      setRestoreBusy(false)
+    }
+  }, [reload])
+
+  const repairFromBoardOnly = useCallback(async () => {
+    setRestoreBusy(true)
+    setRestoreMessage(null)
+    setError(null)
+    try {
+      const result = await repairUsersFromBoard()
+      if (result.added > 0) {
+        const names = result.created.map((u) => u.name || u.email).join(', ')
+        setRestoreMessage(`${result.message} (${names}) — use Mostrar senhas e envie aos vendedores.`)
+        await reload()
+      } else {
+        setRestoreMessage(result.message)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao recriar do quadro')
     } finally {
       setRestoreBusy(false)
     }
@@ -205,8 +237,8 @@ export function UsuariosModal({
                 <div className="board-restore-banner" role="alert">
                   <p>
                     <strong>Faltam usuários?</strong> Se France, Junior ou outros sumiram após deploy,
-                    restaure do backup automático do servidor — ninguém é apagado sem confirmação
-                    explícita.
+                    tente restaurar do servidor. Se não houver backup de logins, recrie pelo
+                    formulário acima (perfil <strong>Vendedor</strong>).
                   </p>
                   <div className="board-restore-actions">
                     <button
@@ -215,7 +247,15 @@ export function UsuariosModal({
                       disabled={restoreBusy}
                       onClick={() => void restoreMissingUsers()}
                     >
-                      {restoreBusy ? 'Restaurando…' : 'Restaurar usuários do backup'}
+                      {restoreBusy ? 'Buscando…' : 'Restaurar usuários (backup + quadro)'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost small"
+                      disabled={restoreBusy}
+                      onClick={() => void repairFromBoardOnly()}
+                    >
+                      Recriar do quadro
                     </button>
                   </div>
                   {restoreMessage ? <p className="usuarios-hint">{restoreMessage}</p> : null}

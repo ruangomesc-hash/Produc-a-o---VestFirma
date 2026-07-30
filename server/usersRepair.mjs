@@ -13,15 +13,81 @@ function isEmailLikeId(id) {
   return String(id || '').includes('@')
 }
 
-async function readBoardVendedores() {
+async function readBoardPayload(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8')
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+/** Vendedores do quadro atual, .bak e backups/board-*.json (união por e-mail). */
+async function readBoardVendedoresFromAllSources() {
   await ensureStorageReady()
   const { boardFile } = getBoardPaths()
+  const dir = path.dirname(boardFile)
+  const backupsDir = path.join(dir, 'backups')
+  const files = [boardFile, `${boardFile}.bak`]
+
   try {
-    const raw = await fs.readFile(boardFile, 'utf8')
-    const data = JSON.parse(raw)
-    return Array.isArray(data?.vendedores) ? data.vendedores : []
+    const names = (await fs.readdir(backupsDir))
+      .filter((n) => n.startsWith('board-') && n.endsWith('.json'))
+      .sort()
+      .reverse()
+    for (const n of names.slice(0, 16)) {
+      files.push(path.join(backupsDir, n))
+    }
   } catch {
-    return []
+    /* sem backups */
+  }
+
+  const byEmail = new Map()
+  for (const file of files) {
+    const data = await readBoardPayload(file)
+    if (!data?.vendedores?.length) continue
+    for (const v of data.vendedores) {
+      if (!v?.email?.trim()) continue
+      const em = normEmail(v.email)
+      if (!em) continue
+      const prev = byEmail.get(em)
+      byEmail.set(em, prev ? { ...prev, ...v } : v)
+    }
+  }
+  return [...byEmail.values()]
+}
+
+async function readBoardVendedores() {
+  const all = await readBoardVendedoresFromAllSources()
+  if (all.length) return all
+  await ensureStorageReady()
+  const { boardFile } = getBoardPaths()
+  const data = await readBoardPayload(boardFile)
+  return Array.isArray(data?.vendedores) ? data.vendedores : []
+}
+
+export async function repairUsersFromBoardReport() {
+  const { loadUsersData } = await import('./usersPersist.mjs')
+  const before = (await loadUsersData()).users ?? []
+  const after = await repairUsersMissingFromBoard(before)
+  const added = after.filter((u) => !before.some((x) => x.id === u.id))
+  return {
+    added: added.length,
+    users: after,
+    created: added.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      password: u.password,
+    })),
+    vendedoresNoQuadro: (await readBoardVendedoresFromAllSources()).length,
+    message:
+      added.length > 0
+        ? `Recriou ${added.length} acesso(s) a partir do quadro/backups do board.`
+        : (await readBoardVendedoresFromAllSources()).length === 0
+          ? 'Nenhum vendedor com e-mail encontrado no quadro nem nos backups do board.'
+          : 'Todos os vendedores do quadro já têm login em users.json.',
   }
 }
 
