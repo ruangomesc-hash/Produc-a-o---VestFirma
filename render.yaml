@@ -56,7 +56,10 @@ services:
       - key: HOST
         value: 0.0.0.0
 
-      # Não defina BOARD_DATA_* manualmente — o servidor escolhe pasta gravável (evita EACCES em /var/data).
+      - key: RENDER
+        value: "true"
+
+      # Não defina BOARD_DATA_* manualmente — disco em /opt/render/project/src/data (aba Disks).
 
       - key: MAX_BODY_MB
         value: "120"

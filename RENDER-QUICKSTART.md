@@ -23,31 +23,45 @@ Guia completo: [DEPLOY-RENDER.md](./DEPLOY-RENDER.md)
    - **Usuários** → cadastrar vendedores (sem Blob)
    - **Status** → medidor de espaço do quadro
 
-## Disco persistente (importante)
+## Disco persistente (memória — pedidos e usuários não somem)
 
-O erro `EACCES: permission denied, mkdir '/var/data'` significa: você definiu **`BOARD_DATA_DIR=/var/data`** mas **não anexou o disco** na Render.
+O Blueprint **`render.yaml`** já cria disco de **5 GB** montado em:
 
-**Opção A — Com disco (produção):**
+**`/opt/render/project/src/data`**
 
-1. Serviço → **Disks** → **Add disk**
-2. **Mount path:** `/var/data`
-3. **Size:** 5 GB+
-4. **Save** → **Manual Deploy**
-5. Mantenha as env vars `BOARD_DATA_FILE`, `BOARD_DATA_DIR`, `BOARD_LOGO_DIR` apontando para `/var/data/...`
+Lá ficam `board.json`, `users.json`, `logos/` e backups.
 
-**Opção B — Teste rápido sem disco:**
+### Confira no painel Render
 
-Remova temporariamente `BOARD_DATA_DIR`, `BOARD_DATA_FILE` e `BOARD_LOGO_DIR` do Environment e redeploy. O servidor usa pasta gravável dentro do app (dados **somem** no redeploy).
+1. Serviço **vestfirma-producao** → aba **Disks**
+2. Deve existir disco **vestfirma-data** em `/opt/render/project/src/data`
+3. Plano **Starter** (disco persistente **não funciona** no Free)
 
-**Opção C — Código novo (após push):**
+### Variáveis que NÃO devem existir (ou apagam a memória)
 
-Se `/var/data` não for gravável, o servidor **cai para** `data/` automaticamente e o login funciona; `/api/health` mostra `storageNote` explicando.
+Remova do **Environment** se você tiver colocado manualmente:
 
-O Blueprint já cria **5 GB** em `/var/data`:
+- `BOARD_DATA_DIR=/var/data` (caminho antigo da doc — conflita com o Blueprint)
+- `BOARD_DATA_FILE`, `BOARD_LOGO_DIR` apontando para `/var/data`
 
-- `board.json` — quadro (leve, logos externalizadas)
-- `users.json` — logins
-- `logos/` — imagens dos pedidos
+O código escolhe sozinho a pasta certa. O `render-start.mjs` aponta para `/opt/render/project/src/data`.
+
+### Teste depois do deploy
+
+Abra `https://SEU-SERVICO.onrender.com/api/health` e confira:
+
+| Campo | Valor esperado |
+|--------|----------------|
+| `storage` | `"filesystem"` |
+| `dataDir` | `/opt/render/project/src/data` |
+| `persistentDiskLikely` | `true` |
+| `storageNote` | disco persistente Render |
+
+Cadastre um vendedor teste → **F5** → `/api/health` → `usersOnDisk` deve ser ≥ 2.
+
+### Erro `EACCES /var/data`
+
+Você definiu pasta de disco sem anexar disco, ou usou `/var/data` em vez do mount do Blueprint. Remova as env `BOARD_DATA_*` e redeploy.
 
 ## Domínio próprio
 
@@ -55,7 +69,7 @@ Render → serviço **vestfirma-producao** → **Settings** → **Custom Domains
 
 ## Atualizar o site
 
-Push na branch conectada → deploy automático. Dados em `/var/data` **permanecem**.
+Push na branch conectada → deploy automático. Dados em **`/opt/render/project/src/data`** permanecem entre deploys.
 
 ## Plano free vs Starter
 
