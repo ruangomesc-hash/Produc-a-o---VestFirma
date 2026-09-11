@@ -14,7 +14,8 @@ services:
     region: ohio
     plan: starter
 
-    buildCommand: npm ci && npm run build:render
+    # O build precisa de Vite/TypeScript mesmo com NODE_ENV=production.
+    buildCommand: npm ci --include=dev && npm run build:render
     startCommand: npm run start:render
 
     healthCheckPath: /api/health

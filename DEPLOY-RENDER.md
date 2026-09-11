@@ -26,10 +26,11 @@ Na **Render** você roda o **servidor Node** do projeto (`server/server.mjs`), q
 4. **Build Command:**
 
    ```bash
-   npm ci && npm run build:publicar
+   npm ci --include=dev && npm run build:render
    ```
 
-   (Ou `npm install && npm run build` se não usar strip PHP.)
+   O `--include=dev` instala Vite, TypeScript e os tipos necessários ao build,
+   mesmo quando `NODE_ENV=production`. Sem isso, o build falha com `TS2688`.
 
 5. **Start Command:**
 
