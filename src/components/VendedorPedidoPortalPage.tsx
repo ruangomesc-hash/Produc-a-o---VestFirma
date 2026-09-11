@@ -7,6 +7,7 @@ import type { CardFormData } from '../types'
 import type { SaveBoardResult } from '../storage'
 import { pedidoGravadoNoServidor, mensagemFalhaGravacaoServidor } from '../pedidoSaveResult'
 import type { SessionProfile } from '../userRoles'
+import { mainPainelHref } from '../portalPedidoRoute'
 import { findVendedorIdForSession } from '../vendedorUserSync'
 import { canPlaceOrders } from '../userRoles'
 import { CardModal } from './CardModal'
@@ -77,6 +78,11 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
     setModalOpen(true)
   }, [])
 
+  const voltarParaPainel = useCallback(() => {
+    pararSinoVenda()
+    window.location.href = mainPainelHref()
+  }, [])
+
   const enviarPedido = useCallback(
     async (data: CardFormData) => {
       if (!columnId) return
@@ -120,7 +126,11 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
   return (
     <div className={`portal-pedido-page ${pedidoEnviado ? 'portal-pedido-page--festa' : ''}`}>
       <header className="app-header">
-        <div className="header-spacer" aria-hidden />
+        <div className="header-spacer header-spacer--start">
+          <a className="btn ghost portal-voltar-painel" href={mainPainelHref()}>
+            Voltar para o painel
+          </a>
+        </div>
         <div className="brand brand-center">
           <img
             src={`${import.meta.env.BASE_URL}vestfirma-logo.png`}
@@ -204,7 +214,12 @@ export function VendedorPedidoPortalPage({ session, onLogout }: Props) {
         ) : null}
       </main>
 
-      {pedidoEnviado ? <PortalVendaCelebracao onCadastrarOutro={abrirNovoPedido} /> : null}
+      {pedidoEnviado ? (
+        <PortalVendaCelebracao
+          onCadastrarOutro={abrirNovoPedido}
+          onVoltarPainel={voltarParaPainel}
+        />
+      ) : null}
 
       <CardModal
         key={modalSession}

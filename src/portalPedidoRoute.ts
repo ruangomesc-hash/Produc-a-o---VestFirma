@@ -46,6 +46,13 @@ export function portalFestaPreviewSharePath(): string {
   return `${base}novo-pedido/preview-festa`
 }
 
+/** URL absoluta do painel principal (kanban), fora do portal /novo-pedido. */
+export function mainPainelHref(): string {
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/') || '/'
+  const normalized = base.startsWith('/') ? base : `/${base}`
+  return `${window.location.origin}${normalized}`
+}
+
 /** URL absoluta para link e QR code. */
 export function portalPedidoHref(): string {
   const path = portalPedidoSharePath()

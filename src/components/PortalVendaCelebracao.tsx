@@ -14,9 +14,10 @@ const CONFETTI_COLORS = [
 
 type Props = {
   onCadastrarOutro: () => void
+  onVoltarPainel?: () => void
 }
 
-export function PortalVendaCelebracao({ onCadastrarOutro }: Props) {
+export function PortalVendaCelebracao({ onCadastrarOutro, onVoltarPainel }: Props) {
   useLayoutEffect(() => {
     iniciarSinoVenda()
   }, [])
@@ -87,9 +88,20 @@ export function PortalVendaCelebracao({ onCadastrarOutro }: Props) {
             Parabéns pela sua venda, você está mais perto do seu objetivo. Agora toque o seu
             sinoooo.
           </p>
-          <button type="button" className="venda-festa-btn" onClick={onCadastrarOutro}>
-            Cadastrar outro pedido
-          </button>
+          <div className="venda-festa-actions">
+            <button type="button" className="venda-festa-btn" onClick={onCadastrarOutro}>
+              Cadastrar outro pedido
+            </button>
+            {onVoltarPainel ? (
+              <button
+                type="button"
+                className="venda-festa-btn venda-festa-btn--secondary"
+                onClick={onVoltarPainel}
+              >
+                Voltar para o painel
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

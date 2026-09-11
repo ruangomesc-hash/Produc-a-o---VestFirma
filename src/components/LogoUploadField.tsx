@@ -16,6 +16,7 @@ export function LogoUploadField({ label, hint, value, onChange, onError, onBusyC
   const [loading, setLoading] = useState(false)
   const [dragging, setDragging] = useState(false)
   const upload = useRef<AbortController | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => () => upload.current?.abort(), [])
 
   const handleFile = async (file: File | null) => {
@@ -41,11 +42,26 @@ export function LogoUploadField({ label, hint, value, onChange, onError, onBusyC
     }
   }
 
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept={IMAGE_ACCEPT}
+      aria-label={`Anexar ${label.toLowerCase()}`}
+      disabled={loading}
+      hidden
+      onChange={(e) => {
+        void handleFile(e.target.files?.[0] ?? null)
+        e.target.value = ''
+      }}
+    />
+  )
+
   return (
     <div className="field span-2 logo-field">
       <span>{label}</span>
       <div
-        className={`logo-upload${dragging ? ' logo-upload--dragging' : ''}`}
+        className={`logo-upload${dragging ? ' logo-upload--dragging' : ''}${!value ? ' logo-upload--empty' : ''}`}
         aria-busy={loading}
         onDragOver={(event) => {
           if (!event.dataTransfer.types.includes('Files')) return
@@ -77,23 +93,21 @@ export function LogoUploadField({ label, hint, value, onChange, onError, onBusyC
             </button>
           </div>
         ) : (
-          <p className="logo-hint">{hint}</p>
+          <label className="logo-upload-dropzone">
+            <span className="logo-upload-dropzone-title">Arraste a imagem para cá</span>
+            <span className="logo-upload-dropzone-sub">ou clique para escolher arquivo</span>
+            {fileInput}
+          </label>
         )}
-        <label className="btn secondary file-btn">
-          {loading ? 'Enviando original…' : value ? 'Trocar imagem' : 'Anexar imagem'}
-          <input
-            type="file"
-            accept={IMAGE_ACCEPT}
-            aria-label={`Anexar ${label.toLowerCase()}`}
-            disabled={loading}
-            hidden
-            onChange={(e) => {
-              void handleFile(e.target.files?.[0] ?? null)
-              e.target.value = ''
-            }}
-          />
-        </label>
-        <p className="logo-hint">Arraste a imagem aqui ou clique para anexar. PNG, JPG, WEBP ou GIF, até {MAX_IMAGE_MB} MB. Resolução e transparência originais preservadas.</p>
+        {value ? (
+          <label className="btn secondary file-btn">
+            {loading ? 'Enviando original…' : 'Trocar imagem'}
+            {fileInput}
+          </label>
+        ) : null}
+        <p className="logo-hint">
+          {hint} PNG, JPG, WEBP ou GIF, até {MAX_IMAGE_MB} MB. Resolução e transparência originais preservadas.
+        </p>
       </div>
     </div>
   )
