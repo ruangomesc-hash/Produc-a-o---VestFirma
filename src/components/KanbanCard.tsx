@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { etapaDevePiscar } from '../etapas'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
-import { rotuloTipoProduto } from '../tiposProduto'
+import {
+  formatItensProdutoResumo,
+  itensProdutoDoPedido,
+  quantidadeExibidaPedido,
+} from '../tiposProduto'
 import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
@@ -95,7 +99,9 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
   const [expanded, setExpanded] = useState(false)
   const qtdComentarios = (card.comentarios ?? []).length
   const observacao = card.observacao?.trim() ?? ''
-  const tipoProduto = rotuloTipoProduto(card.tipoProduto)
+  const itensProduto = itensProdutoDoPedido(card)
+  const totalPecas = quantidadeExibidaPedido(card)
+  const produtosResumo = formatItensProdutoResumo(itensProduto)
   const logoClientePreview = primeiraImagemPedido(card.logoEnviadaCliente)
 
   return (
@@ -143,7 +149,7 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
                 <span className="card-collapsed-sep">·</span>
                 Pedido {card.numeroPedido}
                 <span className="card-collapsed-sep">·</span>
-                {card.quantidade} peças
+                {totalPecas} peças
                 {qtdComentarios > 0 ? (
                   <>
                     <span className="card-collapsed-sep">·</span>
@@ -204,8 +210,13 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
               </div>
             </div>
             <p className="card-meta">
-              <strong>Pedido</strong> {card.numeroPedido} · <strong>{card.quantidade}</strong> peças
+              <strong>Pedido</strong> {card.numeroPedido} · <strong>{totalPecas}</strong> peças
             </p>
+            {produtosResumo ? (
+              <p className="card-meta card-produtos-resumo">
+                <strong>Produtos</strong> {produtosResumo}
+              </p>
+            ) : null}
             {localLogo && (
               <p className="card-meta">
                 <strong>Local da logo</strong>{' '}
@@ -220,11 +231,6 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
             {segmento && (
               <p className="card-meta">
                 <strong>Segmento</strong> {segmento}
-              </p>
-            )}
-            {tipoProduto && (
-              <p className="card-meta">
-                <strong>Produto</strong> {tipoProduto}
               </p>
             )}
             {card.whatsappCliente.trim() && (

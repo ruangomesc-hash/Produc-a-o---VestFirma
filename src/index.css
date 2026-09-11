@@ -1432,6 +1432,74 @@ textarea {
   text-decoration: underline;
 }
 
+.pedido-produtos-field {
+  gap: 0.5rem;
+}
+
+.pedido-produtos-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.pedido-produtos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.pedido-produtos-table th,
+.pedido-produtos-table td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pedido-produtos-table thead th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pedido-produtos-table tbody tr:last-child th,
+.pedido-produtos-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pedido-produtos-table tbody th {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.pedido-produtos-qty {
+  width: 4.5rem;
+  max-width: 100%;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.pedido-produtos-total {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.pedido-produtos-total strong {
+  color: var(--text);
+}
+
+.card-produtos-resumo {
+  line-height: 1.45;
+}
+
 .card-observacao {
   display: flex;
   flex-direction: column;

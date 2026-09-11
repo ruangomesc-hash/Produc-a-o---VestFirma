@@ -16,7 +16,7 @@ import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSn
 import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import { normalizePedidoImagens } from './pedidoImagens'
-import { tipoProdutoValido } from './tiposProduto'
+import { normalizeItensProdutoFromCard, quantidadeTotalItensProduto } from './tiposProduto'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -71,8 +71,15 @@ function normalizeCard(
   const logoEnviadaCliente = normalizePedidoImagens(raw.logoEnviadaCliente ?? raw.logoDataUrl)
   const logoProntaImpressao = normalizePedidoImagens(raw.logoProntaImpressao)
   const previewAprovacaoCliente = normalizePedidoImagens(raw.previewAprovacaoCliente)
-  const tipoProduto =
-    raw.tipoProduto && tipoProdutoValido(raw.tipoProduto) ? raw.tipoProduto : null
+  const itensProduto = normalizeItensProdutoFromCard({
+    itensProduto: raw.itensProduto,
+    tipoProduto: raw.tipoProduto,
+    quantidade: raw.quantidade,
+  })
+  const quantidade =
+    itensProduto.length > 0
+      ? quantidadeTotalItensProduto(itensProduto)
+      : Math.max(1, raw.quantidade || 1)
 
   return {
     id: raw.id,
@@ -81,12 +88,12 @@ function normalizeCard(
     whatsappCliente: raw.whatsappCliente ?? '',
     vendedorId,
     segmentoId,
-    quantidade: raw.quantidade,
+    quantidade,
     numeroPedido: raw.numeroPedido,
     canal: raw.canal,
     endereco: raw.endereco,
     observacao: typeof raw.observacao === 'string' ? raw.observacao : '',
-    tipoProduto,
+    itensProduto,
     dataPedido: raw.dataPedido,
     dataPagamento: raw.dataPagamento,
     logoEnviadaCliente,

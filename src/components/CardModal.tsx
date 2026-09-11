@@ -10,7 +10,11 @@ import { CardHistoricoTimeline } from './CardHistoricoTimeline'
 import { CardComentariosSection } from './CardComentariosSection'
 import { formatTelefoneBr, telefoneBrCompleto } from '../telefoneBr'
 import { prepararAudioVenda } from '../vendaSino'
-import { TIPOS_PRODUTO, type TipoProdutoId } from '../tiposProduto'
+import {
+  normalizeItensProdutoFromCard,
+  quantidadeTotalItensProduto,
+} from '../tiposProduto'
+import { PedidoProdutosField } from './PedidoProdutosField'
 
 const ADD_SEGMENTO = '__novo_segmento__'
 
@@ -31,7 +35,7 @@ function buildForm(
       canal: initial.canal,
       endereco: initial.endereco,
       observacao: initial.observacao ?? '',
-      tipoProduto: initial.tipoProduto ?? null,
+      itensProduto: normalizeItensProdutoFromCard(initial),
       dataPedido: initial.dataPedido,
       dataPagamento: initial.dataPagamento,
       logoEnviadaCliente: initial.logoEnviadaCliente,
@@ -45,12 +49,12 @@ function buildForm(
     whatsappCliente: '',
     vendedorId: null,
     segmentoId: null,
-    quantidade: 1,
+    quantidade: 0,
     numeroPedido: '',
     canal: 'whatsapp',
     endereco: '',
     observacao: '',
-    tipoProduto: null,
+    itensProduto: [],
     dataPedido: new Date().toISOString().slice(0, 10),
     dataPagamento: '',
     logoEnviadaCliente: [],
@@ -116,9 +120,6 @@ export function CardModal({
   const [form, setForm] = useState<CardFormData>(() =>
     buildForm(mode, initial, vendedores, preferredVendedorId),
   )
-  const [quantidadeInput, setQuantidadeInput] = useState(() =>
-    String(mode === 'edit' && initial ? initial.quantidade : 1),
-  )
   const [logoError, setLogoError] = useState<string | null>(null)
   const [imageUploads, setImageUploads] = useState<Record<string, boolean>>({})
   const imagesUploading = Object.values(imageUploads).some(Boolean)
@@ -136,7 +137,6 @@ export function CardModal({
     initSession.current = session
     const next = buildForm(mode, initial, vendedores, preferredVendedorId)
     setForm(next)
-    setQuantidadeInput(String(next.quantidade))
     setLogoError(null)
     setImageUploads({})
     setAddingSegmento(false)
@@ -168,8 +168,6 @@ export function CardModal({
   useEffect(() => {
     if (!open) setAlert(null)
   }, [open])
-
-  const parseQuantidade = () => Math.max(1, parseInt(quantidadeInput.replace(/\D/g, ''), 10) || 1)
 
   const salvarNovoSegmento = () => {
     const nome = novoSegmentoNome.trim()
@@ -225,12 +223,22 @@ export function CardModal({
       )
       return
     }
+    const itensProduto = form.itensProduto ?? []
+    const quantidade = quantidadeTotalItensProduto(itensProduto)
+    if (quantidade <= 0) {
+      showAlert(
+        'Informe a quantidade de pelo menos um tipo de produto (ex.: 5 polos, 10 corta-vento).',
+        'Produtos do pedido',
+      )
+      return
+    }
     if (mode === 'create') onVendaCelebrar?.()
     onSubmit({
       ...form,
       vendedorId: vendedorIdEfetivo,
       whatsappCliente: formatTelefoneBr(form.whatsappCliente),
-      quantidade: parseQuantidade(),
+      itensProduto,
+      quantidade,
     })
     onClose()
   }
@@ -405,43 +413,10 @@ export function CardModal({
               />
             </label>
 
-            <label className="field span-2">
-              <span>Tipo de produto</span>
-              <select
-                value={form.tipoProduto ?? ''}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    tipoProduto: e.target.value ? (e.target.value as TipoProdutoId) : null,
-                  })
-                }
-              >
-                <option value="">Selecione…</option>
-                {TIPOS_PRODUTO.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>
-                    {tipo.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="field">
-              <span>Quantidade de peças</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                name="quantidade-pecas"
-                className="input-quantidade"
-                value={quantidadeInput}
-                placeholder="Digite a quantidade (ex: 52)"
-                onChange={(e) => setQuantidadeInput(e.target.value.replace(/[^\d]/g, ''))}
-                onBlur={() => {
-                  const n = parseQuantidade()
-                  setQuantidadeInput(String(n))
-                }}
-              />
-            </div>
+            <PedidoProdutosField
+              value={form.itensProduto ?? []}
+              onChange={(itensProduto) => setForm((f) => ({ ...f, itensProduto }))}
+            />
 
             <label className="field">
               <span>Canal</span>
