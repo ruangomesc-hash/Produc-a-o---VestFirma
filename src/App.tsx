@@ -226,8 +226,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     [board, session],
   )
 
-  const lockVendedorToSession = session?.role === 'vendedor'
-
   const vendedoresNoPedido = useMemo(() => {
     if (isAdmin(session) && managedUsersReady) {
       return vendedoresSelectFromUsers(board, managedUsers)
@@ -265,6 +263,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
+
+  /** Vendedor sempre fixo; admin fixo só ao criar (em editar pode reatribuir). */
+  const lockVendedorToSession =
+    session?.role === 'vendedor' || (isAdmin(session) && modalMode === 'create')
 
   const editingCardLive = useMemo(() => {
     if (!editingCard) return undefined
