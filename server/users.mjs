@@ -35,6 +35,14 @@ function normalizeEmail(email) {
   return normalizeLoginEmail(email)
 }
 
+function isAdditionalAdminEmailAllowed(email) {
+  return String(process.env.ADDITIONAL_ADMIN_EMAILS || '')
+    .split(',')
+    .map(normalizeEmail)
+    .filter(Boolean)
+    .includes(normalizeEmail(email))
+}
+
 async function loadRaw() {
   return loadUsersData()
 }
@@ -139,9 +147,11 @@ export function userPublic(user, includePassword) {
 
 export async function createUser(email, role, name) {
   if (!ROLES.includes(role)) throw new Error('Perfil inválido')
-  if (role === 'admin') throw new Error('Use apenas um administrador geral')
   const norm = normalizeEmail(email)
   if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
+  if (role === 'admin' && !isAdditionalAdminEmailAllowed(norm)) {
+    throw new Error('Este e-mail não está autorizado para um acesso administrativo adicional')
+  }
 
   const user = {
     id: crypto.randomBytes(8).toString('hex'),
@@ -226,6 +236,10 @@ export async function updateUser(id, { email, role, name, regeneratePassword }) 
     if (email != null) {
       const norm = normalizeEmail(email)
       if (!norm || !isValidLoginEmail(norm)) throw new Error('E-mail inválido')
+      if (user.role === 'admin' && norm !== normalizeEmail(user.email) &&
+          norm !== SEED_ADMIN_EMAIL && !isAdditionalAdminEmailAllowed(norm)) {
+        throw new Error('Este e-mail não está autorizado para um acesso administrativo adicional')
+      }
       const other = findUserByEmail(users, norm)
       if (other && other.id !== id) throw new Error('Este e-mail já está cadastrado')
       user.email = norm
@@ -235,7 +249,9 @@ export async function updateUser(id, { email, role, name, regeneratePassword }) 
       if (user.role === 'admin' && role !== 'admin') {
         throw new Error('Não é possível alterar o perfil do administrador geral')
       }
-      if (role === 'admin') throw new Error('Só existe um administrador geral')
+      if (role === 'admin' && user.role !== 'admin') {
+        throw new Error('Cadastre o acesso administrativo autorizado como um novo usuário')
+      }
       user.role = role
     }
     if (name != null && String(name).trim()) user.name = String(name).trim()

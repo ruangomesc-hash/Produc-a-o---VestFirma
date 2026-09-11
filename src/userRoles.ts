@@ -8,7 +8,7 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   vendedor: 'Vendedor',
 }
 
-export const CREATABLE_ROLES: UserRole[] = ['gerente', 'expedicao', 'impressao', 'vendedor']
+export const CREATABLE_ROLES: UserRole[] = ['admin', 'gerente', 'expedicao', 'impressao', 'vendedor']
 
 /** Perfis que entram na lista Vendedores do quadro para lançar pedidos. */
 export const ROLES_THAT_PLACE_ORDERS: UserRole[] = ['admin', 'vendedor']

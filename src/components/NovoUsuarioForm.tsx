@@ -126,6 +126,12 @@ export function NovoUsuarioForm({
           {creating ? 'Criando…' : 'Gerar senha e cadastrar'}
         </button>
       </div>
+      {roleForCreate === 'admin' && (
+        <p className="usuarios-hint">
+          Administradores têm acesso completo aos pedidos, painéis e gerenciamento de usuários.
+          {' '}Use o e-mail autorizado para este perfil.
+        </p>
+      )}
       {showVendedorFields ? (
         <div className="usuarios-vendedor-extra">
           <label>

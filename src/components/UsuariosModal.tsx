@@ -140,7 +140,7 @@ export function UsuariosModal({
       setRestoreMessage(
         `Nenhum backup de users.json com cadastros extras (${data.backups.length} arquivo(s) verificado(s)). ` +
           `${fromBoard.message} ` +
-          `Cadastre France e Junior de novo no formulário acima (perfil Vendedor + WhatsApp + grupo).`,
+          `Cadastre os novos acessos no formulário acima.`,
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao restaurar usuários')
@@ -234,11 +234,11 @@ export function UsuariosModal({
               />
 
               {users.length <= 1 && !loading ? (
-                <div className="board-restore-banner" role="alert">
+                <details className="board-restore-banner">
+                  <summary>Recuperar acessos anteriores</summary>
                   <p>
-                    <strong>Faltam usuários?</strong> Se France, Junior ou outros sumiram após deploy,
-                    tente restaurar do servidor. Se não houver backup de logins, recrie pelo
-                    formulário acima (perfil <strong>Vendedor</strong>).
+                    Use esta opção se precisar recuperar acessos que já existiam no servidor.
+                    Para começar uma nova equipe, cadastre os usuários no formulário acima.
                   </p>
                   <div className="board-restore-actions">
                     <button
@@ -259,7 +259,7 @@ export function UsuariosModal({
                     </button>
                   </div>
                   {restoreMessage ? <p className="usuarios-hint">{restoreMessage}</p> : null}
-                </div>
+                </details>
               ) : null}
 
               {error && (

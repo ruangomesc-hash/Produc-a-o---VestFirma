@@ -51,3 +51,55 @@ test('mergeUsersById: backup não apaga senha nova do disco', async () => {
   const merged = mergeUsersById(disk, backup)
   assert.equal(merged[0].password, 'senhaNova123')
 })
+
+test('administrador adicional: mantém acesso principal, persiste e exige autorização administrativa', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vestfirma-secondary-admin-'))
+  __resetStoragePathsForTests()
+  process.env.BOARD_DATA_DIR = dir
+  process.env.VESTFIRMA_TEST_ISOLATE_DATA = '1'
+  process.env.REQUIRE_LOGIN = 'true'
+  process.env.ADDITIONAL_ADMIN_EMAILS = 'socia@example.test'
+  const {
+    ensureUsersSeeded, listUsers, createUser, verifyUserPassword, updateUser, handleUsersApi,
+  } = await import('../server/users.mjs')
+  try {
+    await ensureUsersSeeded()
+    const [owner] = await listUsers()
+    const secondary = await createUser('socia@example.test', 'admin', 'Sócia')
+    assert.equal(secondary.role, 'admin')
+    assert.notEqual(secondary.id, owner.id)
+    assert.notEqual(secondary.password, owner.password)
+
+    __resetStoragePathsForTests()
+    const reloaded = await listUsers()
+    assert.equal(reloaded.length, 2)
+    assert.deepEqual(reloaded.find((user) => user.id === owner.id), owner)
+    assert.equal((await verifyUserPassword(secondary.email, secondary.password))?.role, 'admin')
+    assert.equal((await verifyUserPassword(owner.email, owner.password))?.role, 'admin')
+    await assert.rejects(updateUser(owner.id, { role: 'vendedor' }), /administrador geral/)
+    await assert.rejects(createUser('outro@example.test', 'admin', 'Outro'), /não está autorizado/)
+    await assert.rejects(updateUser(secondary.id, { email: 'outro@example.test' }), /não está autorizado/)
+    const renamed = await updateUser(secondary.id, { name: 'Sócia administradora' })
+    assert.equal(renamed.name, 'Sócia administradora')
+    assert.equal(renamed.email, secondary.email)
+
+    for (const role of ['gerente', 'expedicao', 'impressao', 'vendedor']) {
+      let status
+      let bodyRead = false
+      const res = { writeHead: (value) => { status = value }, end: () => {} }
+      await handleUsersApi(
+        { method: 'POST' }, res,
+        async () => { bodyRead = true; return JSON.stringify({ email: 'intruso@example.test', role: 'admin' }) },
+        async () => ({ role, userId: 'secondary-test' }),
+        () => ({}),
+      )
+      assert.equal(status, 403)
+      assert.equal(bodyRead, false)
+    }
+    assert.equal((await listUsers()).length, 2)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+    delete process.env.ADDITIONAL_ADMIN_EMAILS
+    __resetStoragePathsForTests()
+  }
+})

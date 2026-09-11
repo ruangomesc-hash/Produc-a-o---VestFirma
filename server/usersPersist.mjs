@@ -129,7 +129,7 @@ async function writeUsersAtomic(users) {
 export function mutateUsersStore(mutate, opts = {}) {
   const replace = Boolean(opts.replace)
   const explicitUserDeleteId = opts.explicitUserDeleteId || ''
-  writeChain = writeChain.then(async () => {
+  const operation = writeChain.then(async () => {
     const disk = await loadUsersData()
     const current = disk.users ?? []
     const next = await mutate([...current])
@@ -173,7 +173,9 @@ export function mutateUsersStore(mutate, opts = {}) {
     }
     return merged
   })
-  return writeChain
+  // A recusa de uma alteração não deve bloquear os próximos cadastros válidos.
+  writeChain = operation.then(() => undefined, () => undefined)
+  return operation
 }
 
 export async function usersStoreFileExists() {

@@ -37,7 +37,7 @@ export function PedidosCheckupPanel({
   const [remoteError, setRemoteError] = useState<string | null>(null)
   const [loadingRemote, setLoadingRemote] = useState(false)
   const [exclusoes, setExclusoes] = useState<AuditEntry[]>([])
-  const [backupQuery, setBackupQuery] = useState('junior')
+  const [backupQuery, setBackupQuery] = useState('')
   const [backups, setBackups] = useState<BoardBackupSummary[]>([])
   const [backupsCurrent, setBackupsCurrent] = useState<number | null>(null)
   const [backupsLoading, setBackupsLoading] = useState(false)
@@ -347,7 +347,7 @@ export function PedidosCheckupPanel({
               type="search"
               value={backupQuery}
               onChange={(e) => setBackupQuery(e.target.value)}
-              placeholder="ex.: junior, número do pedido, cliente"
+              placeholder="Nome, número do pedido ou cliente"
             />
           </label>
           <button
