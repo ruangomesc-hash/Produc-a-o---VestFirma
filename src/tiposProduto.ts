@@ -5,6 +5,7 @@ export const TIPOS_PRODUTO = [
   { id: 'camisa-polo', label: 'Camisa polo' },
   { id: 'corta-vento', label: 'Corta-vento' },
   { id: 'baby-look', label: 'Baby look' },
+  { id: 'infantil', label: 'Infantil' },
   { id: 'camisa-manga-longa', label: 'Camisa manga longa' },
   { id: 'camisa-dry-fit', label: 'Camisa dry fit' },
   { id: 'camisa-oversize', label: 'Camisa oversize' },
