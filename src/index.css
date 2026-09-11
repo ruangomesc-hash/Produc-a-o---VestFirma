@@ -1836,6 +1836,8 @@ textarea {
   overflow: visible;
   height: auto;
   margin: auto;
+  width: min(560px, 100%);
+  max-width: 100%;
 }
 
 .modal-pedido--wide {
@@ -4966,12 +4968,14 @@ html.visao-tv-active body {
   .modal-backdrop {
     padding: 0;
     align-items: stretch;
+    overflow: hidden;
   }
 
   .modal-backdrop-pedido {
-    padding: max(0.65rem, env(safe-area-inset-top, 0px)) max(0.65rem, env(safe-area-inset-right, 0px))
-      max(0.65rem, env(safe-area-inset-bottom, 0px)) max(0.65rem, env(safe-area-inset-left, 0px));
-    align-items: flex-start;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    overflow: hidden;
   }
 
   .modal {
@@ -4984,24 +4988,148 @@ html.visao-tv-active body {
     border-right: none;
   }
 
-  .modal-pedido {
-    width: min(560px, 100%);
-    min-height: auto;
-    max-height: none;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
+  .modal-backdrop-pedido .modal,
+  .modal-backdrop-pedido .modal-pedido,
+  .modal-backdrop-pedido .modal-pedido--wide {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  .modal-pedido--wide {
-    width: min(980px, 100%);
+  .modal-backdrop-pedido .modal-form {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.65rem max(0.85rem, env(safe-area-inset-right, 0px))
+      max(0.65rem, env(safe-area-inset-bottom, 0px)) max(0.85rem, env(safe-area-inset-left, 0px));
+  }
+
+  .modal-backdrop-pedido .modal-pedido-body,
+  .modal-backdrop-pedido .modal-pedido-body--split {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    display: block;
+    max-height: none;
+  }
+
+  .modal-backdrop-pedido .modal-pedido-main {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+    min-width: 0;
+  }
+
+  .modal-backdrop-pedido .modal-pedido-comentarios {
+    max-height: none;
+    order: 0;
+    border-left: none;
+    border-bottom: 1px solid var(--border);
+    padding-left: 0;
+    padding-bottom: 0.85rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .modal-backdrop-pedido .modal-pedido--wide .modal-form {
+    overflow: hidden;
   }
 
   .modal-header {
+    flex-shrink: 0;
     padding-top: max(1rem, env(safe-area-inset-top, 0px));
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--surface);
+  }
+
+  .modal-backdrop-pedido .modal-header h2 {
+    font-size: 0.98rem;
+    line-height: 1.3;
+    padding-right: 0.35rem;
   }
 
   .modal-footer {
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: var(--surface);
+    margin-top: 0;
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .modal-backdrop-pedido .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-backdrop-pedido .form-grid,
+  .modal-backdrop-pedido .field,
+  .modal-backdrop-pedido .logo-field,
+  .modal-backdrop-pedido .pedido-produtos-field {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .modal-backdrop-pedido .field input,
+  .modal-backdrop-pedido .field select,
+  .modal-backdrop-pedido .field textarea {
+    max-width: 100%;
+  }
+
+  .modal-backdrop-pedido .logo-local-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop-pedido .logo-upload-gallery {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+
+  .modal-backdrop-pedido .segmento-add-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-backdrop-pedido .segmento-add-row input {
+    width: 100%;
+  }
+
+  .modal-backdrop-pedido .pedido-produtos-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-backdrop-pedido .pedido-produtos-table tbody th {
+    font-size: 0.82rem;
+    line-height: 1.3;
+    padding-right: 0.35rem;
+  }
+
+  .modal-backdrop:not(.modal-backdrop-pedido) .modal {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .usuarios-modal.modal-pedido {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .visao-geral:not(.visao-geral--tv) {
@@ -5078,6 +5206,33 @@ html.visao-tv-active body {
 
   .header-spacer {
     display: none;
+  }
+
+  .portal-pedido-page .header-spacer--start {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: stretch;
+    width: 100%;
+    padding: 0 0.15rem;
+  }
+
+  .portal-pedido-page .brand-center {
+    grid-row: 2;
+  }
+
+  .portal-pedido-page .header-nav {
+    grid-row: 3;
+  }
+
+  .portal-pedido-page .header-actions {
+    grid-row: 4;
+  }
+
+  .portal-voltar-painel {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 
   .header-nav {
@@ -5173,25 +5328,21 @@ html.visao-tv-active body {
     max-height: 100dvh;
   }
 
-  .modal-pedido {
-    min-height: auto;
-    max-height: none;
-    width: min(560px, 100%);
-    border-radius: var(--radius);
-  }
-
-  .modal-backdrop-pedido {
-    align-items: flex-start;
-    padding: max(0.5rem, env(safe-area-inset-top, 0px)) max(0.5rem, env(safe-area-inset-right, 0px))
-      max(0.5rem, env(safe-area-inset-bottom, 0px)) max(0.5rem, env(safe-area-inset-left, 0px));
+  .modal-backdrop-pedido .modal,
+  .modal-backdrop-pedido .modal-pedido,
+  .modal-backdrop-pedido .modal-pedido--wide {
+    height: 100dvh;
+    max-height: 100dvh;
+    width: 100%;
+    border-radius: 0;
   }
 
   .form-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .field.span-2 {
-    grid-column: span 2;
+    grid-column: span 1;
   }
 }
 
