@@ -60,7 +60,9 @@ export function NovoUsuarioForm({
       setNewGrupoWhatsapp('')
       if (mode === 'any-role') setNewRole('vendedor')
 
-      if (showVendedorFields) {
+      if (roleForCreate === 'admin') {
+        onSuccessAlert('Administrador cadastrado. Copie o login na tabela abaixo e envie para a pessoa.')
+      } else if (showVendedorFields) {
         onSuccessAlert(
           mode === 'vendedor-only'
             ? `Vendedor cadastrado no quadro.\n\nSenha (copie agora):\n${created.password}`
