@@ -67,14 +67,9 @@ function newId() {
   return crypto.randomUUID()
 }
 
-function cardFormDataParaVendedorLogado(
-  board: BoardState,
-  data: CardFormData,
-  options?: { criando?: boolean },
-): CardFormData {
+function cardFormDataParaVendedorLogado(board: BoardState, data: CardFormData): CardFormData {
   const actor = getAuditActor()
-  if (!actor || !canPlaceOrders(actor.role)) return data
-  if (actor.role === 'admin' && !options?.criando) return data
+  if (actor?.role !== 'vendedor') return data
   const vendedorId = findVendedorIdForSession(board, actor as SessionProfile)
   if (!vendedorId) return data
   return { ...data, vendedorId }
@@ -424,8 +419,8 @@ export function useBoard() {
         ])
         setBoard(current)
       }
-      const payload = cardFormDataParaVendedorLogado(current, data, { criando: true })
-      if (actor && canPlaceOrders(actor.role) && !payload.vendedorId) {
+      const payload = cardFormDataParaVendedorLogado(current, data)
+      if (actor?.role === 'vendedor' && !payload.vendedorId) {
         const fail: SaveBoardResult = {
           ok: false,
           error:

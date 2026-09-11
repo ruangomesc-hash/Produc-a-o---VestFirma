@@ -17,7 +17,8 @@ import {
   boardVisivelParaSession,
   vendedorPodeAcessarPedido,
   vendedoresParaAtribuirPedido,
-  vendedoresSelectFromUsers,
+  vendedoresParaAtribuirPedidoComAdmin,
+  vendedoresSelectParaPedidoAdmin,
   type VendedorContatoPatch,
 } from './vendedorUserSync'
 import { autorComentarioFromSession } from './pedidoComentarios'
@@ -227,8 +228,12 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   )
 
   const vendedoresNoPedido = useMemo(() => {
+    if (!session) return vendedoresParaAtribuirPedido(board.vendedores, session)
     if (isAdmin(session) && managedUsersReady) {
-      return vendedoresSelectFromUsers(board, managedUsers)
+      return vendedoresSelectParaPedidoAdmin(board, managedUsers, session)
+    }
+    if (isAdmin(session)) {
+      return vendedoresParaAtribuirPedidoComAdmin(board, session)
     }
     return vendedoresParaAtribuirPedido(board.vendedores, session)
   }, [board, managedUsers, managedUsersReady, session])
@@ -264,9 +269,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<OrderCard | undefined>()
 
-  /** Vendedor sempre fixo; admin fixo só ao criar (em editar pode reatribuir). */
-  const lockVendedorToSession =
-    session?.role === 'vendedor' || (isAdmin(session) && modalMode === 'create')
+  const lockVendedorToSession = session?.role === 'vendedor'
 
   const editingCardLive = useMemo(() => {
     if (!editingCard) return undefined

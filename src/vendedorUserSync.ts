@@ -94,7 +94,7 @@ export function reconcileBoardVendedoresWithUsers(
   return { ...board, vendedores }
 }
 
-/** Lista para o select de pedido — sempre espelha usuários com perfil Vendedor. */
+/** Lista para o select de pedido — espelha usuários com perfil Vendedor. */
 export function vendedoresSelectFromUsers(board: BoardState, users: ManagedUser[]): Vendedor[] {
   const synced = reconcileBoardVendedoresWithUsers(board, users)
   const lista: Vendedor[] = []
@@ -105,6 +105,45 @@ export function vendedoresSelectFromUsers(board: BoardState, users: ManagedUser[
     lista.push(row)
   }
   return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+/** Admin lançando pedido: ele mesmo (padrão) + todos os vendedores — pode reatribuir no select. */
+export function vendedoresSelectParaPedidoAdmin(
+  board: BoardState,
+  users: ManagedUser[],
+  session: SessionProfile,
+): Vendedor[] {
+  const synced = reconcileBoardVendedoresWithUsers(board, users)
+  const lista: Vendedor[] = []
+  const seen = new Set<string>()
+  const push = (row: Vendedor) => {
+    if (seen.has(row.id)) return
+    seen.add(row.id)
+    lista.push(row)
+  }
+
+  const adminRow = findVendedorRowForSession(synced, session)
+  if (adminRow) push(adminRow)
+
+  for (const user of users) {
+    if (user.role !== 'vendedor') continue
+    const row = findVendedorForManagedUser(synced, user) ?? managedUserToVendedor(user, null)
+    push(row)
+  }
+
+  return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+/** Fallback sem lista de usuários carregada — inclui o admin logado + vendedores do quadro. */
+export function vendedoresParaAtribuirPedidoComAdmin(
+  board: BoardState,
+  session: SessionProfile,
+): Vendedor[] {
+  const base = vendedoresParaAtribuirPedido(board.vendedores, session)
+  const adminRow = findVendedorRowForSession(board, session)
+  if (!adminRow) return base
+  if (base.some((v) => v.id === adminRow.id)) return base
+  return [adminRow, ...base].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
 export function mergeVendedoresFromManagedUsers(

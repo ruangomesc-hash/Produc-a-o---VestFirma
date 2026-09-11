@@ -141,7 +141,6 @@ export function CardModal({
 
   useEffect(() => {
     if (!open || mode !== 'create') return
-    if (!lockVendedorToSession && !preferredVendedorId) return
     const id =
       preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)
         ? preferredVendedorId
@@ -149,7 +148,12 @@ export function CardModal({
           ? vendedores[0].id
           : null
     if (!id) return
-    setForm((f) => (f.vendedorId === id ? f : { ...f, vendedorId: id }))
+    if (lockVendedorToSession) {
+      setForm((f) => (f.vendedorId === id ? f : { ...f, vendedorId: id }))
+      return
+    }
+    // Admin escolhe no select — só pré-seleciona se ainda não tiver vendedor.
+    setForm((f) => (f.vendedorId ? f : { ...f, vendedorId: id }))
   }, [open, mode, lockVendedorToSession, preferredVendedorId, vendedores])
 
   useEffect(() => {
