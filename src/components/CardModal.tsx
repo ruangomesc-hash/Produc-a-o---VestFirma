@@ -10,6 +10,7 @@ import { CardHistoricoTimeline } from './CardHistoricoTimeline'
 import { CardComentariosSection } from './CardComentariosSection'
 import { formatTelefoneBr, telefoneBrCompleto } from '../telefoneBr'
 import { prepararAudioVenda } from '../vendaSino'
+import { TIPOS_PRODUTO, type TipoProdutoId } from '../tiposProduto'
 
 const ADD_SEGMENTO = '__novo_segmento__'
 
@@ -29,11 +30,13 @@ function buildForm(
       numeroPedido: initial.numeroPedido,
       canal: initial.canal,
       endereco: initial.endereco,
+      observacao: initial.observacao ?? '',
+      tipoProduto: initial.tipoProduto ?? null,
       dataPedido: initial.dataPedido,
       dataPagamento: initial.dataPagamento,
       logoEnviadaCliente: initial.logoEnviadaCliente,
       logoProntaImpressao: initial.logoProntaImpressao,
-      previewAprovacaoCliente: initial.previewAprovacaoCliente ?? null,
+      previewAprovacaoCliente: initial.previewAprovacaoCliente,
       localLogo: initial.localLogo,
     }
   }
@@ -46,11 +49,13 @@ function buildForm(
     numeroPedido: '',
     canal: 'whatsapp',
     endereco: '',
+    observacao: '',
+    tipoProduto: null,
     dataPedido: new Date().toISOString().slice(0, 10),
     dataPagamento: '',
-    logoEnviadaCliente: null,
-    logoProntaImpressao: null,
-    previewAprovacaoCliente: null,
+    logoEnviadaCliente: [],
+    logoProntaImpressao: [],
+    previewAprovacaoCliente: [],
     localLogo: null,
   }
   if (preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)) {
@@ -400,6 +405,26 @@ export function CardModal({
               />
             </label>
 
+            <label className="field span-2">
+              <span>Tipo de produto</span>
+              <select
+                value={form.tipoProduto ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    tipoProduto: e.target.value ? (e.target.value as TipoProdutoId) : null,
+                  })
+                }
+              >
+                <option value="">Selecione…</option>
+                {TIPOS_PRODUTO.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id}>
+                    {tipo.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <div className="field">
               <span>Quantidade de peças</span>
               <input
@@ -439,6 +464,17 @@ export function CardModal({
               />
             </label>
 
+            <label className="field span-2">
+              <span>Observação do pedido</span>
+              <textarea
+                rows={3}
+                value={form.observacao ?? ''}
+                onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+                placeholder="Instruções, prazos combinados, detalhes para produção…"
+              />
+              <span className="field-hint">Opcional — fica salvo no pedido e visível no quadro.</span>
+            </label>
+
             <label className="field">
               <span>Data do pedido</span>
               <input
@@ -469,7 +505,7 @@ export function CardModal({
               value={form.logoEnviadaCliente}
               onError={setLogoError}
               onBusyChange={(busy) => setImageUploads((s) => ({ ...s, cliente: busy }))}
-              onChange={(dataUrl) => setForm((f) => ({ ...f, logoEnviadaCliente: dataUrl }))}
+              onChange={(urls) => setForm((f) => ({ ...f, logoEnviadaCliente: urls }))}
             />
 
             <LogoUploadField
@@ -479,7 +515,7 @@ export function CardModal({
               value={form.logoProntaImpressao}
               onError={setLogoError}
               onBusyChange={(busy) => setImageUploads((s) => ({ ...s, impressao: busy }))}
-              onChange={(dataUrl) => setForm((f) => ({ ...f, logoProntaImpressao: dataUrl }))}
+              onChange={(urls) => setForm((f) => ({ ...f, logoProntaImpressao: urls }))}
             />
 
             <LogoUploadField
@@ -489,7 +525,7 @@ export function CardModal({
               value={form.previewAprovacaoCliente}
               onError={setLogoError}
               onBusyChange={(busy) => setImageUploads((s) => ({ ...s, aprovacao: busy }))}
-              onChange={(imageUrl) => setForm((f) => ({ ...f, previewAprovacaoCliente: imageUrl }))}
+              onChange={(urls) => setForm((f) => ({ ...f, previewAprovacaoCliente: urls }))}
             />
 
             {logoError && (

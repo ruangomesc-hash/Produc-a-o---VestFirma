@@ -63,7 +63,10 @@ test('API: originais e aprovação sobrevivem ao reinício completo, com login e
     const reloaded = await fetch(`${base}/api/board`, { headers: auth })
     assert.equal(reloaded.status, 200)
     const saved = await reloaded.json()
-    for (const field of ['logoEnviadaCliente', 'logoProntaImpressao', 'previewAprovacaoCliente']) assert.equal(saved.cards[0][field], image.url)
+    for (const field of ['logoEnviadaCliente', 'logoProntaImpressao', 'previewAprovacaoCliente']) {
+      const value = saved.cards[0][field]
+      assert.equal(Array.isArray(value) ? value[0] : value, image.url)
+    }
     const download = await fetch(`${base}${image.url}?download=1`)
     assert.equal(download.status, 200)
     assert.equal(download.headers.get('Content-Type'), 'image/png')

@@ -3,6 +3,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { useState } from 'react'
 import { etapaDevePiscar } from '../etapas'
 import { rotuloLocalLogo } from '../logoLocal'
+import { primeiraImagemPedido } from '../pedidoImagens'
+import { rotuloTipoProduto } from '../tiposProduto'
 import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
@@ -29,22 +31,40 @@ function whatsappHref(numero: string) {
 
 function CardLogoBlock({
   label,
-  src,
+  srcs,
   emptyText,
   actions = false,
 }: {
   label: string
-  src: string | null
+  srcs: string[]
   emptyText: string
   actions?: boolean
 }) {
+  if (srcs.length === 0) {
+    return (
+      <div className="card-logo-block">
+        <span className="card-logo-label">{label}</span>
+        <div className="card-logo card-logo-empty">{emptyText}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="card-logo-block">
-      <span className="card-logo-label">{label}</span>
-      <div className={`card-logo ${src ? '' : 'card-logo-empty'}`}>
-        {src ? <img src={src} alt={label} loading="lazy" /> : emptyText}
+      <span className="card-logo-label">
+        {label}
+        {srcs.length > 1 ? ` · ${srcs.length} imagens` : ''}
+      </span>
+      <div className={`card-logo-grid${srcs.length === 1 ? ' card-logo-grid--single' : ''}`}>
+        {srcs.map((src, index) => (
+          <div key={`${src}-${index}`} className="card-logo-grid-item">
+            <div className="card-logo">
+              <img src={src} alt={`${label} ${index + 1}`} loading="lazy" />
+            </div>
+            {actions ? <ImageActions src={src} label={`${label} ${index + 1}`} /> : null}
+          </div>
+        ))}
       </div>
-      {src && actions && <ImageActions src={src} label={label} />}
     </div>
   )
 }
@@ -74,6 +94,9 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
   const [expanded, setExpanded] = useState(false)
   const qtdComentarios = (card.comentarios ?? []).length
+  const observacao = card.observacao?.trim() ?? ''
+  const tipoProduto = rotuloTipoProduto(card.tipoProduto)
+  const logoClientePreview = primeiraImagemPedido(card.logoEnviadaCliente)
 
   return (
     <article
@@ -111,7 +134,7 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
           <div className="card-collapsed-preview">
             <CardLogoBlock
               label="Logo enviada pelo cliente"
-              src={card.logoEnviadaCliente}
+              srcs={logoClientePreview ? [logoClientePreview] : []}
               emptyText="Sem logo do cliente"
             />
             <div className="card-collapsed-summary">
@@ -137,22 +160,27 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
       ) : (
         <>
           <div className="card-logos">
-            {card.previewAprovacaoCliente && (
+            {card.previewAprovacaoCliente.length > 0 ? (
               <div className="card-approved-preview">
-                <CardLogoBlock label="Preview aprovado pelo cliente" src={card.previewAprovacaoCliente} emptyText="" actions />
+                <CardLogoBlock
+                  label="Preview aprovado pelo cliente"
+                  srcs={card.previewAprovacaoCliente}
+                  emptyText=""
+                  actions
+                />
                 <p className="logo-hint">Referência para aplicar a estampa conforme aprovado.</p>
               </div>
-            )}
+            ) : null}
             <CardLogoBlock
               label="Logo enviada pelo cliente"
-              src={card.logoEnviadaCliente}
+              srcs={card.logoEnviadaCliente}
               emptyText="Sem logo do cliente"
               actions
             />
-            {card.logoProntaImpressao ? (
+            {card.logoProntaImpressao.length > 0 ? (
               <CardLogoBlock
                 label="Logo pronta para impressão"
-                src={card.logoProntaImpressao}
+                srcs={card.logoProntaImpressao}
                 emptyText="Aguardando arte da produção"
                 actions
               />
@@ -194,6 +222,11 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
                 <strong>Segmento</strong> {segmento}
               </p>
             )}
+            {tipoProduto && (
+              <p className="card-meta">
+                <strong>Produto</strong> {tipoProduto}
+              </p>
+            )}
             {card.whatsappCliente.trim() && (
               <p className="card-meta">
                 <strong>WhatsApp</strong>{' '}
@@ -203,6 +236,12 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
               </p>
             )}
             {card.endereco && <p className="card-address">{card.endereco}</p>}
+            {observacao ? (
+              <p className="card-meta card-observacao">
+                <strong>Observação</strong>
+                <span className="card-observacao-texto">{observacao}</span>
+              </p>
+            ) : null}
             <p className="card-dates">
               Pedido: {formatDate(card.dataPedido)}
               {card.dataPagamento ? ` · Pago: ${formatDate(card.dataPagamento)}` : ''}

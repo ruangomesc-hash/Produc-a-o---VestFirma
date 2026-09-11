@@ -162,8 +162,8 @@ export function KanbanBoard({
         {activeCard ? (
           <div className="kanban-card overlay">
             <div className="card-logo">
-              {activeCard.logoEnviadaCliente ? (
-                <img src={activeCard.logoEnviadaCliente} alt="" />
+              {activeCard.logoEnviadaCliente[0] ? (
+                <img src={activeCard.logoEnviadaCliente[0]} alt="" />
               ) : (
                 <span>Sem logo do cliente</span>
               )}

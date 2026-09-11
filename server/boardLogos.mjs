@@ -17,6 +17,12 @@ function isDataUrl(value) {
   return typeof value === 'string' && value.startsWith('data:image/')
 }
 
+function normalizeImageField(value) {
+  if (Array.isArray(value)) return value.filter((item) => typeof item === 'string' && item.length > 0)
+  if (typeof value === 'string' && value) return [value]
+  return []
+}
+
 function parseDataUrl(dataUrl) {
   const match = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUrl)
   if (!match) return null
@@ -38,12 +44,26 @@ export async function externalizeBoardLogos(board, logoDir) {
       continue
     }
     for (const [field] of LOGO_FIELDS) {
-      const value = next[field]
-      if (!isDataUrl(value)) continue
-      const parsed = parseDataUrl(value)
-      if (!parsed) continue
-      const stored = await storeOriginalImage(parsed.buf, logoDir)
-      next[field] = stored.url
+      const urls = normalizeImageField(next[field])
+      if (urls.length === 0) {
+        next[field] = []
+        continue
+      }
+      const externalized = []
+      for (const value of urls) {
+        if (!isDataUrl(value)) {
+          externalized.push(value)
+          continue
+        }
+        const parsed = parseDataUrl(value)
+        if (!parsed) {
+          externalized.push(value)
+          continue
+        }
+        const stored = await storeOriginalImage(parsed.buf, logoDir)
+        externalized.push(stored.url)
+      }
+      next[field] = externalized
     }
     cards.push(next)
   }

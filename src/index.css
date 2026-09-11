@@ -1432,6 +1432,18 @@ textarea {
   text-decoration: underline;
 }
 
+.card-observacao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.card-observacao-texto {
+  white-space: pre-wrap;
+  color: var(--text);
+  font-weight: 500;
+}
+
 .card-address {
   line-height: 1.35;
 }
@@ -2164,6 +2176,47 @@ textarea {
 .logo-upload-dropzone-sub {
   font-size: 0.82rem;
   color: var(--muted);
+}
+
+.logo-upload-dropzone--compact {
+  min-height: 4.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.logo-upload-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logo-upload-gallery-item {
+  min-width: 0;
+}
+
+.card-logo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.card-logo-grid--single {
+  grid-template-columns: 1fr;
+}
+
+.card-logo-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.card-logo-grid .card-logo {
+  height: 144px;
+  min-height: 144px;
+  max-height: 144px;
 }
 .image-actions { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
 .image-actions a { text-decoration: underline; }

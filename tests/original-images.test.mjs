@@ -66,8 +66,10 @@ test('preserva os três anexos, inclusive aprovação, sem alterar pedidos ou li
     const board = { cards: [{ id: crypto.randomUUID(), cliente: 'Teste', logoEnviadaCliente: image, logoProntaImpressao: image, previewAprovacaoCliente: image }, { id: 'antigo', logoEnviadaCliente: '/api/logos/antigo/enviada' }] }
     const saved = await externalizeBoardLogos(board, dir)
     assert.equal(saved.cards.length, 2)
-    for (const field of ['logoEnviadaCliente', 'logoProntaImpressao', 'previewAprovacaoCliente']) assert.match(saved.cards[0][field], /^\/api\/images\/[a-f0-9]{64}\.png$/)
-    assert.equal(saved.cards[1].logoEnviadaCliente, board.cards[1].logoEnviadaCliente)
+    for (const field of ['logoEnviadaCliente', 'logoProntaImpressao', 'previewAprovacaoCliente']) {
+      assert.match(saved.cards[0][field][0], /^\/api\/images\/[a-f0-9]{64}\.png$/)
+    }
+    assert.deepEqual(saved.cards[1].logoEnviadaCliente, [board.cards[1].logoEnviadaCliente])
     assert.equal(board.cards[0].previewAprovacaoCliente, image)
     await fs.writeFile(path.join(dir, 'antigo-enviada.jpg'), 'existing-image')
     assert.equal((await resolveLogoFile(dir, 'antigo', 'enviada')).ext, 'jpg')

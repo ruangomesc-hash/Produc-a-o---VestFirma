@@ -15,6 +15,8 @@ import { mergeBoardLoggedInFromServer, boardTemPedidosAlemDoServidor } from './b
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
 import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
+import { normalizePedidoImagens } from './pedidoImagens'
+import { tipoProdutoValido } from './tiposProduto'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -66,9 +68,11 @@ function normalizeCard(
     segmentos.push({ id: segmentoId, nome: 'Segmento personalizado' })
   }
 
-  const logoEnviadaCliente =
-    raw.logoEnviadaCliente ?? raw.logoDataUrl ?? null
-  const logoProntaImpressao = raw.logoProntaImpressao ?? null
+  const logoEnviadaCliente = normalizePedidoImagens(raw.logoEnviadaCliente ?? raw.logoDataUrl)
+  const logoProntaImpressao = normalizePedidoImagens(raw.logoProntaImpressao)
+  const previewAprovacaoCliente = normalizePedidoImagens(raw.previewAprovacaoCliente)
+  const tipoProduto =
+    raw.tipoProduto && tipoProdutoValido(raw.tipoProduto) ? raw.tipoProduto : null
 
   return {
     id: raw.id,
@@ -81,11 +85,13 @@ function normalizeCard(
     numeroPedido: raw.numeroPedido,
     canal: raw.canal,
     endereco: raw.endereco,
+    observacao: typeof raw.observacao === 'string' ? raw.observacao : '',
+    tipoProduto,
     dataPedido: raw.dataPedido,
     dataPagamento: raw.dataPagamento,
     logoEnviadaCliente,
     logoProntaImpressao,
-    previewAprovacaoCliente: raw.previewAprovacaoCliente ?? null,
+    previewAprovacaoCliente,
     localLogo: normalizarLogoLocal(raw.localLogo),
     etapaDesde: raw.etapaDesde ?? raw.createdAt ?? new Date().toISOString(),
     createdAt: raw.createdAt ?? raw.etapaDesde ?? new Date().toISOString(),

@@ -1,4 +1,5 @@
 import { rotuloLocalLogo } from './logoLocal'
+import { rotuloTipoProduto } from './tiposProduto'
 import { tituloColuna } from './historicoEtapa'
 import type { BoardState, OrderCard, Vendedor } from './types'
 import { nomeSegmento } from './types'
@@ -108,9 +109,13 @@ function rodape(): string {
 function detalhesPedido(card: OrderCard, board: BoardState): string {
   const local = rotuloLocalLogo(card.localLogo)
   const segmento = nomeSegmento(board, card.segmentoId)
+  const produto = rotuloTipoProduto(card.tipoProduto)
   let s = `Pedido: *${card.numeroPedido}*\nCliente: ${card.cliente}\nPeças: ${card.quantidade}`
+  if (produto) s += `\nProduto: ${produto}`
   if (segmento) s += `\nSegmento: ${segmento}`
   if (local) s += `\nLocal da logo: ${local}`
+  const obs = card.observacao?.trim()
+  if (obs) s += `\nObservação: ${obs}`
   return s
 }
 

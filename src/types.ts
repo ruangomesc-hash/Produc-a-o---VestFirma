@@ -1,4 +1,5 @@
 import type { LogoLocal } from './logoLocal'
+import type { TipoProdutoId } from './tiposProduto'
 import type { UserRole } from './userRoles'
 
 export type SalesChannel = 'whatsapp' | 'ecommerce'
@@ -61,11 +62,15 @@ export interface OrderCard {
   numeroPedido: string
   canal: SalesChannel
   endereco: string
+  /** Notas gerais do pedido (instruções, combinações, lembretes). */
+  observacao?: string
+  /** Tipo de peça do pedido (camisa polo, dry fit, etc.). */
+  tipoProduto?: TipoProdutoId | null
   dataPedido: string
   dataPagamento: string
-  logoEnviadaCliente: string | null
-  logoProntaImpressao: string | null
-  previewAprovacaoCliente: string | null
+  logoEnviadaCliente: string[]
+  logoProntaImpressao: string[]
+  previewAprovacaoCliente: string[]
   localLogo: LogoLocal | null
   etapaDesde: string
   createdAt: string

@@ -46,11 +46,12 @@ function logoBytesOnCard(card: OrderCard): { bytes: number; count: number } {
   let bytes = 0
   let count = 0
   for (const field of [card.logoEnviadaCliente, card.logoProntaImpressao, card.previewAprovacaoCliente] as const) {
-    if (field && field.length > 0) {
-      if (field.startsWith('/api/logos/')) {
+    for (const url of field) {
+      if (!url) continue
+      if (url.startsWith('/api/logos/') || url.startsWith('/api/images/')) {
         bytes += 48
       } else {
-        bytes += utf8ByteLength(field)
+        bytes += utf8ByteLength(url)
       }
       count += 1
     }
