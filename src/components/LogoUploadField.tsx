@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { compressLogoFile } from '../logoUtils'
+import { useEffect, useRef, useState } from 'react'
+import { IMAGE_ACCEPT, MAX_IMAGE_MB } from '../logoUtils'
+import { uploadOriginalImage } from '../imageUploads'
+import { ImageActions } from './ImageActions'
 
 type Props = {
   label: string
@@ -7,48 +9,91 @@ type Props = {
   value: string | null
   onChange: (dataUrl: string | null) => void
   onError: (msg: string | null) => void
+  onBusyChange?: (busy: boolean) => void
 }
 
-export function LogoUploadField({ label, hint, value, onChange, onError }: Props) {
+export function LogoUploadField({ label, hint, value, onChange, onError, onBusyChange }: Props) {
   const [loading, setLoading] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const upload = useRef<AbortController | null>(null)
+  useEffect(() => () => upload.current?.abort(), [])
 
   const handleFile = async (file: File | null) => {
-    if (!file) return
+    if (!file || upload.current) return
+    const controller = new AbortController()
+    upload.current = controller
     onError(null)
     setLoading(true)
+    onBusyChange?.(true)
     try {
-      const dataUrl = await compressLogoFile(file)
-      onChange(dataUrl)
-    } catch {
-      onError('Não foi possível carregar a imagem. Tente outro arquivo.')
+      const imageUrl = await uploadOriginalImage(file, controller.signal)
+      if (!controller.signal.aborted) onChange(imageUrl)
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        onError(err instanceof Error ? err.message : 'Não foi possível carregar a imagem. Tente outro arquivo.')
+      }
     } finally {
-      setLoading(false)
+      if (!controller.signal.aborted) {
+        upload.current = null
+        setLoading(false)
+        onBusyChange?.(false)
+      }
     }
   }
 
   return (
     <div className="field span-2 logo-field">
       <span>{label}</span>
-      <div className="logo-upload">
+      <div
+        className={`logo-upload${dragging ? ' logo-upload--dragging' : ''}`}
+        aria-busy={loading}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return
+          event.preventDefault()
+          event.stopPropagation()
+          event.dataTransfer.dropEffect = loading ? 'none' : 'copy'
+          setDragging(!loading)
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false)
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          setDragging(false)
+          if (event.dataTransfer.files.length !== 1) {
+            onError('Anexe uma imagem por campo.')
+            return
+          }
+          void handleFile(event.dataTransfer.files[0])
+        }}
+      >
         {value ? (
           <div className="logo-preview-wrap">
-            <img src={value} alt="" className="logo-preview" />
-            <button type="button" className="btn-text" onClick={() => onChange(null)}>
-              Remover logo
+            <img src={value} alt={label} className="logo-preview" />
+            <ImageActions src={value} label={label} />
+            <button type="button" className="btn-text" disabled={loading} onClick={() => onChange(null)}>
+              Remover imagem
             </button>
           </div>
         ) : (
           <p className="logo-hint">{hint}</p>
         )}
         <label className="btn secondary file-btn">
-          {loading ? 'Processando…' : value ? 'Trocar logo' : 'Enviar logo'}
+          {loading ? 'Enviando original…' : value ? 'Trocar imagem' : 'Anexar imagem'}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept={IMAGE_ACCEPT}
+            aria-label={`Anexar ${label.toLowerCase()}`}
+            disabled={loading}
             hidden
-            onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              void handleFile(e.target.files?.[0] ?? null)
+              e.target.value = ''
+            }}
           />
         </label>
+        <p className="logo-hint">Arraste a imagem aqui ou clique para anexar. PNG, JPG, WEBP ou GIF, até {MAX_IMAGE_MB} MB. Resolução e transparência originais preservadas.</p>
       </div>
     </div>
   )

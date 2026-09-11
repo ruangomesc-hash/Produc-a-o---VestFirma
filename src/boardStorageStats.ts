@@ -45,7 +45,7 @@ function utf8ByteLength(text: string): number {
 function logoBytesOnCard(card: OrderCard): { bytes: number; count: number } {
   let bytes = 0
   let count = 0
-  for (const field of [card.logoEnviadaCliente, card.logoProntaImpressao] as const) {
+  for (const field of [card.logoEnviadaCliente, card.logoProntaImpressao, card.previewAprovacaoCliente] as const) {
     if (field && field.length > 0) {
       if (field.startsWith('/api/logos/')) {
         bytes += 48
@@ -59,7 +59,7 @@ function logoBytesOnCard(card: OrderCard): { bytes: number; count: number } {
 }
 
 function cardMetaJson(card: OrderCard): string {
-  const { logoEnviadaCliente: _a, logoProntaImpressao: _b, ...rest } = card
+  const { logoEnviadaCliente: _a, logoProntaImpressao: _b, previewAprovacaoCliente: _c, ...rest } = card
   return JSON.stringify(rest)
 }
 

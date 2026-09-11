@@ -25,6 +25,7 @@ const { handleHealthApi } = await import('./health.mjs')
 const { handleUsersApi, handleUsersBackupsApi } = await import('./users.mjs')
 const { handleAuditApi } = await import('./audit.mjs')
 const { externalizeBoardLogos, logoMime, resolveLogoFile } = await import('./boardLogos.mjs')
+const { handleImageApi } = await import('./imageUploads.mjs')
 const {
   backupBoardBeforeWrite,
   countBoardCards,
@@ -365,6 +366,13 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    if (url.pathname === '/api/images' || url.pathname.startsWith('/api/images/')) {
+      await handleImageApi(req, res, url, {
+        logoDir: logoDirPath(), requireSession, corsHeaders, requireLogin: REQUIRE_LOGIN,
+      })
+      return
+    }
+
     if (url.pathname.startsWith('/api/logos/')) {
       await handleLogoApi(req, res, url)
       return
@@ -426,10 +434,11 @@ if (!existsSync(DIST)) {
 
 const paths = getBoardPaths()
 server.listen(PORT, HOST, () => {
+  const boundPort = server.address().port
   if (process.env.API_ONLY === '1') {
-    console.log(`VestFirma API — http://${HOST}:${PORT}/api/board`)
+    console.log(`VestFirma API — http://${HOST}:${boundPort}/api/board`)
   } else {
-    console.log(`VestFirma Kanban — http://${HOST}:${PORT}`)
+    console.log(`VestFirma Kanban — http://${HOST}:${boundPort}`)
   }
   console.log(`Quadro salvo em: ${paths.boardFile}`)
   console.log(`Logos em: ${paths.logoDir}`)

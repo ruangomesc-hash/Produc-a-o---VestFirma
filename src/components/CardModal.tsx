@@ -33,6 +33,7 @@ function buildForm(
       dataPagamento: initial.dataPagamento,
       logoEnviadaCliente: initial.logoEnviadaCliente,
       logoProntaImpressao: initial.logoProntaImpressao,
+      previewAprovacaoCliente: initial.previewAprovacaoCliente ?? null,
       localLogo: initial.localLogo,
     }
   }
@@ -49,6 +50,7 @@ function buildForm(
     dataPagamento: '',
     logoEnviadaCliente: null,
     logoProntaImpressao: null,
+    previewAprovacaoCliente: null,
     localLogo: null,
   }
   if (preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)) {
@@ -113,6 +115,8 @@ export function CardModal({
     String(mode === 'edit' && initial ? initial.quantidade : 1),
   )
   const [logoError, setLogoError] = useState<string | null>(null)
+  const [imageUploads, setImageUploads] = useState<Record<string, boolean>>({})
+  const imagesUploading = Object.values(imageUploads).some(Boolean)
   const [addingSegmento, setAddingSegmento] = useState(false)
   const [novoSegmentoNome, setNovoSegmentoNome] = useState('')
   const [alert, setAlert] = useState<{ title?: string; message: string } | null>(null)
@@ -129,6 +133,7 @@ export function CardModal({
     setForm(next)
     setQuantidadeInput(String(next.quantidade))
     setLogoError(null)
+    setImageUploads({})
     setAddingSegmento(false)
     setNovoSegmentoNome('')
     setAlert(null)
@@ -172,6 +177,7 @@ export function CardModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (imagesUploading) return
     if (!form.cliente.trim() || !form.numeroPedido.trim()) return
     const vendedorIdEfetivo =
       lockVendedorToSession && preferredVendedorId
@@ -453,19 +459,33 @@ export function CardModal({
             />
 
             <LogoUploadField
+              key={`cliente-${session}`}
               label="Logo enviada pelo cliente"
               hint="Anexe a arte que o cliente mandou (PNG, JPG ou WEBP)."
               value={form.logoEnviadaCliente}
               onError={setLogoError}
+              onBusyChange={(busy) => setImageUploads((s) => ({ ...s, cliente: busy }))}
               onChange={(dataUrl) => setForm((f) => ({ ...f, logoEnviadaCliente: dataUrl }))}
             />
 
             <LogoUploadField
+              key={`impressao-${session}`}
               label="Logo pronta para impressão"
               hint="Arquivo tratado pela produção para rodar na máquina (PNG, JPG ou WEBP)."
               value={form.logoProntaImpressao}
               onError={setLogoError}
+              onBusyChange={(busy) => setImageUploads((s) => ({ ...s, impressao: busy }))}
               onChange={(dataUrl) => setForm((f) => ({ ...f, logoProntaImpressao: dataUrl }))}
+            />
+
+            <LogoUploadField
+              key={`aprovacao-${session}`}
+              label="Preview aprovado pelo cliente"
+              hint="Anexe a imagem da peça com a logo, aprovada pelo cliente. Ela orienta a equipe sobre posição, tamanho e resultado da aplicação."
+              value={form.previewAprovacaoCliente}
+              onError={setLogoError}
+              onBusyChange={(busy) => setImageUploads((s) => ({ ...s, aprovacao: busy }))}
+              onChange={(imageUrl) => setForm((f) => ({ ...f, previewAprovacaoCliente: imageUrl }))}
             />
 
             {logoError && (
@@ -499,8 +519,8 @@ export function CardModal({
             <button type="button" className="btn ghost" onClick={onClose}>
               Cancelar
             </button>
-            <button type="submit" className="btn primary">
-              {mode === 'create' ? 'Adicionar ao quadro' : 'Salvar alterações'}
+            <button type="submit" className="btn primary" disabled={imagesUploading}>
+              {imagesUploading ? 'Aguarde o envio das imagens…' : mode === 'create' ? 'Adicionar ao quadro' : 'Salvar alterações'}
             </button>
           </footer>
         </form>

@@ -65,6 +65,7 @@ export interface OrderCard {
   dataPagamento: string
   logoEnviadaCliente: string | null
   logoProntaImpressao: string | null
+  previewAprovacaoCliente: string | null
   localLogo: LogoLocal | null
   etapaDesde: string
   createdAt: string

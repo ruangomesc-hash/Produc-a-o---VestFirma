@@ -7,6 +7,7 @@ import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
 import { CardHistoricoTimeline } from './CardHistoricoTimeline'
+import { ImageActions } from './ImageActions'
 
 function formatDate(value: string) {
   if (!value) return '—'
@@ -30,17 +31,20 @@ function CardLogoBlock({
   label,
   src,
   emptyText,
+  actions = false,
 }: {
   label: string
   src: string | null
   emptyText: string
+  actions?: boolean
 }) {
   return (
     <div className="card-logo-block">
       <span className="card-logo-label">{label}</span>
       <div className={`card-logo ${src ? '' : 'card-logo-empty'}`}>
-        {src ? <img src={src} alt="" /> : emptyText}
+        {src ? <img src={src} alt={label} loading="lazy" /> : emptyText}
       </div>
+      {src && actions && <ImageActions src={src} label={label} />}
     </div>
   )
 }
@@ -133,16 +137,24 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
       ) : (
         <>
           <div className="card-logos">
+            {card.previewAprovacaoCliente && (
+              <div className="card-approved-preview">
+                <CardLogoBlock label="Preview aprovado pelo cliente" src={card.previewAprovacaoCliente} emptyText="" actions />
+                <p className="logo-hint">Referência para aplicar a estampa conforme aprovado.</p>
+              </div>
+            )}
             <CardLogoBlock
               label="Logo enviada pelo cliente"
               src={card.logoEnviadaCliente}
               emptyText="Sem logo do cliente"
+              actions
             />
             {card.logoProntaImpressao ? (
               <CardLogoBlock
                 label="Logo pronta para impressão"
                 src={card.logoProntaImpressao}
                 emptyText="Aguardando arte da produção"
+                actions
               />
             ) : (
               <p className="card-logo-awaiting">Aguardando logo pronta para impressão</p>

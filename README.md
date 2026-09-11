@@ -52,7 +52,11 @@ Com **`VITE_API_BASE`** configurado no build (veja **[DEPLOY.md](./DEPLOY.md)**)
 
 Sem API, os dados ficam só no **IndexedDB** daquele navegador.
 
-Logos são comprimidas no upload (até 1200 px, JPEG) para não inflar o arquivo.
+As novas imagens são preservadas no formato, resolução e transparência originais (PNG, JPG, WEBP ou GIF, até 25 MB por arquivo). No servidor Node/Render, são enviadas separadamente e guardadas em `data/logos/originals/`; o quadro guarda só os links, evitando reenviar todas as imagens a cada alteração.
+
+Cada pedido oferece três anexos: **Logo enviada pelo cliente**, **Logo pronta para impressão** e **Preview aprovado pelo cliente**. O preview mostra a peça com a aplicação aprovada para orientar a produção; ele pode ser ampliado ou baixado no cartão. Os três campos aceitam arrastar e soltar.
+
+Imagens antigas que já foram comprimidas precisam ser reenviadas a partir dos arquivos originais para recuperar a qualidade. O projeto mantém os anexos e pedidos existentes.
 
 ## Colunas padrão
 

@@ -7,6 +7,7 @@ export type RuntimeConfig = {
   requireLogin: boolean
   apiBase: string | null
   serverRequireLogin: boolean
+  originalImageUploads: boolean
   version: string
   ready: boolean
 }
@@ -15,6 +16,7 @@ let state: RuntimeConfig = {
   requireLogin: false,
   apiBase: null,
   serverRequireLogin: false,
+  originalImageUploads: false,
   version: '',
   ready: false,
 }
@@ -62,6 +64,7 @@ export async function initRuntimeConfig(): Promise<RuntimeConfig> {
   let apiBase = env.apiBase
   let version = ''
   let serverRequireLogin = false
+  let originalImageUploads = false
 
   if (import.meta.env.PROD) {
     try {
@@ -90,7 +93,8 @@ export async function initRuntimeConfig(): Promise<RuntimeConfig> {
         headers: { Accept: 'application/json' },
       })
       if (res.ok) {
-        const json = (await res.json()) as { requireLogin?: boolean }
+        const json = (await res.json()) as { requireLogin?: boolean; originalImageUploads?: boolean }
+        originalImageUploads = json.originalImageUploads === true
         if (json.requireLogin === true) {
           serverRequireLogin = true
           requireLogin = true
@@ -105,6 +109,7 @@ export async function initRuntimeConfig(): Promise<RuntimeConfig> {
     requireLogin,
     apiBase,
     serverRequireLogin,
+    originalImageUploads,
     version,
     ready: true,
   }

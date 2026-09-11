@@ -1,32 +1,25 @@
-const MAX_EDGE = 1200
-const JPEG_QUALITY = 0.82
+import { MAX_IMAGE_BYTES, detectImageType } from '../shared/imageFormats.mjs'
 
-export async function compressLogoFile(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
-  const width = Math.round(bitmap.width * scale)
-  const height = Math.round(bitmap.height * scale)
+export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif'
+export const MAX_IMAGE_MB = MAX_IMAGE_BYTES / 1024 / 1024
 
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas não disponível')
-  ctx.drawImage(bitmap, 0, 0, width, height)
-  bitmap.close()
+export async function validateImageFile(file: File): Promise<string> {
+  if (!file.size) throw new Error('O arquivo está vazio. Escolha outra imagem.')
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error(`A imagem deve ter no máximo ${MAX_IMAGE_MB} MB. O original não será reduzido.`)
+  }
+  const type = detectImageType(new Uint8Array(await file.slice(0, 12).arrayBuffer()))
+  if (!type) throw new Error('Escolha uma imagem PNG, JPG, WEBP ou GIF.')
+  return type.mime
+}
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('Falha ao processar imagem'))),
-      'image/jpeg',
-      JPEG_QUALITY,
-    )
-  })
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(blob)
-  })
+/** Codifica os bytes originais, sem redimensionar ou converter a imagem. */
+export async function readOriginalImage(file: File): Promise<string> {
+  const mime = await validateImageFile(file)
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const parts: string[] = []
+  for (let i = 0; i < bytes.length; i += 32768) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + 32768)))
+  }
+  return `data:${mime};base64,${btoa(parts.join(''))}`
 }

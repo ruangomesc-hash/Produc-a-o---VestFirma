@@ -1,9 +1,11 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { storeOriginalImage } from './imageUploads.mjs'
 
 const LOGO_FIELDS = [
   ['logoEnviadaCliente', 'enviada'],
   ['logoProntaImpressao', 'impressao'],
+  ['previewAprovacaoCliente', 'aprovacao'],
 ]
 
 function safeCardId(cardId) {
@@ -18,14 +20,12 @@ function isDataUrl(value) {
 function parseDataUrl(dataUrl) {
   const match = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUrl)
   if (!match) return null
-  const mime = match[1].toLowerCase()
-  const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg'
   const buf = Buffer.from(match[2], 'base64')
-  return { buf, ext, mime }
+  return { buf }
 }
 
 /** Grava logos embutidas em arquivos e troca por URLs da API (quadro leve para milhares de pedidos). */
-export async function externalizeBoardLogos(board, logoDir, apiPrefix = '/api/logos') {
+export async function externalizeBoardLogos(board, logoDir) {
   if (!board?.cards?.length) return board
   await fs.mkdir(logoDir, { recursive: true })
 
@@ -37,14 +37,13 @@ export async function externalizeBoardLogos(board, logoDir, apiPrefix = '/api/lo
       cards.push(next)
       continue
     }
-    for (const [field, slug] of LOGO_FIELDS) {
+    for (const [field] of LOGO_FIELDS) {
       const value = next[field]
       if (!isDataUrl(value)) continue
       const parsed = parseDataUrl(value)
       if (!parsed) continue
-      const filename = `${id}-${slug}.${parsed.ext}`
-      await fs.writeFile(path.join(logoDir, filename), parsed.buf)
-      next[field] = `${apiPrefix}/${id}/${slug}`
+      const stored = await storeOriginalImage(parsed.buf, logoDir)
+      next[field] = stored.url
     }
     cards.push(next)
   }
