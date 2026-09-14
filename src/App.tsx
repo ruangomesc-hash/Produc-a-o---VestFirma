@@ -27,6 +27,7 @@ import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
 import { LoginPage } from './components/LoginPage'
 import { WhatsAppNotifyModal } from './components/WhatsAppNotifyModal'
+import { WhatsAppRedirectModal } from './components/WhatsAppRedirectModal'
 import { VisaoGeralPanel } from './components/VisaoGeralPanel'
 import { VisaoEquipePanel } from './components/VisaoEquipePanel'
 import { SystemStatusPanel } from './components/SystemStatusPanel'
@@ -174,6 +175,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [modalSession, setModalSession] = useState(0)
   const [usuariosOpen, setUsuariosOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
+  const [whatsappRedirectOpen, setWhatsappRedirectOpen] = useState(false)
   const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
@@ -526,6 +528,14 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             <button
               type="button"
               className="btn ghost"
+              onClick={() => setWhatsappRedirectOpen(true)}
+              title="Abrir WhatsApp do cliente com mensagem padrão"
+            >
+              Redirect WhatsApp
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
               onClick={() => setWhatsappNotifyOpen(true)}
               title="Avisos no grupo WhatsApp"
             >
@@ -621,7 +631,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           ) : null}
         <KanbanBoard
           board={isAdmin(session) ? boardPainelAdmin : boardForSession}
-          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen}
+          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
@@ -741,6 +751,11 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       <WhatsAppNotifyModal
         open={whatsappNotifyOpen}
         onClose={() => setWhatsappNotifyOpen(false)}
+      />
+
+      <WhatsAppRedirectModal
+        open={whatsappRedirectOpen}
+        onClose={() => setWhatsappRedirectOpen(false)}
       />
 
       <ConfirmModal
