@@ -36,6 +36,8 @@ import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
 import { PortalFestaPreviewPage } from './components/PortalFestaPreviewPage'
 import { PortalPedidoQuickLink } from './components/PortalPedidoQuickLink'
 import { isPortalFestaPreviewRoute, isPortalPedidoRoute } from './portalPedidoRoute'
+import { isRedirectRoute, redirectHref } from './redirectRoute'
+import { WhatsAppRedirectPage } from './components/WhatsAppRedirectPage'
 import { HistoricoAuditoriaPanel } from './components/HistoricoAuditoriaPanel'
 import { setAuditActor } from './auditContext'
 import { recordAudit } from './auditLog'
@@ -134,6 +136,9 @@ function AuthenticatedRoot({
   }
   if (isPortalPedidoRoute()) {
     return <VendedorPedidoPortalPage session={session} onLogout={onLogout} />
+  }
+  if (isRedirectRoute()) {
+    return <WhatsAppRedirectPage user={userLabel} onLogout={onLogout} />
   }
   return <AuthenticatedApp session={session} onLogout={onLogout} />
 }
@@ -525,13 +530,20 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               </button>
             )}
 
-            <button
-              type="button"
+            <a
               className="btn ghost"
-              onClick={() => setWhatsappRedirectOpen(true)}
-              title="Abrir WhatsApp do cliente com mensagem padrão"
+              href={redirectHref()}
+              title="Página Redirect WhatsApp — mensagens padrão"
             >
               Redirect WhatsApp
+            </a>
+            <button
+              type="button"
+              className="btn ghost wa-redirect-quick-btn"
+              onClick={() => setWhatsappRedirectOpen(true)}
+              title="Atalho rápido (popup)"
+            >
+              Redirect rápido
             </button>
             <button
               type="button"
