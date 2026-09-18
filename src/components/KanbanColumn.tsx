@@ -1,7 +1,8 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useState } from 'react'
 import { COLUNA_NOVO_PEDIDO_ID } from '../defaultBoard'
-import { etapaDevePiscar, resumirPrazosColuna } from '../etapas'
+import { COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
+import { etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import type { BoardState, Column as ColumnType, OrderCard } from '../types'
 import { ConfirmModal } from './ConfirmModal'
@@ -40,6 +41,8 @@ export function KanbanColumn({
   }
 
   const colunaLogistica = etapaDevePiscar(column.id, column.title)
+  const colunaEnviado =
+    column.id === COLUNA_PEDIDO_ENVIADO_ID || etapaPedidoEnviado(column.id, column.title)
   const resumoPrazos = resumirPrazosColuna(column.id, column.title, cards, agora)
 
   const destinoTitulo = board.columns.find((c) => c.id !== column.id)?.title ?? 'a primeira etapa'
@@ -50,7 +53,7 @@ export function KanbanColumn({
 
   return (
     <section
-      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''}`}
+      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''}`}
     >
       <ConfirmModal
         open={confirmDeleteOpen}
@@ -65,9 +68,12 @@ export function KanbanColumn({
       <header className="column-header">
         <div>
           {colunaLogistica && <span className="column-logistica-badge">Prioridade logística</span>}
+          {colunaEnviado && <span className="column-enviado-badge">Concluídos</span>}
           <h2>{column.title}</h2>
           {colunaLogistica ? (
             <span className="column-count">{cards.length} pedidos aguardando</span>
+          ) : colunaEnviado ? (
+            <span className="column-count">{cards.length} enviado{cards.length === 1 ? '' : 's'}</span>
           ) : resumoPrazos.temContagemPrazo ? (
             <div className="column-prazo-resumo" aria-label="Resumo de prazos na coluna">
               <span className="column-prazo-stat no-prazo">

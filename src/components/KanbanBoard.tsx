@@ -9,6 +9,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { useMemo, useState, useEffect } from 'react'
+import { resolveCardColumnId } from '../boardColumns'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState, OrderCard } from '../types'
 import { KanbanColumn } from './KanbanColumn'
@@ -58,10 +59,9 @@ export function KanbanBoard({
   const cardsByColumn = useMemo(() => {
     const map = new Map<string, OrderCard[]>()
     for (const col of board.columns) map.set(col.id, [])
-    const fallback = board.columns[0]?.id
     for (const card of board.cards) {
       if (!pedidoVisivelNoKanban(card)) continue
-      const columnId = map.has(card.columnId) ? card.columnId : fallback
+      const columnId = resolveCardColumnId(board, card)
       if (!columnId) continue
       map.get(columnId)!.push(
         columnId === card.columnId ? card : { ...card, columnId },

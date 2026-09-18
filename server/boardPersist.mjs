@@ -34,11 +34,49 @@ function pedidoRevisionMs(card) {
   return max
 }
 
-function mergeOrderCard(existing, incoming) {
+const COLUNAS_ETAPA_AVANCADA = new Set(['liberado-logistica', 'pedido-enviado'])
+
+function indiceColuna(columns, columnId) {
+  return (columns ?? []).findIndex((c) => c.id === columnId)
+}
+
+function ultimaMudancaEtapaMs(card, columnId) {
+  let max = 0
+  for (const entry of card?.historicoEtapa ?? []) {
+    if (entry?.columnId !== columnId || !entry.at) continue
+    if (entry.tipo === 'criado' && columnId !== card.columnId) continue
+    const t = Date.parse(entry.at)
+    if (!Number.isNaN(t)) max = Math.max(max, t)
+  }
+  return max
+}
+
+function impedirRegressaoEtapaNoMerge(existing, merged, columns) {
+  if (merged.columnId === existing.columnId) return merged
+  if (!COLUNAS_ETAPA_AVANCADA.has(existing.columnId)) return merged
+  const idxExist = indiceColuna(columns, existing.columnId)
+  const idxMerged = indiceColuna(columns, merged.columnId)
+  if (idxExist < 0 || idxMerged < 0 || idxMerged >= idxExist) return merged
+  const mudancaExplicita =
+    ultimaMudancaEtapaMs(merged, merged.columnId) >
+    Math.max(
+      ultimaMudancaEtapaMs(existing, existing.columnId),
+      ultimaMudancaEtapaMs(existing, merged.columnId),
+    )
+  if (mudancaExplicita) return merged
+  return {
+    ...merged,
+    columnId: existing.columnId,
+    etapaDesde: existing.etapaDesde,
+    historicoEtapa: existing.historicoEtapa,
+  }
+}
+
+function mergeOrderCard(existing, incoming, columns) {
   const tExist = pedidoRevisionMs(existing)
   const tIn = pedidoRevisionMs(incoming)
-  if (tIn >= tExist) return { ...existing, ...incoming }
-  return { ...incoming, ...existing }
+  const merged = tIn >= tExist ? { ...existing, ...incoming } : { ...incoming, ...existing }
+  return impedirRegressaoEtapaNoMerge(existing, merged, columns)
 }
 
 export function mergeBoardPreservingPedidos(existing, incoming, removeCardIds = []) {
@@ -64,7 +102,7 @@ export function mergeBoardPreservingPedidos(existing, incoming, removeCardIds = 
       continue
     }
     const prev = byId.get(c.id)
-    byId.set(c.id, prev ? mergeOrderCard(prev, c) : c)
+    byId.set(c.id, prev ? mergeOrderCard(prev, c, shell.columns) : c)
   }
 
   return {

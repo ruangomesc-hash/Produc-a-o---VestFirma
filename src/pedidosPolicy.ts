@@ -1,3 +1,4 @@
+import { ensureBoardColumns, impedirRegressaoEtapaNoMerge } from './boardColumns'
 import type { BoardState, OrderCard } from './types'
 import { mergeVendedoresUnion } from './vendedorUserSync'
 
@@ -24,19 +25,26 @@ export function pedidoRevisionMs(card: OrderCard): number {
   return max
 }
 
-function mergeOrderCard(existing: OrderCard, incoming: OrderCard): OrderCard {
+function mergeOrderCard(
+  existing: OrderCard,
+  incoming: OrderCard,
+  columns: BoardState['columns'],
+): OrderCard {
   const tExist = pedidoRevisionMs(existing)
   const tIn = pedidoRevisionMs(incoming)
-  if (tIn >= tExist) return { ...existing, ...incoming }
-  return { ...incoming, ...existing }
+  const merged = tIn >= tExist ? { ...existing, ...incoming } : { ...incoming, ...existing }
+  return impedirRegressaoEtapaNoMerge(existing, merged, columns)
 }
 
 function mergeBoardShell(
   existing: BoardState | null | undefined,
   incoming: BoardState,
 ): Pick<BoardState, 'columns' | 'vendedores' | 'segmentos'> {
+  const mergedColumns = ensureBoardColumns(
+    incoming.columns?.length ? incoming.columns : (existing?.columns ?? incoming.columns),
+  )
   return {
-    columns: incoming.columns?.length ? incoming.columns : (existing?.columns ?? incoming.columns),
+    columns: mergedColumns,
     vendedores: mergeVendedoresUnion(existing?.vendedores ?? [], incoming.vendedores ?? []),
     segmentos: incoming.segmentos?.length ? incoming.segmentos : (existing?.segmentos ?? incoming.segmentos),
   }
@@ -74,7 +82,7 @@ export function mergeBoardPreservingPedidos(
       continue
     }
     const prev = byId.get(c.id)
-    byId.set(c.id, prev ? mergeOrderCard(prev, c) : c)
+    byId.set(c.id, prev ? mergeOrderCard(prev, c, shell.columns) : c)
   }
 
   return {
@@ -99,7 +107,7 @@ export function mergeBoardRemotePrimary(
   }
   for (const c of local?.cards ?? []) {
     if (!c?.id || !byId.has(c.id)) continue
-    byId.set(c.id, mergeOrderCard(byId.get(c.id)!, c))
+    byId.set(c.id, mergeOrderCard(byId.get(c.id)!, c, shell.columns))
   }
   return { ...remote, ...shell, cards: [...byId.values()] }
 }

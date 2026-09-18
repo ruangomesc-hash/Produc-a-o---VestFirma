@@ -1280,6 +1280,39 @@ textarea {
   font-size: 0.6rem;
 }
 
+.etapa-tag.enviado {
+  background: rgba(100, 116, 139, 0.35);
+  color: #f8fafc;
+  border: 1px solid #94a3b8;
+  font-size: 0.6rem;
+}
+
+.kanban-column.column-pedido-enviado {
+  background: color-mix(in srgb, #64748b 8%, var(--surface));
+  border: 1px solid #94a3b8;
+}
+
+.kanban-column.column-pedido-enviado .column-header h2 {
+  color: #334155;
+}
+
+.column-enviado-badge {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.visao-card--enviado {
+  border-left-color: #64748b;
+}
+
 @keyframes etapa-atrasado-pulse {
   0%,
   100% {

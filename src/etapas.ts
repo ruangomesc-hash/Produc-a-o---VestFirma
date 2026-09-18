@@ -22,6 +22,9 @@ const PISCAR_POR_ID = new Set(['liberado-logistica'])
 
 const PISCAR_TITULO_CHAVE = 'liberado para logistica'
 
+const ENVIADO_POR_ID = new Set(['pedido-enviado'])
+const ENVIADO_TITULO_CHAVE = 'pedido enviado'
+
 function tituloChave(title: string) {
   return title
     .toLowerCase()
@@ -39,6 +42,11 @@ export function slaHorasEtapa(columnId: string, columnTitle: string): number | n
 export function etapaDevePiscar(columnId: string, columnTitle: string): boolean {
   if (PISCAR_POR_ID.has(columnId)) return true
   return tituloChave(columnTitle) === PISCAR_TITULO_CHAVE
+}
+
+export function etapaPedidoEnviado(columnId: string, columnTitle: string): boolean {
+  if (ENVIADO_POR_ID.has(columnId)) return true
+  return tituloChave(columnTitle) === ENVIADO_TITULO_CHAVE
 }
 
 function parseInstanteEtapa(iso: string): number {
@@ -65,6 +73,7 @@ export type EtapaPrazoUi =
   | { tipo: 'nenhum' }
   | { tipo: 'prazo'; atrasado: boolean; texto: string }
   | { tipo: 'logistica' }
+  | { tipo: 'enviado' }
 
 export type EtapaPrazoCardRef = Pick<OrderCard, 'columnId' | 'etapaDesde' | 'historicoEtapa'>
 
@@ -74,6 +83,10 @@ export function calcularEtapaPrazo(
   card: EtapaPrazoCardRef,
   agora = Date.now(),
 ): EtapaPrazoUi {
+  if (etapaPedidoEnviado(columnId, columnTitle)) {
+    return { tipo: 'enviado' }
+  }
+
   if (etapaDevePiscar(columnId, columnTitle)) {
     return { tipo: 'logistica' }
   }
@@ -111,7 +124,11 @@ export function resumirPrazosColuna(
   cards: EtapaPrazoCardRef[],
   agora = Date.now(),
 ): ResumoPrazosColuna {
-  if (etapaDevePiscar(columnId, columnTitle) || slaHorasEtapa(columnId, columnTitle) == null) {
+  if (
+    etapaDevePiscar(columnId, columnTitle) ||
+    etapaPedidoEnviado(columnId, columnTitle) ||
+    slaHorasEtapa(columnId, columnTitle) == null
+  ) {
     return { temContagemPrazo: false, noPrazo: 0, atrasado: 0 }
   }
 

@@ -42,9 +42,31 @@ export function mergeVendedoresUnion(a, b) {
   return out
 }
 
+const DEFAULT_COLUMNS = [
+  { id: 'logos-recebidas', title: 'Logos recebidas' },
+  { id: 'logos-producao', title: 'Logos em produção' },
+  { id: 'logos-prontas', title: 'Logos prontas' },
+  { id: 'disponiveis-aplicacao', title: 'Disponíveis para aplicação' },
+  { id: 'em-aplicacao', title: 'Em aplicação' },
+  { id: 'liberado-logistica', title: 'Liberado para logística' },
+  { id: 'pedido-enviado', title: 'Pedido enviado' },
+]
+
+export function ensureBoardColumns(columns) {
+  const list = [...(columns ?? [])]
+  const byId = new Map(list.map((c) => [c.id, c]))
+  for (const def of DEFAULT_COLUMNS) {
+    if (!byId.has(def.id)) list.push({ ...def })
+  }
+  return list
+}
+
 export function mergeBoardShell(existing, incoming) {
+  const mergedColumns = ensureBoardColumns(
+    incoming?.columns?.length ? incoming.columns : existing?.columns ?? incoming?.columns,
+  )
   return {
-    columns: incoming?.columns?.length ? incoming.columns : existing?.columns ?? incoming?.columns,
+    columns: mergedColumns,
     vendedores: mergeVendedoresUnion(existing?.vendedores ?? [], incoming?.vendedores ?? []),
     segmentos: incoming?.segmentos?.length ? incoming.segmentos : existing?.segmentos ?? incoming?.segmentos,
   }

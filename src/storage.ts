@@ -1,3 +1,4 @@
+import { ensureBoardColumns, resolveCardColumnId } from './boardColumns'
 import { DEFAULT_BOARD } from './defaultBoard'
 import { normalizarLogoLocal } from './logoLocal'
 import { garantirHistoricoCard } from './historicoEtapa'
@@ -126,13 +127,17 @@ export function normalizeBoard(raw: BoardState | LegacyBoardRaw | undefined | nu
   )
 
   const base: BoardState = {
-    columns: raw.columns,
+    columns: ensureBoardColumns(raw.columns),
     cards,
     vendedores,
     segmentos,
   }
 
   cards = cards.map((c) => garantirHistoricoCard(c, base))
+  cards = cards.map((c) => {
+    const columnId = resolveCardColumnId({ ...base, cards }, c)
+    return columnId === c.columnId ? c : { ...c, columnId }
+  })
 
   return unifyVendedorRowsAndRelinkCards({ ...base, cards })
 }
