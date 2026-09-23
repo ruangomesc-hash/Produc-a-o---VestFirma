@@ -25,6 +25,7 @@ type Props = {
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
   onAddColumn: (title: string) => void
   dragEnabled?: boolean
+  highlightPedidoId?: string | null
 }
 
 export function KanbanBoard({
@@ -38,6 +39,7 @@ export function KanbanBoard({
   onDeleteColumn,
   onAddColumn,
   dragEnabled = true,
+  highlightPedidoId = null,
 }: Props) {
   const [activeCard, setActiveCard] = useState<OrderCard | null>(null)
   const [newColumnTitle, setNewColumnTitle] = useState('')
@@ -119,6 +121,7 @@ export function KanbanBoard({
               onRequestArchiveCard={onRequestArchiveCard}
               canArchivePedidos={canArchivePedidos}
               onDeleteColumn={onDeleteColumn}
+              highlightPedidoId={highlightPedidoId}
             />
           ))}
 

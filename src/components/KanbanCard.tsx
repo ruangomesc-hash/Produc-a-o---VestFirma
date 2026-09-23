@@ -1,6 +1,6 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { etapaDevePiscar } from '../etapas'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
@@ -77,11 +77,12 @@ type Props = {
   card: OrderCard
   board: BoardState
   columnTitle: string
+  highlighted?: boolean
   onEdit: () => void
   onArchive?: () => void
 }
 
-export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Props) {
+export function KanbanCard({ card, board, columnTitle, highlighted = false, onEdit, onArchive }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
     data: { type: 'card', columnId: card.columnId },
@@ -97,6 +98,10 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
   const localLogo = rotuloLocalLogo(card.localLogo)
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
   const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    if (highlighted) setExpanded(true)
+  }, [highlighted])
   const qtdComentarios = (card.comentarios ?? []).length
   const observacao = card.observacao?.trim() ?? ''
   const itensProduto = itensProdutoDoPedido(card)
@@ -108,7 +113,8 @@ export function KanbanCard({ card, board, columnTitle, onEdit, onArchive }: Prop
     <article
       ref={setNodeRef}
       style={style}
-      className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''}`}
+      data-pedido-id={card.id}
+      className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''} ${highlighted ? 'kanban-card--search-highlight' : ''}`}
     >
       <div className="card-drag-header" {...listeners} {...attributes} title="Arrastar pedido">
         <div className="card-drag-badges">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   logout,
   fetchSessionProfile,
@@ -25,6 +25,7 @@ import { autorComentarioFromSession } from './pedidoComentarios'
 import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
+import { PedidoSearchBar } from './components/PedidoSearchBar'
 import { LoginPage } from './components/LoginPage'
 import { WhatsAppNotifyModal } from './components/WhatsAppNotifyModal'
 import { WhatsAppRedirectModal } from './components/WhatsAppRedirectModal'
@@ -183,6 +184,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [whatsappRedirectOpen, setWhatsappRedirectOpen] = useState(false)
   const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
+  const [pedidoSearchHighlightId, setPedidoSearchHighlightId] = useState<string | null>(null)
+  const pedidoSearchHighlightTimer = useRef<number | null>(null)
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
   const [managedUsersReady, setManagedUsersReady] = useState(false)
 
@@ -305,6 +308,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     [board, session],
   )
 
+  const boardKanban = isAdmin(session) ? boardPainelAdmin : boardForSession
+
   const [view, setView] = useState<
     'kanban' | 'visao' | 'status' | 'vendedores' | 'historico' | 'equipe'
   >(() => {
@@ -409,6 +414,37 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     setEditingCard(undefined)
     setModalOpen(true)
   }
+
+  const localizarPedidoNoKanban = useCallback(
+    (card: OrderCard) => {
+      if (!vendedorPodeAcessarPedido(board, session, card)) return
+      setView('kanban')
+      setPedidoSearchHighlightId(card.id)
+      if (pedidoSearchHighlightTimer.current != null) {
+        window.clearTimeout(pedidoSearchHighlightTimer.current)
+      }
+      pedidoSearchHighlightTimer.current = window.setTimeout(() => {
+        setPedidoSearchHighlightId(null)
+        pedidoSearchHighlightTimer.current = null
+      }, 5000)
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          document
+            .querySelector(`[data-pedido-id="${card.id}"]`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+        })
+      })
+    },
+    [board, session],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (pedidoSearchHighlightTimer.current != null) {
+        window.clearTimeout(pedidoSearchHighlightTimer.current)
+      }
+    }
+  }, [])
 
   if (!ready) {
     return (
@@ -641,8 +677,14 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               </div>
             </div>
           ) : null}
+          <PedidoSearchBar
+            board={boardKanban}
+            onLocalizar={localizarPedidoNoKanban}
+            onAbrirFicha={openEdit}
+          />
         <KanbanBoard
-          board={isAdmin(session) ? boardPainelAdmin : boardForSession}
+          board={boardKanban}
+          highlightPedidoId={pedidoSearchHighlightId}
           dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}

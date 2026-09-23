@@ -18,6 +18,7 @@ type Props = {
   onRequestArchiveCard: (card: OrderCard) => void
   canArchivePedidos?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
+  highlightPedidoId?: string | null
 }
 
 export function KanbanColumn({
@@ -30,6 +31,7 @@ export function KanbanColumn({
   onRequestArchiveCard,
   canArchivePedidos = false,
   onDeleteColumn,
+  highlightPedidoId = null,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
@@ -108,6 +110,7 @@ export function KanbanColumn({
             card={card}
             board={board}
             columnTitle={column.title}
+            highlighted={highlightPedidoId === card.id}
             onEdit={() => onEditCard(card)}
             onArchive={
               canArchivePedidos ? () => onRequestArchiveCard(card) : undefined

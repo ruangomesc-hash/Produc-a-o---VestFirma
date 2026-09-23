@@ -810,6 +810,160 @@ textarea {
   color: var(--danger);
 }
 
+.pedido-search {
+  position: relative;
+  z-index: 20;
+  margin: 0 max(1.25rem, env(safe-area-inset-right, 0px)) 0.65rem max(1.25rem, env(safe-area-inset-left, 0px));
+  padding: 0.75rem 1rem 0.65rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 25%, transparent);
+}
+
+.pedido-search-label {
+  display: block;
+}
+
+.pedido-search-label-text {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pedido-search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pedido-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.pedido-search-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: var(--accent);
+}
+
+.pedido-search-clear {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pedido-search-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.pedido-search-results {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: calc(100% - 0.35rem);
+  max-height: min(320px, 50dvh);
+  margin: 0;
+  padding: 0.35rem 0;
+  list-style: none;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--shadow) 35%, transparent);
+}
+
+.pedido-search-empty {
+  padding: 0.75rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pedido-search-result {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.pedido-search-result.active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.pedido-search-result-main {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.55rem;
+  text-align: left;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.pedido-search-result-main:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.pedido-search-result-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+}
+
+.pedido-search-result-num {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.pedido-search-result-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.pedido-search-open-btn {
+  align-self: center;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
+}
+
+.kanban-card--search-highlight {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  animation: pedido-search-highlight-pulse 1.2s ease-in-out 3;
+}
+
+@keyframes pedido-search-highlight-pulse {
+  0%,
+  100% {
+    outline-color: var(--accent);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--accent) 40%, #fff);
+  }
+}
+
 .board-scroll {
   flex: 1;
   overflow: auto;
