@@ -335,21 +335,21 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   }, [view, session])
 
   useEffect(() => {
-    if (!ready || !isAdmin(session)) return
+    if (!ready || !session) return
     if (view === 'vendedores' || view === 'kanban' || view === 'visao') {
       void refreshBoardFromServer()
     }
   }, [view, ready, session, refreshBoardFromServer])
 
   useEffect(() => {
-    if (!ready || !isAdmin(session)) return
+    if (!ready || !session) return
     const tick = () => {
       if (document.visibilityState !== 'visible') return
       if (view === 'kanban' || view === 'visao' || view === 'vendedores') {
         void refreshBoardFromServer()
       }
     }
-    const id = window.setInterval(tick, 45_000)
+    const id = window.setInterval(tick, 12_000)
     document.addEventListener('visibilitychange', tick)
     return () => {
       window.clearInterval(id)

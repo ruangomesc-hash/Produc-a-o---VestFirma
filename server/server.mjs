@@ -360,6 +360,22 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    if (url.pathname === '/api/board/comment' || url.pathname === '/api/board/comment.php') {
+      const { handleBoardCommentApi } = await import('./boardComment.mjs')
+      await handleBoardCommentApi(req, res, {
+        readBody,
+        requireSession,
+        corsHeaders,
+        requireLogin: REQUIRE_LOGIN,
+        boardFilePath,
+        backupBoardBeforeWrite,
+        mergeBoardPreservingPedidos,
+        readExistingBoard,
+        countBoardCards,
+      })
+      return
+    }
+
     if (url.pathname === '/api/board/backups' || url.pathname === '/api/board/backups.php') {
       const { handleBoardBackupsApi } = await import('./boardBackups.mjs')
       await handleBoardBackupsApi(req, res, readBody, requireSession, corsHeaders, getBoardPaths())

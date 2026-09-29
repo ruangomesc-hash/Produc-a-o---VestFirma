@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
-import { isRemoteSyncEnabled, fetchRemoteBoard } from '../remoteBoard'
+import { isRemoteSyncEnabled, fetchRemoteBoard, postPedidoComentario } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
@@ -183,32 +183,31 @@ export function useBoard() {
       },
     ) => {
       const removeIds = opts?.permanentlyRemoveArchivedCardIds?.filter(Boolean) ?? []
-      setBoard((prev) => {
-        const safe = mergeBoardPreservingPedidos(prev, next, removeIds)
-        const delay = opts?.immediate ? 0 : 400
-        if (saveTimer.current) clearTimeout(saveTimer.current)
-        saveTimer.current = setTimeout(() => {
-          setSync((s) => ({ ...s, status: 'saving' }))
-          void (async () => {
-            const payload = safe
-            const result = await saveBoard(payload, {
-              forceRemote: opts?.forceRemote,
-              skipRemote: opts?.skipRemote,
-              permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
+      const safe = mergeBoardPreservingPedidos(boardRef.current, next, removeIds)
+      boardRef.current = safe
+      setBoard(safe)
+      const delay = opts?.immediate ? 0 : 400
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      saveTimer.current = setTimeout(() => {
+        setSync((s) => ({ ...s, status: 'saving' }))
+        void (async () => {
+          const payload = boardRef.current
+          const result = await saveBoard(payload, {
+            forceRemote: opts?.forceRemote,
+            skipRemote: opts?.skipRemote,
+            permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
+          })
+          if (result.ok) {
+            setSync({ remote: result.remote, status: 'saved' })
+          } else {
+            setSync({
+              remote: result.remote,
+              status: 'error',
+              message: !result.ok ? result.error : undefined,
             })
-            if (result.ok) {
-              setSync({ remote: result.remote, status: 'saved' })
-            } else {
-              setSync({
-                remote: result.remote,
-                status: 'error',
-                message: !result.ok ? result.error : undefined,
-              })
-            }
-          })()
-        }, delay)
-        return safe
-      })
+          }
+        })()
+      }, delay)
     },
     [],
   )
@@ -474,12 +473,13 @@ export function useBoard() {
 
   const updateCard = useCallback(
     (cardId: string, data: CardFormData) => {
-      const prev = board.cards.find((c) => c.id === cardId)
-      if (!vendedorLogadoPodeCard(board, prev)) return
-      const payload = cardFormDataParaVendedorLogado(board, data)
+      const current = boardRef.current
+      const prev = current.cards.find((c) => c.id === cardId)
+      if (!vendedorLogadoPodeCard(current, prev)) return
+      const payload = cardFormDataParaVendedorLogado(current, data)
       persist({
-        ...board,
-        cards: board.cards.map((c) =>
+        ...current,
+        cards: current.cards.map((c) =>
           c.id === cardId ? { ...c, ...payload } : c,
         ),
       })
@@ -489,38 +489,53 @@ export function useBoard() {
         meta: { cardId },
       })
     },
-    [board, persist],
+    [persist],
   )
 
   const addPedidoComentario = useCallback(
     (cardId: string, texto: string, autor: ComentarioAutor) => {
       const trimmed = texto.trim()
       if (!trimmed) return
-      const alvo = board.cards.find((c) => c.id === cardId)
-      if (!vendedorLogadoPodeCard(board, alvo)) return
+      const current = boardRef.current
+      const alvo = current.cards.find((c) => c.id === cardId)
+      if (!vendedorLogadoPodeCard(current, alvo)) return
       const actor = getAuditActor()
       const autorEfetivo = autorComentarioFromSession(actor, autor)
       const entry = criarComentarioPedido(trimmed, autorEfetivo)
-      persist(
-        {
-          ...board,
-          cards: board.cards.map((c) =>
-            c.id === cardId
-              ? { ...c, comentarios: [...(c.comentarios ?? []), entry] }
-              : c,
-          ),
-        },
-        { immediate: true },
-      )
-      const card = board.cards.find((c) => c.id === cardId)
+      const next: BoardState = {
+        ...current,
+        cards: current.cards.map((c) =>
+          c.id === cardId
+            ? { ...c, comentarios: [...(c.comentarios ?? []), entry] }
+            : c,
+        ),
+      }
+      boardRef.current = next
+      setBoard(next)
+      void (async () => {
+        const posted = await postPedidoComentario(cardId, entry)
+        if (posted.ok) {
+          const { comentarios } = posted
+          setBoard((prev) => {
+            const updated = {
+              ...prev,
+              cards: prev.cards.map((c) => (c.id === cardId ? { ...c, comentarios } : c)),
+            }
+            boardRef.current = updated
+            return updated
+          })
+          return
+        }
+        persist(boardRef.current, { immediate: true, forceRemote: true })
+      })()
       recordAudit({
         action: 'pedido.comentario',
-        summary: `${autorEfetivo.nome} comentou no pedido ${card?.numeroPedido ?? cardId}`,
+        summary: `${autorEfetivo.nome} comentou no pedido ${alvo?.numeroPedido ?? cardId}`,
         detail: trimmed.slice(0, 500),
         meta: { cardId },
       })
     },
-    [board, persist],
+    [persist],
   )
 
   const archiveCard = useCallback(
@@ -750,6 +765,7 @@ export function useBoard() {
       const unified = relinkOrphanVendedorIdsConservative(
         unifyVendedorRowsAndRelinkCards(merged),
       )
+      boardRef.current = unified
       setBoard(unified)
       if (result.richerLocal) setLocalRestore(result.richerLocal)
       if (contagemPedidos(unified) > contagemPedidos(result.board)) {

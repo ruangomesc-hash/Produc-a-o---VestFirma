@@ -1,4 +1,4 @@
-import type { BoardState } from './types'
+import type { BoardState, PedidoComentario } from './types'
 import {
   blockLocalFallbackWhenProtected,
   getApiBase,
@@ -20,6 +20,48 @@ function boardEndpoint(): string {
 }
 
 export { isRemoteSyncEnabled }
+
+function commentEndpoint(): string {
+  return `${boardEndpoint().replace(/\/$/, '')}/comment`
+}
+
+export async function postPedidoComentario(cardId: string, comentario: {
+  id: string
+  texto: string
+  autorNome?: string
+  autorEmail?: string
+  autorRole?: string
+  at: string
+}): Promise<{ ok: true; comentarios: PedidoComentario[] } | { ok: false; error: string }> {
+  const base = getApiBase()
+  if (!base) return { ok: false, error: 'API indisponível' }
+
+  const res = await fetch(`${base}${commentEndpoint()}`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ cardId, comentario }),
+  })
+
+  if (res.status === 401) {
+    requestAuthFailureLogout('board-comment')
+    return { ok: false, error: 'Sessão expirada' }
+  }
+
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean
+    comentarios?: unknown[]
+    error?: string
+  }
+  if (!res.ok || !data.ok) {
+    return { ok: false, error: data.error || `Falha ao gravar comentário (${res.status})` }
+  }
+  return { ok: true, comentarios: Array.isArray(data.comentarios) ? (data.comentarios as PedidoComentario[]) : [] }
+}
 
 export type RemoteBoardFetchOptions = {
   signal?: AbortSignal
