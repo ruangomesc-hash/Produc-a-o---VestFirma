@@ -102,6 +102,21 @@ async function handleBoardApi(req, res) {
     const DATA_FILE = boardFilePath()
     const LOGO_DIR = logoDirPath()
     const body = await readBody(req)
+
+    const { tryHandleBoardCardPatch } = await import('./boardCardPatch.mjs')
+    const patched = await tryHandleBoardCardPatch(req, res, body, session, corsHeaders, {
+      boardFilePath,
+      backupBoardBeforeWrite,
+      mergeBoardPreservingPedidos,
+      readExistingBoard,
+      countBoardCards,
+      withBoardWriteLock,
+      writeBoardAtomic,
+      externalizeBoardLogos,
+      logoDirPath,
+    })
+    if (patched) return
+
     let board = JSON.parse(body)
     const existing = await readExistingBoard(DATA_FILE)
     const existingCount = countBoardCards(existing)

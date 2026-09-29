@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
-import { isRemoteSyncEnabled, fetchRemoteBoard, postPedidoComentario, postPedidoMidia } from '../remoteBoard'
+import { isRemoteSyncEnabled, fetchRemoteBoard, postPedidoComentario, postPedidoMidia, postPedidoCampos } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
@@ -515,11 +515,23 @@ export function useBoard() {
       void (async () => {
         const posted = await postPedidoComentario(cardId, entry)
         if (posted.ok) {
-          const { comentarios } = posted
+          const { comentarios, card } = posted
           setBoard((prev) => {
             const updated = {
               ...prev,
-              cards: prev.cards.map((c) => (c.id === cardId ? { ...c, comentarios } : c)),
+              cards: prev.cards.map((c) =>
+                c.id === cardId
+                  ? {
+                      ...c,
+                      comentarios,
+                      logoEnviadaCliente: card.logoEnviadaCliente ?? c.logoEnviadaCliente,
+                      logoProntaImpressao: card.logoProntaImpressao ?? c.logoProntaImpressao,
+                      previewAprovacaoCliente:
+                        card.previewAprovacaoCliente ?? c.previewAprovacaoCliente,
+                      observacao: card.observacao ?? c.observacao,
+                    }
+                  : c,
+              ),
             }
             boardRef.current = updated
             return updated
@@ -586,6 +598,41 @@ export function useBoard() {
     },
     [persist],
   )
+
+  const pushPedidoLocalServidor = useCallback((cardId: string) => {
+    const current = boardRef.current
+    const card = current.cards.find((c) => c.id === cardId)
+    if (!card || !vendedorLogadoPodeCard(current, card)) return
+    void postPedidoCampos(cardId, {
+      comentarios: card.comentarios ?? [],
+      logoEnviadaCliente: card.logoEnviadaCliente,
+      logoProntaImpressao: card.logoProntaImpressao,
+      previewAprovacaoCliente: card.previewAprovacaoCliente,
+      observacao: card.observacao,
+    }).then((posted) => {
+      if (!posted.ok) return
+      setBoard((prev) => {
+        const updated = {
+          ...prev,
+          cards: prev.cards.map((c) =>
+            c.id === cardId
+              ? {
+                  ...c,
+                  comentarios: posted.comentarios.length ? posted.comentarios : c.comentarios,
+                  logoEnviadaCliente: posted.card.logoEnviadaCliente ?? c.logoEnviadaCliente,
+                  logoProntaImpressao: posted.card.logoProntaImpressao ?? c.logoProntaImpressao,
+                  previewAprovacaoCliente:
+                    posted.card.previewAprovacaoCliente ?? c.previewAprovacaoCliente,
+                  observacao: posted.card.observacao ?? c.observacao,
+                }
+              : c,
+          ),
+        }
+        boardRef.current = updated
+        return updated
+      })
+    })
+  }, [])
 
   const archiveCard = useCallback(
     (cardId: string) => {
@@ -853,6 +900,7 @@ export function useBoard() {
     updateCard,
     addPedidoComentario,
     syncPedidoMidia,
+    pushPedidoLocalServidor,
     archiveCard,
     restoreArchivedCard,
     permanentlyDeleteArchivedCard,

@@ -21,46 +21,14 @@ function boardEndpoint(): string {
 
 export { isRemoteSyncEnabled }
 
-function commentEndpoint(): string {
-  return `${boardEndpoint().replace(/\/$/, '')}/comment`
+function boardPatchUrl(base: string): string {
+  return `${base}${boardEndpoint()}`
 }
 
-export async function postPedidoComentario(cardId: string, comentario: {
-  id: string
-  texto: string
-  autorNome?: string
-  autorEmail?: string
-  autorRole?: string
-  at: string
-}): Promise<{ ok: true; comentarios: PedidoComentario[] } | { ok: false; error: string }> {
-  const base = getApiBase()
-  if (!base) return { ok: false, error: 'API indisponível' }
-
-  const res = await fetch(`${base}${commentEndpoint()}`, {
-    method: 'POST',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...authHeaders(),
-    },
-    body: JSON.stringify({ cardId, comentario }),
-  })
-
-  if (res.status === 401) {
-    requestAuthFailureLogout('board-comment')
-    return { ok: false, error: 'Sessão expirada' }
-  }
-
-  const data = (await res.json().catch(() => ({}))) as {
-    ok?: boolean
-    comentarios?: unknown[]
-    error?: string
-  }
-  if (!res.ok || !data.ok) {
-    return { ok: false, error: data.error || `Falha ao gravar comentário (${res.status})` }
-  }
-  return { ok: true, comentarios: Array.isArray(data.comentarios) ? (data.comentarios as PedidoComentario[]) : [] }
+export async function postPedidoComentario(cardId: string, comentario: PedidoComentario): Promise<
+  { ok: true; comentarios: PedidoComentario[]; card: PedidoMidiaPatch } | { ok: false; error: string }
+> {
+  return postPedidoPatch({ cardId, comentario })
 }
 
 export type PedidoMidiaPatch = {
@@ -68,16 +36,16 @@ export type PedidoMidiaPatch = {
   logoProntaImpressao?: string[]
   previewAprovacaoCliente?: string[]
   observacao?: string
+  comentarios?: PedidoComentario[]
 }
 
-export async function postPedidoMidia(
-  cardId: string,
-  patch: PedidoMidiaPatch,
-): Promise<{ ok: true; card: PedidoMidiaPatch } | { ok: false; error: string }> {
+async function postPedidoPatch(
+  payload: PedidoMidiaPatch & { cardId: string; comentario?: PedidoComentario },
+): Promise<{ ok: true; comentarios: PedidoComentario[]; card: PedidoMidiaPatch } | { ok: false; error: string }> {
   const base = getApiBase()
   if (!base) return { ok: false, error: 'API indisponível' }
 
-  const res = await fetch(`${base}${boardEndpoint().replace(/\/$/, '')}/card-media`, {
+  const res = await fetch(boardPatchUrl(base), {
     method: 'POST',
     cache: 'no-store',
     headers: {
@@ -85,20 +53,25 @@ export async function postPedidoMidia(
       Accept: 'application/json',
       ...authHeaders(),
     },
-    body: JSON.stringify({ cardId, ...patch }),
+    body: JSON.stringify({ action: 'vestfirma-card-patch', ...payload }),
   })
 
   if (res.status === 401) {
-    requestAuthFailureLogout('board-card-media')
+    requestAuthFailureLogout('board-card-patch')
     return { ok: false, error: 'Sessão expirada' }
   }
 
-  const data = (await res.json().catch(() => ({}))) as PedidoMidiaPatch & { ok?: boolean; error?: string }
+  const data = (await res.json().catch(() => ({}))) as PedidoMidiaPatch & {
+    ok?: boolean
+    comentarios?: PedidoComentario[]
+    error?: string
+  }
   if (!res.ok || !data.ok) {
-    return { ok: false, error: data.error || `Falha ao gravar imagens (${res.status})` }
+    return { ok: false, error: data.error || `Falha ao gravar no pedido (${res.status})` }
   }
   return {
     ok: true,
+    comentarios: Array.isArray(data.comentarios) ? data.comentarios : [],
     card: {
       logoEnviadaCliente: data.logoEnviadaCliente,
       logoProntaImpressao: data.logoProntaImpressao,
@@ -106,6 +79,22 @@ export async function postPedidoMidia(
       observacao: data.observacao,
     },
   }
+}
+
+export async function postPedidoCampos(
+  cardId: string,
+  patch: PedidoMidiaPatch,
+): Promise<{ ok: true; comentarios: PedidoComentario[]; card: PedidoMidiaPatch } | { ok: false; error: string }> {
+  return postPedidoPatch({ cardId, ...patch })
+}
+
+export async function postPedidoMidia(
+  cardId: string,
+  patch: PedidoMidiaPatch,
+): Promise<{ ok: true; card: PedidoMidiaPatch } | { ok: false; error: string }> {
+  const posted = await postPedidoCampos(cardId, patch)
+  if (!posted.ok) return posted
+  return { ok: true, card: posted.card }
 }
 
 export type RemoteBoardFetchOptions = {

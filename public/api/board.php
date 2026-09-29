@@ -44,6 +44,18 @@ if ($method === 'PUT' || $method === 'POST') {
         exit;
     }
 
+    $decoded = json_decode($body, true);
+    if (is_array($decoded) && (($decoded['action'] ?? '') === 'vestfirma-card-patch')) {
+        http_response_code(501);
+        echo json_encode(['ok' => false, 'error' => 'Atualize o servidor Node para gravar comentário e logos.']);
+        exit;
+    }
+    if (is_array($decoded) && empty($decoded['cards']) && is_file($dataFile)) {
+        http_response_code(409);
+        echo json_encode(['ok' => false, 'code' => 'BOARD_WIPE_BLOCKED', 'error' => 'Recusado: salvar quadro vazio apagaria pedidos.']);
+        exit;
+    }
+
     $dir = dirname($dataFile);
     if (!is_dir($dir) && !mkdir($dir, 0750, true)) {
         http_response_code(500);

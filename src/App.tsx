@@ -172,6 +172,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     updateCard,
     addPedidoComentario,
     syncPedidoMidia,
+    pushPedidoLocalServidor,
     archiveCard,
     restoreArchivedCard,
     permanentlyDeleteArchivedCard,
@@ -305,8 +306,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       setActiveColumnId(card.columnId)
       setModalSession((n) => n + 1)
       setModalOpen(true)
+      pushPedidoLocalServidor(card.id)
     },
-    [board, session],
+    [board, session, pushPedidoLocalServidor],
   )
 
   const boardKanban = isAdmin(session) ? boardPainelAdmin : boardForSession

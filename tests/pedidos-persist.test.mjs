@@ -242,6 +242,27 @@ describe('1021 — Talita comenta, admin anexa logo de impressão', () => {
       '/api/images/logo-b.png',
     ])
     assert.equal(card2.comentarios.some((c) => c.id === 'c-talita'), true)
+
+    const patchTalita = mergeBoardPreservingPedidos(aposAdmin, {
+      ...aposAdmin,
+      cards: aposAdmin.cards.map((c) =>
+        c.id === 'pedido-1021'
+          ? {
+              ...c,
+              comentarios: [
+                {
+                  id: 'c-talita',
+                  texto: 'Comentário da Talita',
+                  at: '2026-09-29T12:00:00.000Z',
+                },
+              ],
+            }
+          : c,
+      ),
+    })
+    const viaPatch = patchTalita.cards.find((c) => c.id === 'pedido-1021')
+    assert.equal(viaPatch.comentarios.some((c) => c.id === 'c-talita'), true)
+    assert.equal(viaPatch.logoProntaImpressao.length, 2)
   })
 })
 
