@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { mergeBoardShell } from '../shared/boardVendedoresMerge.mjs'
+import { mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
 
 const MAX_BACKUPS = 48
 
@@ -17,23 +18,6 @@ export async function readExistingBoard(DATA_FILE) {
 }
 
 /** Nunca remove pedidos já gravados — só adiciona ou atualiza por id. */
-function pedidoRevisionMs(card) {
-  let max = 0
-  for (const e of card?.historicoEtapa ?? []) {
-    if (e?.at) {
-      const t = Date.parse(e.at)
-      if (!Number.isNaN(t)) max = Math.max(max, t)
-    }
-  }
-  for (const iso of [card?.etapaDesde, card?.createdAt, card?.arquivadoEm]) {
-    if (iso) {
-      const t = Date.parse(iso)
-      if (!Number.isNaN(t)) max = Math.max(max, t)
-    }
-  }
-  return max
-}
-
 const COLUNAS_ETAPA_AVANCADA = new Set(['liberado-logistica', 'pedido-enviado'])
 
 function indiceColuna(columns, columnId) {
@@ -68,14 +52,11 @@ function impedirRegressaoEtapaNoMerge(existing, merged, columns) {
     ...merged,
     columnId: existing.columnId,
     etapaDesde: existing.etapaDesde,
-    historicoEtapa: existing.historicoEtapa,
   }
 }
 
 function mergeOrderCard(existing, incoming, columns) {
-  const tExist = pedidoRevisionMs(existing)
-  const tIn = pedidoRevisionMs(incoming)
-  const merged = tIn >= tExist ? { ...existing, ...incoming } : { ...incoming, ...existing }
+  const merged = mergeOrderCardFields(existing, incoming)
   return impedirRegressaoEtapaNoMerge(existing, merged, columns)
 }
 

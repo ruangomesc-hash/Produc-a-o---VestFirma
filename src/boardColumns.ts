@@ -97,7 +97,6 @@ export function impedirRegressaoEtapaNoMerge(
     ...merged,
     columnId: existing.columnId,
     etapaDesde: existing.etapaDesde,
-    historicoEtapa: existing.historicoEtapa,
   }
 }
 

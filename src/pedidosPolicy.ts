@@ -1,28 +1,13 @@
 import { ensureBoardColumns, impedirRegressaoEtapaNoMerge } from './boardColumns'
+import { mergeOrderCardFields } from './mergeOrderCard'
 import type { BoardState, OrderCard } from './types'
 import { mergeVendedoresUnion } from './vendedorUserSync'
+
+export { pedidoRevisionMs } from './mergeOrderCard'
 
 /** Pedidos arquivados permanecem no JSON — só saem do kanban. */
 export function pedidoVisivelNoKanban(card: OrderCard): boolean {
   return !card.arquivadoEm
-}
-
-/** Momento da última mudança relevante no pedido (movimento, criação, etc.). */
-export function pedidoRevisionMs(card: OrderCard): number {
-  let max = 0
-  for (const e of card.historicoEtapa ?? []) {
-    if (e?.at) {
-      const t = Date.parse(e.at)
-      if (!Number.isNaN(t)) max = Math.max(max, t)
-    }
-  }
-  for (const iso of [card.etapaDesde, card.createdAt, card.arquivadoEm]) {
-    if (iso) {
-      const t = Date.parse(iso)
-      if (!Number.isNaN(t)) max = Math.max(max, t)
-    }
-  }
-  return max
 }
 
 function mergeOrderCard(
@@ -30,9 +15,7 @@ function mergeOrderCard(
   incoming: OrderCard,
   columns: BoardState['columns'],
 ): OrderCard {
-  const tExist = pedidoRevisionMs(existing)
-  const tIn = pedidoRevisionMs(incoming)
-  const merged = tIn >= tExist ? { ...existing, ...incoming } : { ...incoming, ...existing }
+  const merged = mergeOrderCardFields(existing, incoming)
   return impedirRegressaoEtapaNoMerge(existing, merged, columns)
 }
 
@@ -54,6 +37,7 @@ function mergeBoardShell(
  * Regra máxima VestFirma: o servidor nunca perde pedidos por PUT parcial.
  * Une por id — existentes que não vieram no payload são mantidos.
  * Em conflito de etapa, vence a versão mais recente (histórico / etapaDesde).
+ * Comentários, logos e observação são unidos — um usuário não apaga o que o outro gravou.
  */
 export function mergeBoardPreservingPedidos(
   existing: BoardState | null | undefined,

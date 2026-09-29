@@ -125,6 +125,46 @@ describe('merge — pedido novo só no navegador (vendedor)', () => {
   })
 })
 
+describe('merge — comentários, logos e observação não se apagam', () => {
+  it('une comentários de dois usuários no mesmo pedido', () => {
+    const existing = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    existing.cards[0].comentarios = [
+      { id: 'c-admin', texto: 'Na hora que for aplicar, me liga', at: '2026-09-24T17:13:00.000Z' },
+    ]
+    const incoming = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    incoming.cards[0].comentarios = [
+      { id: 'c-prod', texto: 'Logo ok na máquina', at: '2026-09-24T18:00:00.000Z' },
+    ]
+    incoming.cards[0].etapaDesde = '2026-09-24T18:30:00.000Z'
+    const merged = mergeBoardPreservingPedidos(existing, incoming)
+    const ids = merged.cards[0].comentarios.map((c) => c.id).sort()
+    assert.deepEqual(ids, ['c-admin', 'c-prod'])
+    assert.equal(countBoardCards(merged), 1)
+  })
+
+  it('não descarta logo de impressão quando a outra cópia veio sem imagem', () => {
+    const existing = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    existing.cards[0].logoProntaImpressao = ['/api/images/abc', '/api/images/def']
+    const incoming = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    incoming.cards[0].logoProntaImpressao = []
+    incoming.cards[0].etapaDesde = '2026-09-29T12:00:00.000Z'
+    const merged = mergeBoardPreservingPedidos(existing, incoming)
+    assert.deepEqual(merged.cards[0].logoProntaImpressao, ['/api/images/abc', '/api/images/def'])
+    assert.equal(countBoardCards(merged), 1)
+  })
+
+  it('não apaga observação com texto vazio de outra aba', () => {
+    const existing = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    existing.cards[0].observacao = 'Corta vento e calça, é um kit.'
+    const incoming = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    incoming.cards[0].observacao = ''
+    incoming.cards[0].etapaDesde = '2026-09-29T12:00:00.000Z'
+    const merged = mergeBoardPreservingPedidos(existing, incoming)
+    assert.equal(merged.cards[0].observacao, 'Corta vento e calça, é um kit.')
+    assert.equal(countBoardCards(merged), 1)
+  })
+})
+
 describe('pedidoGravadoNoServidor (contrato SaveBoardResult)', () => {
   it('exige ok e remote true', () => {
     const pedidoGravadoNoServidor = (r) => r.ok && r.remote === true

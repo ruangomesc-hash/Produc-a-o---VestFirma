@@ -501,14 +501,17 @@ export function useBoard() {
       const actor = getAuditActor()
       const autorEfetivo = autorComentarioFromSession(actor, autor)
       const entry = criarComentarioPedido(trimmed, autorEfetivo)
-      persist({
-        ...board,
-        cards: board.cards.map((c) =>
-          c.id === cardId
-            ? { ...c, comentarios: [...(c.comentarios ?? []), entry] }
-            : c,
-        ),
-      })
+      persist(
+        {
+          ...board,
+          cards: board.cards.map((c) =>
+            c.id === cardId
+              ? { ...c, comentarios: [...(c.comentarios ?? []), entry] }
+              : c,
+          ),
+        },
+        { immediate: true },
+      )
       const card = board.cards.find((c) => c.id === cardId)
       recordAudit({
         action: 'pedido.comentario',
