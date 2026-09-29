@@ -8,11 +8,8 @@ import { countUsersOnDisk } from './usersRepair.mjs'
 
 async function countBoardOnDisk(boardFile) {
   try {
-    const raw = await fs.readFile(boardFile, 'utf8')
-    const data = JSON.parse(raw)
-    const cards = Array.isArray(data?.cards) ? data.cards : []
-    const arquivados = cards.filter((c) => c?.arquivadoEm).length
-    return { total: cards.length, arquivados, ativos: cards.length - arquivados }
+    const st = await fs.stat(boardFile)
+    return { bytes: st.size, total: null, arquivados: null, ativos: null }
   } catch {
     return null
   }
@@ -70,9 +67,7 @@ export async function handleHealthApi(req, res, corsHeaders) {
       onRender: process.env.RENDER === 'true',
       buildTag: 'original-images-client-approval-v1',
       usersOnDisk,
-      boardCardsTotal: boardCounts?.total,
-      boardCardsActive: boardCounts?.ativos,
-      boardCardsArchived: boardCounts?.arquivados,
+      boardFileBytes: boardCounts?.bytes,
       whatsappWebhookConfigured: webhook,
       timestamp: new Date().toISOString(),
     }),

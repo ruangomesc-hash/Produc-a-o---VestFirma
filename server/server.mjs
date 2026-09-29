@@ -33,6 +33,8 @@ const {
   readExistingBoard,
   readBoardWithRecovery,
   preserveArquivadoEmUnlessAdmin,
+  withBoardWriteLock,
+  writeBoardAtomic,
 } = await import('./boardPersist.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -221,15 +223,13 @@ async function handleBoardApi(req, res) {
       board = await externalizeBoardLogos(board, LOGO_DIR)
     }
 
-    await backupBoardBeforeWrite(DATA_FILE)
-    const out = JSON.stringify(board)
-    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
-    const tmp = `${DATA_FILE}.tmp`
-    await fs.writeFile(tmp, out, 'utf8')
-    await fs.rename(tmp, DATA_FILE)
-    if (mergedCount === 0) {
-      await fs.writeFile(`${DATA_FILE}.bak`, out, 'utf8')
-    }
+    await withBoardWriteLock(async () => {
+      await backupBoardBeforeWrite(DATA_FILE)
+      const out = await writeBoardAtomic(DATA_FILE, board)
+      if (mergedCount === 0) {
+        await fs.writeFile(`${DATA_FILE}.bak`, out, 'utf8')
+      }
+    })
     res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ ok: true, savedAt: new Date().toISOString() }))
     return
@@ -372,6 +372,26 @@ const server = http.createServer(async (req, res) => {
         mergeBoardPreservingPedidos,
         readExistingBoard,
         countBoardCards,
+        withBoardWriteLock,
+        writeBoardAtomic,
+      })
+      return
+    }
+
+    if (url.pathname === '/api/board/card-media' || url.pathname === '/api/board/card-media.php') {
+      const { handleBoardCardMediaApi } = await import('./boardCardMedia.mjs')
+      await handleBoardCardMediaApi(req, res, {
+        readBody,
+        requireSession,
+        corsHeaders,
+        requireLogin: REQUIRE_LOGIN,
+        boardFilePath,
+        backupBoardBeforeWrite,
+        mergeBoardPreservingPedidos,
+        readExistingBoard,
+        countBoardCards,
+        withBoardWriteLock,
+        writeBoardAtomic,
       })
       return
     }

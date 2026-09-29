@@ -120,3 +120,55 @@ export function mergeOrderCardFields(existing: OrderCard, incoming: OrderCard): 
     itensProduto: mergeItensProduto(existing, incoming, tExist, tIn),
   }
 }
+
+function qtdImagens(value: string | string[] | null | undefined): number {
+  return normalizePedidoImagens(value).length
+}
+
+export function cardTemConteudoAlemDoOutro(
+  local: OrderCard,
+  remote: OrderCard | undefined,
+): boolean {
+  if (!remote) return true
+  if (
+    mergePedidoImagens(local.logoProntaImpressao, remote.logoProntaImpressao).length >
+    qtdImagens(remote.logoProntaImpressao)
+  ) {
+    return true
+  }
+  if (
+    mergePedidoImagens(local.logoEnviadaCliente, remote.logoEnviadaCliente).length >
+    qtdImagens(remote.logoEnviadaCliente)
+  ) {
+    return true
+  }
+  if (
+    mergePedidoImagens(local.previewAprovacaoCliente, remote.previewAprovacaoCliente).length >
+    qtdImagens(remote.previewAprovacaoCliente)
+  ) {
+    return true
+  }
+  const localComents = local.comentarios ?? []
+  const remoteComents = remote.comentarios ?? []
+  const remoteIds = new Set(remoteComents.map((c) => c?.id).filter(Boolean))
+  if (localComents.some((c) => c?.id && !remoteIds.has(c.id))) return true
+  if (localComents.length > remoteComents.length) return true
+  const lo = (local.observacao ?? '').trim()
+  const ro = (remote.observacao ?? '').trim()
+  if (lo && !ro) return true
+  return false
+}
+
+/** Local tem comentário, logo ou observação que o servidor ainda não tem. */
+export function boardTemConteudoAlemDoServidor(
+  local: { cards?: OrderCard[] } | null | undefined,
+  remote: { cards?: OrderCard[] } | null | undefined,
+): boolean {
+  const byId = new Map((remote?.cards ?? []).filter((c) => c?.id).map((c) => [c.id, c]))
+  for (const card of local?.cards ?? []) {
+    if (!card?.id) continue
+    if (cardTemConteudoAlemDoOutro(card, byId.get(card.id))) return true
+  }
+  return false
+}
+

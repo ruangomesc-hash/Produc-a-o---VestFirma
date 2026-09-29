@@ -9,6 +9,7 @@ import {
   mergeBoardAddingMissingPedidosOnly,
   countBoardCards,
 } from '../server/boardPersist.mjs'
+import { boardTemConteudoAlemDoServidor } from '../shared/mergeOrderCard.mjs'
 
 function pedidoRevisionMs(card) {
   let max = 0
@@ -164,6 +165,86 @@ describe('merge — comentários, logos e observação não se apagam', () => {
     assert.equal(countBoardCards(merged), 1)
   })
 })
+
+describe('1021 — Talita comenta, admin anexa logo de impressão', () => {
+  it('depois dos dois saves o servidor tem comentário E as duas logos', () => {
+    const colunas = [
+      { id: 'logos-recebidas', title: 'Logos recebidas' },
+      { id: 'liberado-logistica', title: 'Liberado para logística' },
+    ]
+    const baseCard = {
+      id: 'pedido-1021',
+      columnId: 'liberado-logistica',
+      cliente: 'Cliente 1021',
+      numeroPedido: '1021',
+      quantidade: 1,
+      vendedorId: null,
+      createdAt: '2026-09-24T14:00:00.000Z',
+      etapaDesde: '2026-09-24T14:00:00.000Z',
+      historicoEtapa: [],
+      comentarios: [],
+      logoProntaImpressao: [],
+      observacao: '',
+    }
+    const servidor = {
+      columns: colunas,
+      vendedores: [],
+      segmentos: [],
+      cards: [{ ...baseCard }],
+    }
+    const admin = {
+      ...servidor,
+      cards: [
+        {
+          ...baseCard,
+          logoProntaImpressao: ['/api/images/logo-a.png', '/api/images/logo-b.png'],
+        },
+      ],
+    }
+    const talita = {
+      ...servidor,
+      cards: [
+        {
+          ...baseCard,
+          comentarios: [
+            {
+              id: 'c-talita',
+              texto: 'Comentário da Talita',
+              at: '2026-09-29T12:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    }
+
+    assert.equal(boardTemConteudoAlemDoServidor(admin, servidor), true)
+    assert.equal(boardTemConteudoAlemDoServidor(talita, servidor), true)
+
+    const aposAdmin = mergeBoardPreservingPedidos(servidor, admin)
+    const aposTalita = mergeBoardPreservingPedidos(aposAdmin, talita)
+
+    const card = aposTalita.cards.find((c) => c.id === 'pedido-1021')
+    assert.ok(card)
+    assert.deepEqual(card.logoProntaImpressao, [
+      '/api/images/logo-a.png',
+      '/api/images/logo-b.png',
+    ])
+    assert.equal(card.comentarios.some((c) => c.id === 'c-talita'), true)
+    assert.equal(countBoardCards(aposTalita), 1)
+
+    const ordemInversa = mergeBoardPreservingPedidos(
+      mergeBoardPreservingPedidos(servidor, talita),
+      admin,
+    )
+    const card2 = ordemInversa.cards.find((c) => c.id === 'pedido-1021')
+    assert.deepEqual(card2.logoProntaImpressao, [
+      '/api/images/logo-a.png',
+      '/api/images/logo-b.png',
+    ])
+    assert.equal(card2.comentarios.some((c) => c.id === 'c-talita'), true)
+  })
+})
+
 
 describe('pedidoGravadoNoServidor (contrato SaveBoardResult)', () => {
   it('exige ok e remote true', () => {

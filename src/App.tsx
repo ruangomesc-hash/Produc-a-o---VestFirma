@@ -171,6 +171,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     addCard,
     updateCard,
     addPedidoComentario,
+    syncPedidoMidia,
     archiveCard,
     restoreArchivedCard,
     permanentlyDeleteArchivedCard,
@@ -349,7 +350,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         void refreshBoardFromServer()
       }
     }
-    const id = window.setInterval(tick, 12_000)
+    const id = window.setInterval(tick, 30_000)
     document.addEventListener('visibilitychange', tick)
     return () => {
       window.clearInterval(id)
@@ -762,6 +763,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 )
             : undefined
         }
+        onMidiaChange={syncPedidoMidia}
         onClose={() => setModalOpen(false)}
         onOpenVendedores={() => {
           setModalOpen(false)

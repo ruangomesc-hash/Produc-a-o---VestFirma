@@ -63,6 +63,51 @@ export async function postPedidoComentario(cardId: string, comentario: {
   return { ok: true, comentarios: Array.isArray(data.comentarios) ? (data.comentarios as PedidoComentario[]) : [] }
 }
 
+export type PedidoMidiaPatch = {
+  logoEnviadaCliente?: string[]
+  logoProntaImpressao?: string[]
+  previewAprovacaoCliente?: string[]
+  observacao?: string
+}
+
+export async function postPedidoMidia(
+  cardId: string,
+  patch: PedidoMidiaPatch,
+): Promise<{ ok: true; card: PedidoMidiaPatch } | { ok: false; error: string }> {
+  const base = getApiBase()
+  if (!base) return { ok: false, error: 'API indisponível' }
+
+  const res = await fetch(`${base}${boardEndpoint().replace(/\/$/, '')}/card-media`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ cardId, ...patch }),
+  })
+
+  if (res.status === 401) {
+    requestAuthFailureLogout('board-card-media')
+    return { ok: false, error: 'Sessão expirada' }
+  }
+
+  const data = (await res.json().catch(() => ({}))) as PedidoMidiaPatch & { ok?: boolean; error?: string }
+  if (!res.ok || !data.ok) {
+    return { ok: false, error: data.error || `Falha ao gravar imagens (${res.status})` }
+  }
+  return {
+    ok: true,
+    card: {
+      logoEnviadaCliente: data.logoEnviadaCliente,
+      logoProntaImpressao: data.logoProntaImpressao,
+      previewAprovacaoCliente: data.previewAprovacaoCliente,
+      observacao: data.observacao,
+    },
+  }
+}
+
 export type RemoteBoardFetchOptions = {
   signal?: AbortSignal
 }

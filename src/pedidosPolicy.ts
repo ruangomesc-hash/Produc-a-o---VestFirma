@@ -3,7 +3,7 @@ import { mergeOrderCardFields } from './mergeOrderCard'
 import type { BoardState, OrderCard } from './types'
 import { mergeVendedoresUnion } from './vendedorUserSync'
 
-export { pedidoRevisionMs } from './mergeOrderCard'
+export { pedidoRevisionMs, boardTemConteudoAlemDoServidor } from './mergeOrderCard'
 
 /** Pedidos arquivados permanecem no JSON — só saem do kanban. */
 export function pedidoVisivelNoKanban(card: OrderCard): boolean {

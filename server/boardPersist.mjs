@@ -198,3 +198,30 @@ export async function readBoardWithRecovery(DATA_FILE) {
 
   return data
 }
+
+let boardWriteChain = Promise.resolve()
+
+export function withBoardWriteLock(fn) {
+  const run = boardWriteChain.then(fn, fn)
+  boardWriteChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
+/** Grava board.json com arquivo temporário único — evita corromper no comentário + save juntos. */
+export async function writeBoardAtomic(DATA_FILE, board) {
+  const out = typeof board === 'string' ? board : JSON.stringify(board)
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
+  const tmp = `${DATA_FILE}.${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`
+  try {
+    await fs.writeFile(tmp, out, 'utf8')
+    await fs.rename(tmp, DATA_FILE)
+  } catch (err) {
+    await fs.rm(tmp, { force: true }).catch(() => {})
+    throw err
+  }
+  return out
+}
+

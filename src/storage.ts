@@ -11,7 +11,7 @@ import {
 } from './remoteBoard'
 import { requiresLogin, getSessionToken } from './authSession'
 import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeConfig'
-import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly, boardTemConteudoAlemDoServidor } from './pedidosPolicy'
 import { mergeBoardLoggedInFromServer, boardTemPedidosAlemDoServidor } from './boardLoadMerge'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
 import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
@@ -326,7 +326,9 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
         loggedIn &&
         !protectedServer &&
         boardHasPedidos(board) &&
-        (richerLocal != null || boardTemPedidosAlemDoServidor(board, remote))
+        (richerLocal != null ||
+          boardTemPedidosAlemDoServidor(board, remote) ||
+          boardTemConteudoAlemDoServidor(board, remote))
 
       const anonRicherPush =
         richerLocal != null && !protectedServer && !loggedIn && boardHasPedidos(board)

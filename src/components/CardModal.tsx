@@ -94,6 +94,15 @@ type Props = {
   podeComentarPedido?: boolean
   /** @deprecated use comentarioAutor */
   comentarioAutorNome?: string
+  onMidiaChange?: (
+    cardId: string,
+    patch: {
+      logoEnviadaCliente?: string[]
+      logoProntaImpressao?: string[]
+      previewAprovacaoCliente?: string[]
+      observacao?: string
+    },
+  ) => void
 }
 
 export function CardModal({
@@ -116,6 +125,7 @@ export function CardModal({
   comentarioAutor = null,
   podeComentarPedido = true,
   comentarioAutorNome,
+  onMidiaChange,
 }: Props) {
   const [form, setForm] = useState<CardFormData>(() =>
     buildForm(mode, initial, vendedores, preferredVendedorId),
@@ -129,6 +139,18 @@ export function CardModal({
   const initSession = useRef(-1)
 
   const segmentoOptions = useMemo(() => mesclarSegmentos(segmentos), [segmentos])
+
+  const syncMidia = (
+    patch: {
+      logoEnviadaCliente?: string[]
+      logoProntaImpressao?: string[]
+      previewAprovacaoCliente?: string[]
+      observacao?: string
+    },
+  ) => {
+    if (mode !== 'edit' || !initial?.id || !onMidiaChange) return
+    onMidiaChange(initial.id, patch)
+  }
 
   const showAlert = (message: string, title?: string) => setAlert({ message, title })
 
@@ -454,6 +476,7 @@ export function CardModal({
                 rows={3}
                 value={form.observacao ?? ''}
                 onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+                onBlur={(e) => syncMidia({ observacao: e.target.value })}
                 placeholder="Instruções, prazos combinados, detalhes para produção…"
               />
               <span className="field-hint">Opcional — fica salvo no pedido e visível no quadro.</span>
@@ -489,7 +512,10 @@ export function CardModal({
               value={form.logoEnviadaCliente}
               onError={setLogoError}
               onBusyChange={(busy) => setImageUploads((s) => ({ ...s, cliente: busy }))}
-              onChange={(urls) => setForm((f) => ({ ...f, logoEnviadaCliente: urls }))}
+              onChange={(urls) => {
+                setForm((f) => ({ ...f, logoEnviadaCliente: urls }))
+                syncMidia({ logoEnviadaCliente: urls })
+              }}
             />
 
             <LogoUploadField
@@ -499,7 +525,10 @@ export function CardModal({
               value={form.logoProntaImpressao}
               onError={setLogoError}
               onBusyChange={(busy) => setImageUploads((s) => ({ ...s, impressao: busy }))}
-              onChange={(urls) => setForm((f) => ({ ...f, logoProntaImpressao: urls }))}
+              onChange={(urls) => {
+                setForm((f) => ({ ...f, logoProntaImpressao: urls }))
+                syncMidia({ logoProntaImpressao: urls })
+              }}
             />
 
             <LogoUploadField
@@ -509,7 +538,10 @@ export function CardModal({
               value={form.previewAprovacaoCliente}
               onError={setLogoError}
               onBusyChange={(busy) => setImageUploads((s) => ({ ...s, aprovacao: busy }))}
-              onChange={(urls) => setForm((f) => ({ ...f, previewAprovacaoCliente: urls }))}
+              onChange={(urls) => {
+                setForm((f) => ({ ...f, previewAprovacaoCliente: urls }))
+                syncMidia({ previewAprovacaoCliente: urls })
+              }}
             />
 
             {logoError && (

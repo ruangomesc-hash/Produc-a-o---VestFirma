@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
-import { isRemoteSyncEnabled, fetchRemoteBoard, postPedidoComentario } from '../remoteBoard'
+import { isRemoteSyncEnabled, fetchRemoteBoard, postPedidoComentario, postPedidoMidia } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
-import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos, boardTemConteudoAlemDoServidor } from '../pedidosPolicy'
 import { boardTemPedidosAlemDoServidor, mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
   snapshotBoardPedidos,
@@ -538,6 +538,55 @@ export function useBoard() {
     [persist],
   )
 
+  const syncPedidoMidia = useCallback(
+    (
+      cardId: string,
+      patch: {
+        logoEnviadaCliente?: string[]
+        logoProntaImpressao?: string[]
+        previewAprovacaoCliente?: string[]
+        observacao?: string
+      },
+    ) => {
+      const current = boardRef.current
+      const alvo = current.cards.find((c) => c.id === cardId)
+      if (!vendedorLogadoPodeCard(current, alvo) || !alvo) return
+      const next: BoardState = {
+        ...current,
+        cards: current.cards.map((c) => (c.id === cardId ? { ...c, ...patch } : c)),
+      }
+      boardRef.current = next
+      setBoard(next)
+      void (async () => {
+        const posted = await postPedidoMidia(cardId, patch)
+        if (posted.ok) {
+          setBoard((prev) => {
+            const updated = {
+              ...prev,
+              cards: prev.cards.map((c) =>
+                c.id === cardId
+                  ? {
+                      ...c,
+                      logoEnviadaCliente: posted.card.logoEnviadaCliente ?? c.logoEnviadaCliente,
+                      logoProntaImpressao: posted.card.logoProntaImpressao ?? c.logoProntaImpressao,
+                      previewAprovacaoCliente:
+                        posted.card.previewAprovacaoCliente ?? c.previewAprovacaoCliente,
+                      observacao: posted.card.observacao ?? c.observacao,
+                    }
+                  : c,
+              ),
+            }
+            boardRef.current = updated
+            return updated
+          })
+          return
+        }
+        persist(boardRef.current, { immediate: true })
+      })()
+    },
+    [persist],
+  )
+
   const archiveCard = useCallback(
     (cardId: string) => {
       if (getAuditActor()?.role !== 'admin') return
@@ -768,7 +817,10 @@ export function useBoard() {
       boardRef.current = unified
       setBoard(unified)
       if (result.richerLocal) setLocalRestore(result.richerLocal)
-      if (contagemPedidos(unified) > contagemPedidos(result.board)) {
+      if (
+        contagemPedidos(unified) > contagemPedidos(result.board) ||
+        boardTemConteudoAlemDoServidor(unified, result.board)
+      ) {
         void saveBoard(unified, { immediate: true })
       }
     } catch {
@@ -800,6 +852,7 @@ export function useBoard() {
     addCard,
     updateCard,
     addPedidoComentario,
+    syncPedidoMidia,
     archiveCard,
     restoreArchivedCard,
     permanentlyDeleteArchivedCard,
