@@ -70,9 +70,16 @@ textarea {
 
 .app {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--vestfirma-gold);
+}
+
+.app:has(#panel-kanban) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 .pwa-install-banner {
@@ -152,6 +159,10 @@ body.vestfirma-tv .pwa-install-banner {
   min-height: 0;
   min-width: 0;
   width: 100%;
+}
+
+#panel-kanban {
+  overflow: hidden;
 }
 
 .board-restore-banner {
@@ -678,6 +689,11 @@ body.vestfirma-tv .pwa-install-banner {
   .brand-logo {
     height: 1.9rem;
     max-width: min(200px, 52vw);
+  }
+
+  .board-scroll {
+    padding-top: 0.7rem;
+    padding-bottom: max(0.7rem, env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1219,43 +1235,55 @@ body.vestfirma-tv .pwa-install-banner {
   min-height: 0;
   min-width: 0;
   display: flex;
+  align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
   background: var(--vestfirma-gold);
   -webkit-overflow-scrolling: touch;
 }
 
+.board-scroll--fluxo,
+.board-scroll--concluidos {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
 .board-scroll--fluxo {
-  flex: 1 1 auto;
-  width: auto;
+  flex: 0 0 auto;
+  width: max-content;
   min-width: 0;
   max-width: none;
-  overflow-x: auto;
-  overflow-y: hidden;
   padding-right: 0.5rem;
 }
 
 .board-columns--fluxo {
+  flex: 1 1 auto;
   width: max-content;
-  min-width: 100%;
+  min-width: 0;
   max-width: none;
-  gap: 0.45rem;
+  height: 100%;
+  min-height: 0;
 }
 
 .board-scroll--fluxo .kanban-column,
 .board-scroll--fluxo .kanban-column.column-logistica,
 .board-scroll--fluxo .kanban-column.column-pedido-feito {
-  flex: 0 0 13.75rem;
-  min-width: 13.75rem;
-  width: 13.75rem;
+  flex: 0 0 var(--column-width);
+  min-width: var(--column-width);
+  width: var(--column-width);
+  height: 100%;
+  max-height: none;
 }
 
 @media (min-width: 1281px) {
   .board-scroll--fluxo {
-    flex: 1 0 100%;
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
     overflow-x: hidden;
   }
 
@@ -1263,6 +1291,7 @@ body.vestfirma-tv .pwa-install-banner {
     width: 100%;
     min-width: 100%;
     max-width: 100%;
+    gap: 0.45rem;
   }
 
   .board-scroll--fluxo .kanban-column,
@@ -1272,11 +1301,17 @@ body.vestfirma-tv .pwa-install-banner {
     min-width: 0;
     width: auto;
   }
-}
 
-.board-scroll--fluxo .column-header h2 {
-  font-size: 0.78rem;
-  line-height: 1.2;
+  .board-scroll--fluxo .column-header h2 {
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .board-scroll--concluidos {
+    flex: 0 0 min(18rem, 22vw);
+    width: min(18rem, 22vw);
+    min-width: min(18rem, 22vw);
+  }
 }
 
 .board-scroll--fluxo .add-column {
@@ -1309,23 +1344,26 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll--concluidos {
-  flex: 0 0 min(18rem, 78vw);
-  width: min(18rem, 78vw);
-  min-width: min(18rem, 78vw);
-  overflow: visible;
+  flex: 0 0 var(--column-width);
+  width: var(--column-width);
+  min-width: var(--column-width);
   padding-left: 0.35rem;
 }
 
 .board-columns--concluidos {
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
 }
 
 .board-columns {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 1rem;
-  min-height: calc(100dvh - var(--board-height-offset));
+  min-height: 0;
+  height: 100%;
   width: max-content;
   min-width: 100%;
   scroll-snap-type: x proximity;
@@ -1339,7 +1377,8 @@ body.vestfirma-tv .pwa-install-banner {
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  max-height: calc(100dvh - var(--board-height-offset));
+  height: 100%;
+  max-height: none;
   min-height: 0;
   overflow: hidden;
   scroll-snap-align: start;
@@ -5628,10 +5667,6 @@ html.visao-tv-active body {
 }
 
 @media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
-  :root {
-    --column-width: min(320px, calc(100vw - 3rem));
-  }
-
   .visao-geral:not(.visao-geral--tv) .visao-grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: none;
@@ -5650,11 +5685,6 @@ html.visao-tv-active body {
 }
 
 @media (min-width: 641px) and (max-width: 1024px) and (orientation: landscape) {
-  :root {
-    --column-width: min(272px, 38vw);
-    --board-height-offset: 9.75rem;
-  }
-
   .visao-geral:not(.visao-geral--tv) .visao-grid {
     grid-template-columns: repeat(6, 1fr);
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr);
@@ -5887,7 +5917,7 @@ html.visao-tv-active body {
 
 @media (max-width: 640px) {
   :root {
-    --column-width: min(300px, calc(100vw - 2rem));
+    --column-width: min(300px, calc(100vw - 2.25rem));
     --board-height-offset: 10.5rem;
   }
 
@@ -5905,19 +5935,14 @@ html.visao-tv-active body {
   }
 
   .board-columns {
-    gap: 0.75rem;
-    min-height: calc(100dvh - var(--board-height-offset));
-  }
-
-  .kanban-column {
-    max-height: calc(100dvh - var(--board-height-offset));
+    gap: 0.85rem;
   }
 
   .kanban-column.column-logistica {
     flex: 0 0 var(--column-width);
   }
 
-  .add-column {
+  .add-column:not(.add-column--depois-concluidos) {
     flex: 0 0 min(240px, calc(100vw - 2rem));
   }
 
@@ -6234,12 +6259,8 @@ html.visao-tv-active body {
 
 @media (max-width: 640px) and (orientation: landscape) {
   :root {
-    --column-width: min(260px, 72vw);
+    --column-width: min(300px, calc(100vw - 2.5rem));
     --board-height-offset: 8.75rem;
-  }
-
-  .kanban-column {
-    max-height: calc(100dvh - var(--board-height-offset));
   }
 
   .modal {
