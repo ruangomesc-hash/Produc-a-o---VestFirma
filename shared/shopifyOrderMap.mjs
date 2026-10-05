@@ -65,28 +65,45 @@ function dataIso(value) {
 }
 
 function quantidadeTotal(order) {
-  const items = Array.isArray(order?.line_items) ? order.line_items : []
-  let n = 0
-  for (const item of items) {
-    n += Math.max(0, Number(item?.quantity) || 0)
-  }
+  const items = linhasPedidoDe(order)
+  const n = items.reduce((sum, item) => sum + item.quantidade, 0)
   return Math.max(1, n)
+}
+
+export function linhasPedidoDe(order) {
+  const items = Array.isArray(order?.line_items) ? order.line_items : []
+  const out = []
+  for (const item of items) {
+    const quantidade = Math.max(0, Math.floor(Number(item?.quantity) || 0))
+    const titulo = String(item?.name || item?.title || '').trim()
+    if (!titulo || quantidade <= 0) continue
+    const variante = String(item?.variant_title || '').trim()
+    const detalhe =
+      variante && variante.toLowerCase() !== titulo.toLowerCase() && !titulo.includes(variante)
+        ? variante
+        : ''
+    out.push(detalhe ? { titulo, quantidade, detalhe } : { titulo, quantidade })
+  }
+  return out
 }
 
 function observacaoDe(order) {
   const linhas = []
   if (order?.note?.trim()) linhas.push(String(order.note).trim())
-  const items = Array.isArray(order?.line_items) ? order.line_items : []
-  if (items.length) {
-    linhas.push(
-      'Itens Shopify: ' +
-        items
-          .map((item) => `${item.quantity}× ${item.title || item.name || 'item'}`)
-          .join('; '),
-    )
-  }
   if (order?.cancelled_at) linhas.push('Shopify: pedido cancelado na loja (mantido no kanban).')
   return linhas.join('\n')
+}
+
+function mesclarObservacaoShopify(existingObs, mappedObs) {
+  const existing = String(existingObs || '')
+    .replace(/(^|\n)Itens Shopify:.*$/s, '')
+    .trim()
+  const mapped = String(mappedObs || '').trim()
+  if (!existing) return mapped
+  if (!mapped) return existing
+  if (existing.includes(mapped)) return existing
+  if (mapped.includes(existing)) return mapped
+  return existing
 }
 
 export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) {
@@ -111,6 +128,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
     endereco: enderecoDe(order),
     observacao: observacaoDe(order),
     itensProduto: [],
+    linhasPedido: linhasPedidoDe(order),
     dataPedido: created.slice(0, 10),
     dataPagamento: paid ? paid.slice(0, 10) : '',
     logoEnviadaCliente: [],
@@ -175,7 +193,11 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
     origem: 'shopify',
     shopifyOrderId: mapped.shopifyOrderId || existing.shopifyOrderId,
     shopifyOrderName: mapped.shopifyOrderName || existing.shopifyOrderName,
-    observacao: [existing.observacao, mapped.observacao].filter(Boolean).sort((a, b) => b.length - a.length)[0] || '',
+    linhasPedido:
+      Array.isArray(mapped.linhasPedido) && mapped.linhasPedido.length
+        ? mapped.linhasPedido
+        : existing.linhasPedido,
+    observacao: mesclarObservacaoShopify(existing.observacao, mapped.observacao),
   }
 }
 
