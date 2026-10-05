@@ -582,7 +582,7 @@ body.vestfirma-tv .pwa-install-banner {
   border-color: var(--border);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
   :root {
     --board-height-offset: 9.75rem;
   }
@@ -1253,64 +1253,66 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll--fluxo {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: 0;
-  max-width: none;
+  flex: 1 0 100%;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: hidden;
   padding-right: 0.5rem;
 }
 
 .board-columns--fluxo {
   flex: 1 1 auto;
-  width: max-content;
-  min-width: 0;
-  max-width: none;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
+  gap: 0.45rem;
 }
 
 .board-scroll--fluxo .kanban-column,
 .board-scroll--fluxo .kanban-column.column-logistica,
 .board-scroll--fluxo .kanban-column.column-pedido-feito {
-  flex: 0 0 var(--column-width);
-  min-width: var(--column-width);
-  width: var(--column-width);
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
   height: 100%;
   max-height: none;
 }
 
-@media (min-width: 1281px) {
+.board-scroll--fluxo .column-header h2 {
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+@media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
   .board-scroll--fluxo {
-    flex: 1 1 auto;
-    width: auto;
+    flex: 0 0 auto;
+    width: max-content;
     min-width: 0;
-    overflow-x: hidden;
+    max-width: none;
   }
 
   .board-columns--fluxo {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-    gap: 0.45rem;
+    width: max-content;
+    min-width: 0;
+    max-width: none;
+    gap: 1rem;
   }
 
   .board-scroll--fluxo .kanban-column,
   .board-scroll--fluxo .kanban-column.column-logistica,
   .board-scroll--fluxo .kanban-column.column-pedido-feito {
-    flex: 1 1 0;
-    min-width: 0;
-    width: auto;
+    flex: 0 0 var(--column-width);
+    min-width: var(--column-width);
+    width: var(--column-width);
   }
 
   .board-scroll--fluxo .column-header h2 {
-    font-size: 0.78rem;
-    line-height: 1.2;
-  }
-
-  .board-scroll--concluidos {
-    flex: 0 0 min(18rem, 22vw);
-    width: min(18rem, 22vw);
-    min-width: min(18rem, 22vw);
+    font-size: 0.92rem;
+    line-height: 1.25;
   }
 }
 
@@ -1344,10 +1346,18 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll--concluidos {
-  flex: 0 0 var(--column-width);
-  width: var(--column-width);
-  min-width: var(--column-width);
+  flex: 0 0 min(20rem, 88vw);
+  width: min(20rem, 88vw);
+  min-width: min(20rem, 88vw);
   padding-left: 0.35rem;
+}
+
+@media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
+  .board-scroll--concluidos {
+    flex: 0 0 var(--column-width);
+    width: var(--column-width);
+    min-width: var(--column-width);
+  }
 }
 
 .board-columns--concluidos {
