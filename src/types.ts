@@ -1,5 +1,11 @@
 import type { LogoLocal } from './logoLocal'
 import type { PedidoItemProduto, TipoProdutoId } from './tiposProduto'
+
+export type PedidoLinhaResumo = {
+  titulo: string
+  quantidade: number
+  detalhe?: string
+}
 import type { UserRole } from './userRoles'
 
 export type SalesChannel = 'whatsapp' | 'ecommerce'
@@ -64,8 +70,10 @@ export interface OrderCard {
   endereco: string
   /** Notas gerais do pedido (instruções, combinações, lembretes). */
   observacao?: string
-  /** Tipos de peça e quantidade de cada um (ex.: 5 polos + 10 corta-vento). */
+  /** Tipos de peça e quantidade de cada um (pedidos antigos preenchidos no kanban). */
   itensProduto?: PedidoItemProduto[]
+  /** Resumo das peças (Shopify line items ou leitura dos itens antigos). */
+  linhasPedido?: PedidoLinhaResumo[]
   /** @deprecated migrado para itensProduto na carga. */
   tipoProduto?: TipoProdutoId | null
   dataPedido: string
