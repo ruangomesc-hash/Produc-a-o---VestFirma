@@ -18,6 +18,7 @@ import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import { normalizePedidoImagens } from './pedidoImagens'
 import { normalizeItensProdutoFromCard, quantidadeTotalItensProduto } from './tiposProduto'
+import { normalizeLinhasPedido, somaLinhasPedido } from './pedidoResumo'
 import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
@@ -77,10 +78,13 @@ function normalizeCard(
     tipoProduto: raw.tipoProduto,
     quantidade: raw.quantidade,
   })
+  const linhasPedido = normalizeLinhasPedido(raw.linhasPedido)
   const quantidade =
-    itensProduto.length > 0
-      ? quantidadeTotalItensProduto(itensProduto)
-      : Math.max(1, raw.quantidade || 1)
+    somaLinhasPedido(linhasPedido) > 0
+      ? somaLinhasPedido(linhasPedido)
+      : itensProduto.length > 0
+        ? quantidadeTotalItensProduto(itensProduto)
+        : Math.max(1, raw.quantidade || 1)
 
   return {
     id: raw.id,
@@ -95,6 +99,7 @@ function normalizeCard(
     endereco: raw.endereco,
     observacao: typeof raw.observacao === 'string' ? raw.observacao : '',
     itensProduto,
+    linhasPedido,
     dataPedido: raw.dataPedido,
     dataPagamento: raw.dataPagamento,
     logoEnviadaCliente,

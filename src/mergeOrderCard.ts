@@ -73,7 +73,15 @@ export function mergeObservacaoPedido(
   return sa.length >= sb.length ? sa : sb
 }
 
-function mergeItensProduto(existing: OrderCard, incoming: OrderCard, tExist: number, tIn: number) {
+function mergeLinhasPedido(existing: OrderCard, incoming: OrderCard, tExist: number, tIn: number) {
+  const a = existing.linhasPedido
+  const b = incoming.linhasPedido
+  const hasA = Array.isArray(a) && a.length > 0
+  const hasB = Array.isArray(b) && b.length > 0
+  if (!hasA) return hasB ? b : a
+  if (!hasB) return a
+  return tIn >= tExist ? b : a
+}
   const a = existing.itensProduto
   const b = incoming.itensProduto
   const hasA = Array.isArray(a) && a.length > 0
@@ -118,6 +126,7 @@ export function mergeOrderCardFields(existing: OrderCard, incoming: OrderCard): 
     ),
     observacao: mergeObservacaoPedido(existing.observacao, incoming.observacao, tExist, tIn),
     itensProduto: mergeItensProduto(existing, incoming, tExist, tIn),
+    linhasPedido: mergeLinhasPedido(existing, incoming, tExist, tIn),
   }
 }
 
