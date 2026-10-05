@@ -34,6 +34,7 @@ import { WhatsAppRedirectModal } from './components/WhatsAppRedirectModal'
 import { VisaoGeralPanel } from './components/VisaoGeralPanel'
 import { VisaoEquipePanel } from './components/VisaoEquipePanel'
 import { SystemStatusPanel } from './components/SystemStatusPanel'
+import { ShopifySetupPanel } from './components/ShopifySetupPanel'
 import { VendedoresOverviewPanel } from './components/VendedoresOverviewPanel'
 import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
 import { PortalFestaPreviewPage } from './components/PortalFestaPreviewPage'
@@ -332,11 +333,12 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const boardKanban = isAdmin(session) ? boardPainelAdmin : boardForSession
 
   const [view, setView] = useState<
-    'kanban' | 'visao' | 'status' | 'vendedores' | 'historico' | 'equipe'
+    'kanban' | 'visao' | 'status' | 'shopify' | 'vendedores' | 'historico' | 'equipe'
   >(() => {
     const hash = window.location.hash.replace(/^#/, '')
     if (
       hash === 'status' ||
+      hash === 'shopify' ||
       hash === 'visao' ||
       hash === 'kanban' ||
       hash === 'vendedores' ||
@@ -555,6 +557,17 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               >
                 Status
               </button>
+              <button
+                type="button"
+                role="tab"
+                id="tab-shopify"
+                aria-selected={view === 'shopify'}
+                aria-controls="panel-shopify"
+                className={`nav-tab ${view === 'shopify' ? 'active' : ''}`}
+                onClick={() => setView('shopify')}
+              >
+                Shopify
+              </button>
               {isAdmin(session) ? (
                 <button
                   type="button"
@@ -601,7 +614,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 ? 'Painel de produção'
                 : view === 'status'
                   ? 'Diagnóstico do kanban'
-                  : view === 'vendedores'
+                  : view === 'shopify'
+                    ? 'Ligação com a loja Shopify'
+                    : view === 'vendedores'
                     ? 'Desempenho por vendedor'
                     : view === 'historico'
                       ? 'Histórico de ações no app'
@@ -777,6 +792,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       ) : view === 'equipe' ? (
         <div id="panel-equipe" className="app-panel" role="tabpanel" aria-labelledby="tab-equipe">
           <VisaoEquipePanel />
+        </div>
+      ) : view === 'shopify' ? (
+        <div id="panel-shopify" className="app-panel" role="tabpanel" aria-labelledby="tab-shopify">
+          <ShopifySetupPanel />
         </div>
       ) : (
         <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">

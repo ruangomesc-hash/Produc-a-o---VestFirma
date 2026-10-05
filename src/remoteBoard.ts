@@ -173,6 +173,12 @@ export async function saveRemoteBoard(
 
   if (!res.ok) {
     const msg = await res.text().catch(() => '')
+    const trimmed = msg.trim()
+    if (trimmed.startsWith('<!') || trimmed.startsWith('<html')) {
+      throw new Error(
+        'A API do quadro não respondeu (página HTML). O deploy Node precisa estar no ar — os pedidos continuam neste navegador.',
+      )
+    }
     try {
       const j = JSON.parse(msg) as { error?: string; code?: string }
       if (j.code === 'BOARD_CARDS_LOST') {
@@ -183,7 +189,7 @@ export async function saveRemoteBoard(
       }
       if (j.error) throw new Error(j.error)
     } catch (e) {
-      if (e instanceof Error && e.message !== msg) throw e
+      if (e instanceof Error && e.message !== msg && !e.message.includes('JSON')) throw e
     }
     throw new Error(msg || `Falha ao salvar (${res.status})`)
   }

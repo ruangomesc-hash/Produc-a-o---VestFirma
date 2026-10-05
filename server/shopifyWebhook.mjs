@@ -1,4 +1,4 @@
-import { verifyShopifyHmac, shopifyConfigured, ingestShopifyOrder, shopifyShopDomain } from './shopifySync.mjs'
+import { verifyShopifyHmac, shopifyConfigured, ingestShopifyOrder, shopifyShopDomain, shopifyShopAllowed, shopifyWebhookSecret } from './shopifySync.mjs'
 import { ensureBoardColumns } from '../shared/boardVendedoresMerge.mjs'
 
 export async function handleShopifyWebhookApi(req, res, ctx) {
@@ -29,7 +29,7 @@ export async function handleShopifyWebhookApi(req, res, ctx) {
   const topic = String(req.headers['x-shopify-topic'] || '')
   const shop = String(req.headers['x-shopify-shop-domain'] || '')
 
-  if (!process.env.SHOPIFY_WEBHOOK_SECRET?.trim()) {
+  if (!shopifyWebhookSecret()) {
     res.writeHead(503, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ ok: false, error: 'SHOPIFY_WEBHOOK_SECRET não configurada' }))
     return
@@ -42,7 +42,7 @@ export async function handleShopifyWebhookApi(req, res, ctx) {
   }
 
   const expected = shopifyShopDomain()
-  if (expected && shop && shop !== expected) {
+  if (expected && shop && !shopifyShopAllowed(shop)) {
     res.writeHead(401, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ ok: false, error: 'Loja Shopify não reconhecida' }))
     return

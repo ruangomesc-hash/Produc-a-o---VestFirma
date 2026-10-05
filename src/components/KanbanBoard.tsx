@@ -9,7 +9,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { useMemo, useState, useEffect } from 'react'
-import { resolveCardColumnId } from '../boardColumns'
+import { resolveCardColumnId, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
+import { etapaPedidoEnviado } from '../etapas'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState, OrderCard } from '../types'
 import { KanbanColumn } from './KanbanColumn'
@@ -105,60 +106,83 @@ export function KanbanBoard({
     setShowAddColumn(false)
   }
 
+  const colunasFluxo = useMemo(
+    () =>
+      board.columns.filter(
+        (c) => c.id !== COLUNA_PEDIDO_ENVIADO_ID && !etapaPedidoEnviado(c.id, c.title),
+      ),
+    [board.columns],
+  )
+  const colunasConcluidos = useMemo(
+    () =>
+      board.columns.filter(
+        (c) => c.id === COLUNA_PEDIDO_ENVIADO_ID || etapaPedidoEnviado(c.id, c.title),
+      ),
+    [board.columns],
+  )
+
+  const renderColumn = (column: (typeof board.columns)[number]) => (
+    <KanbanColumn
+      key={column.id}
+      column={column}
+      board={board}
+      cards={cardsByColumn.get(column.id) ?? []}
+      canDelete={canManageColumns && board.columns.length > 1}
+      onAddCard={() => onAddCard(column.id)}
+      onEditCard={onEditCard}
+      onRequestArchiveCard={onRequestArchiveCard}
+      canArchivePedidos={canArchivePedidos}
+      onDeleteColumn={onDeleteColumn}
+      highlightPedidoId={highlightPedidoId}
+    />
+  )
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="board-scroll">
-        <div className="board-columns">
-          {board.columns.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              column={column}
-              board={board}
-              cards={cardsByColumn.get(column.id) ?? []}
-              canDelete={canManageColumns && board.columns.length > 1}
-              onAddCard={() => onAddCard(column.id)}
-              onEditCard={onEditCard}
-              onRequestArchiveCard={onRequestArchiveCard}
-              canArchivePedidos={canArchivePedidos}
-              onDeleteColumn={onDeleteColumn}
-              highlightPedidoId={highlightPedidoId}
-            />
-          ))}
-
-          {canManageColumns ? (
-            <div className="add-column">
-              {showAddColumn ? (
-                <form onSubmit={submitColumn} className="add-column-form">
-                  <input
-                    autoFocus
-                    placeholder="Nome da nova etapa"
-                    value={newColumnTitle}
-                    onChange={(e) => setNewColumnTitle(e.target.value)}
-                  />
-                  <div className="add-column-actions">
-                    <button type="submit" className="btn primary small">
-                      Adicionar
-                    </button>
-                    <button
-                      type="button"
-                      className="btn ghost small"
-                      onClick={() => {
-                        setShowAddColumn(false)
-                        setNewColumnTitle('')
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
-                  + Nova coluna
-                </button>
-              )}
-            </div>
-          ) : null}
+      <div className="kanban-board-shell">
+        <div className="board-scroll board-scroll--fluxo">
+          <div className="board-columns board-columns--fluxo">
+            {colunasFluxo.map(renderColumn)}
+            {canManageColumns ? (
+              <div className="add-column">
+                {showAddColumn ? (
+                  <form onSubmit={submitColumn} className="add-column-form">
+                    <input
+                      autoFocus
+                      placeholder="Nome da nova etapa"
+                      value={newColumnTitle}
+                      onChange={(e) => setNewColumnTitle(e.target.value)}
+                    />
+                    <div className="add-column-actions">
+                      <button type="submit" className="btn primary small">
+                        Adicionar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost small"
+                        onClick={() => {
+                          setShowAddColumn(false)
+                          setNewColumnTitle('')
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
+                    + Nova coluna
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
+        {colunasConcluidos.length > 0 ? (
+          <div className="board-scroll board-scroll--concluidos" aria-label="Pedidos concluídos">
+            <div className="board-columns board-columns--concluidos">{colunasConcluidos.map(renderColumn)}</div>
+          </div>
+        ) : null}
       </div>
 
       <DragOverlay dropAnimation={null}>

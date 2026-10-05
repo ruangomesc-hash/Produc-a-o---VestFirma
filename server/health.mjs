@@ -5,6 +5,7 @@ import fs from 'node:fs/promises'
 import { getBoardPaths } from './dataPaths.mjs'
 import { useJwtSessions } from './sessionToken.mjs'
 import { countUsersOnDisk } from './usersRepair.mjs'
+import { shopifyConfigured } from './shopifySync.mjs'
 
 async function countBoardOnDisk(boardFile) {
   try {
@@ -69,11 +70,7 @@ export async function handleHealthApi(req, res, corsHeaders) {
       usersOnDisk,
       boardFileBytes: boardCounts?.bytes,
       whatsappWebhookConfigured: webhook,
-      shopifyConfigured: Boolean(
-        process.env.SHOPIFY_SHOP?.trim() &&
-          process.env.SHOPIFY_ADMIN_TOKEN?.trim() &&
-          process.env.SHOPIFY_WEBHOOK_SECRET?.trim(),
-      ),
+      shopifyConfigured: shopifyConfigured(),
       timestamp: new Date().toISOString(),
     }),
   )
