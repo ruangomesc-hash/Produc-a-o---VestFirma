@@ -5,11 +5,7 @@ import { etapaDevePiscar } from '../etapas'
 import { pedidoFaltaLogo } from '../pedidoShopify'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
-import {
-  formatItensProdutoResumo,
-  itensProdutoDoPedido,
-  quantidadeExibidaPedido,
-} from '../tiposProduto'
+import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
 import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
@@ -106,9 +102,8 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
   }, [highlighted])
   const qtdComentarios = (card.comentarios ?? []).length
   const observacao = card.observacao?.trim() ?? ''
-  const itensProduto = itensProdutoDoPedido(card)
-  const totalPecas = quantidadeExibidaPedido(card)
-  const produtosResumo = formatItensProdutoResumo(itensProduto)
+  const totalPecas = quantidadeExibidaComResumo(card)
+  const produtosResumo = textoResumoPedido(card)
   const logoClientePreview = primeiraImagemPedido(card.logoEnviadaCliente)
 
   return (
@@ -148,14 +143,13 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
       </div>
 
       {!expanded ? (
-        <button
-          type="button"
-          className="card-collapsed-hit"
-          onClick={() => setExpanded(true)}
-          aria-expanded={false}
-          aria-label={`Expandir pedido ${card.numeroPedido} de ${card.cliente}`}
-        >
-          <div className="card-collapsed-preview">
+        <div className="card-collapsed-preview">
+          <button
+            type="button"
+            className="card-collapsed-hit"
+            onClick={onEdit}
+            aria-label={`Abrir resumo do pedido ${card.numeroPedido} de ${card.cliente}`}
+          >
             <CardLogoBlock
               label="Logo enviada pelo cliente"
               srcs={logoClientePreview ? [logoClientePreview] : []}
@@ -177,12 +171,30 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
                   </>
                 ) : null}
               </p>
-              <span className="card-collapsed-cta">Toque para expandir</span>
+              <span className="card-collapsed-cta">Toque para abrir</span>
             </div>
-          </div>
-        </button>
+          </button>
+          <button
+            type="button"
+            className="card-collapsed-expand"
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded(true)
+            }}
+          >
+            Expandir
+          </button>
+        </div>
       ) : (
         <>
+          <div
+            className="card-expanded-main"
+            onClick={(e) => {
+              const el = e.target as HTMLElement
+              if (el.closest('a, button, input, textarea, select, summary')) return
+              onEdit()
+            }}
+          >
           <div className="card-logos">
             {card.previewAprovacaoCliente.length > 0 ? (
               <div className="card-approved-preview">
@@ -271,6 +283,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
               {card.dataPagamento ? ` · Pago: ${formatDate(card.dataPagamento)}` : ''}
             </p>
             <CardHistoricoTimeline entries={card.historicoEtapa} />
+          </div>
           </div>
 
           <div className="card-actions">

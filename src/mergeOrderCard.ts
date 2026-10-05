@@ -82,6 +82,8 @@ function mergeLinhasPedido(existing: OrderCard, incoming: OrderCard, tExist: num
   if (!hasB) return a
   return tIn >= tExist ? b : a
 }
+
+function mergeItensProduto(existing: OrderCard, incoming: OrderCard, tExist: number, tIn: number) {
   const a = existing.itensProduto
   const b = incoming.itensProduto
   const hasA = Array.isArray(a) && a.length > 0

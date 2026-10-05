@@ -1,12 +1,12 @@
 import type { LogoLocal } from './logoLocal'
 import type { PedidoItemProduto, TipoProdutoId } from './tiposProduto'
+import type { UserRole } from './userRoles'
 
 export type PedidoLinhaResumo = {
   titulo: string
   quantidade: number
   detalhe?: string
 }
-import type { UserRole } from './userRoles'
 
 export type SalesChannel = 'whatsapp' | 'ecommerce'
 

@@ -27,6 +27,18 @@ export function ensureBoardColumns(columns: Column[] | undefined | null): Column
   return posicionarPedidoFeitoAntesDeLogos(list)
 }
 
+/** Etapa nova entra no fluxo, sempre antes de Pedido enviado. */
+export function inserirColunaAntesDePedidoEnviado(columns: Column[], nova: Column): Column[] {
+  const list = [...columns]
+  const idx = list.findIndex((c) => c.id === COLUNA_PEDIDO_ENVIADO_ID)
+  if (idx < 0) {
+    list.push(nova)
+    return list
+  }
+  list.splice(idx, 0, nova)
+  return list
+}
+
 function posicionarPedidoFeitoAntesDeLogos(columns: Column[]): Column[] {
   const list = [...columns]
   const feitoIdx = list.findIndex((c) => c.id === COLUNA_PEDIDO_FEITO_ID)

@@ -10,11 +10,9 @@ import { CardHistoricoTimeline } from './CardHistoricoTimeline'
 import { CardComentariosSection } from './CardComentariosSection'
 import { formatTelefoneBr, telefoneBrCompleto } from '../telefoneBr'
 import { prepararAudioVenda } from '../vendaSino'
-import {
-  normalizeItensProdutoFromCard,
-  quantidadeTotalItensProduto,
-} from '../tiposProduto'
-import { PedidoProdutosField } from './PedidoProdutosField'
+import { normalizeItensProdutoFromCard } from '../tiposProduto'
+import { quantidadeExibidaComResumo } from '../pedidoResumo'
+import { PedidoResumoField } from './PedidoResumoField'
 
 const ADD_SEGMENTO = '__novo_segmento__'
 
@@ -36,6 +34,7 @@ function buildForm(
       endereco: initial.endereco,
       observacao: initial.observacao ?? '',
       itensProduto: normalizeItensProdutoFromCard(initial),
+      linhasPedido: initial.linhasPedido ?? [],
       dataPedido: initial.dataPedido,
       dataPagamento: initial.dataPagamento,
       logoEnviadaCliente: initial.logoEnviadaCliente,
@@ -55,6 +54,7 @@ function buildForm(
     endereco: '',
     observacao: '',
     itensProduto: [],
+    linhasPedido: [],
     dataPedido: new Date().toISOString().slice(0, 10),
     dataPagamento: '',
     logoEnviadaCliente: [],
@@ -254,21 +254,18 @@ export function CardModal({
       )
       return
     }
-    const itensProduto = form.itensProduto ?? []
-    const quantidade = quantidadeTotalItensProduto(itensProduto)
-    if (quantidade <= 0) {
-      showAlert(
-        'Informe a quantidade de pelo menos um tipo de produto (ex.: 5 polos, 10 corta-vento).',
-        'Produtos do pedido',
-      )
-      return
-    }
+    const quantidade = quantidadeExibidaComResumo({
+      linhasPedido: form.linhasPedido,
+      itensProduto: form.itensProduto,
+      quantidade: form.quantidade,
+    })
     if (mode === 'create') onVendaCelebrar?.()
     onSubmit({
       ...form,
       vendedorId: vendedorIdEfetivo,
       whatsappCliente: formatTelefoneBr(form.whatsappCliente),
-      itensProduto,
+      itensProduto: form.itensProduto ?? [],
+      linhasPedido: form.linhasPedido ?? [],
       quantidade,
     })
     onClose()
@@ -444,9 +441,14 @@ export function CardModal({
               />
             </label>
 
-            <PedidoProdutosField
-              value={form.itensProduto ?? []}
-              onChange={(itensProduto) => setForm((f) => ({ ...f, itensProduto }))}
+            <PedidoResumoField
+              card={{
+                origem: initial?.origem,
+                linhasPedido: form.linhasPedido ?? initial?.linhasPedido,
+                itensProduto: form.itensProduto ?? initial?.itensProduto,
+                tipoProduto: initial?.tipoProduto,
+                quantidade: form.quantidade,
+              }}
             />
 
             <label className="field">

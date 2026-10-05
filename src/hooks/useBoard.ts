@@ -9,6 +9,7 @@ import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
+import { inserirColunaAntesDePedidoEnviado } from '../boardColumns'
 import { mergeBoardPreservingPedidos, contagemPedidos, boardTemConteudoAlemDoServidor } from '../pedidosPolicy'
 import { boardTemPedidosAlemDoServidor, mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
@@ -219,7 +220,7 @@ export function useBoard() {
       if (!trimmed) return
       persist({
         ...board,
-        columns: [...board.columns, { id: newId(), title: trimmed }],
+        columns: inserirColunaAntesDePedidoEnviado(board.columns, { id: newId(), title: trimmed }),
       })
       recordAudit({
         action: 'coluna.criada',

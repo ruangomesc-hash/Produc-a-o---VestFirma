@@ -141,46 +141,44 @@ export function KanbanBoard({
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="kanban-board-shell">
         <div className="board-scroll board-scroll--fluxo">
-          <div className="board-columns board-columns--fluxo">
-            {colunasFluxo.map(renderColumn)}
-            {canManageColumns ? (
-              <div className="add-column">
-                {showAddColumn ? (
-                  <form onSubmit={submitColumn} className="add-column-form">
-                    <input
-                      autoFocus
-                      placeholder="Nome da nova etapa"
-                      value={newColumnTitle}
-                      onChange={(e) => setNewColumnTitle(e.target.value)}
-                    />
-                    <div className="add-column-actions">
-                      <button type="submit" className="btn primary small">
-                        Adicionar
-                      </button>
-                      <button
-                        type="button"
-                        className="btn ghost small"
-                        onClick={() => {
-                          setShowAddColumn(false)
-                          setNewColumnTitle('')
-                        }}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
-                    + Nova coluna
-                  </button>
-                )}
-              </div>
-            ) : null}
-          </div>
+          <div className="board-columns board-columns--fluxo">{colunasFluxo.map(renderColumn)}</div>
         </div>
         {colunasConcluidos.length > 0 ? (
           <div className="board-scroll board-scroll--concluidos" aria-label="Pedidos concluídos">
             <div className="board-columns board-columns--concluidos">{colunasConcluidos.map(renderColumn)}</div>
+          </div>
+        ) : null}
+        {canManageColumns ? (
+          <div className="add-column add-column--depois-concluidos">
+            {showAddColumn ? (
+              <form onSubmit={submitColumn} className="add-column-form">
+                <input
+                  autoFocus
+                  placeholder="Nome da nova etapa"
+                  value={newColumnTitle}
+                  onChange={(e) => setNewColumnTitle(e.target.value)}
+                />
+                <div className="add-column-actions">
+                  <button type="submit" className="btn primary small">
+                    Adicionar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost small"
+                    onClick={() => {
+                      setShowAddColumn(false)
+                      setNewColumnTitle('')
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
+                + Nova coluna
+              </button>
+            )}
           </div>
         ) : null}
       </div>
