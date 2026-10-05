@@ -604,11 +604,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             ) : null}
           </nav>
           <div className="brand brand-center">
-            <img
-              src={`${import.meta.env.BASE_URL}vestfirma-logo.png`}
-              alt="VestFirma"
-              className="brand-logo"
-            />
+            <div className="brand-logo-frame">
+              <img
+                src={`${import.meta.env.BASE_URL}vestfirma-logo.png`}
+                alt="VestFirma"
+                className="brand-logo"
+              />
+            </div>
             <p className="subtitle">
               {view === 'visao'
                 ? 'Painel de produção'
@@ -643,7 +645,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               href={redirectHref()}
               title="Página Redirect WhatsApp — mensagens padrão"
             >
-              Redirect WhatsApp
+              <span className="btn-text-full">Redirect WhatsApp</span>
+              <span className="btn-text-short">Redirect</span>
             </a>
             <button
               type="button"
@@ -651,7 +654,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               onClick={() => setWhatsappRedirectOpen(true)}
               title="Atalho rápido (popup)"
             >
-              Redirect rápido
+              <span className="btn-text-full">Redirect rápido</span>
+              <span className="btn-text-short">Rápido</span>
             </button>
             <button
               type="button"
@@ -659,7 +663,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               onClick={() => setWhatsappNotifyOpen(true)}
               title="Avisos no grupo WhatsApp"
             >
-              Grupo WhatsApp
+              <span className="btn-text-full">Grupo WhatsApp</span>
+              <span className="btn-text-short">Grupo</span>
             </button>
             <WebNotifyButton />
             {view === 'visao' && (

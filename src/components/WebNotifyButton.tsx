@@ -65,7 +65,17 @@ export function WebNotifyButton() {
         title="Notificações deste aparelho: pedido novo, movimento ou mudança de etapa"
         aria-pressed={on}
       >
-        {on ? 'Notificações on' : 'Notificações'}
+        {on ? (
+          <>
+            <span className="btn-text-full">Notificações on</span>
+            <span className="btn-text-short">Notif. on</span>
+          </>
+        ) : (
+          <>
+            <span className="btn-text-full">Notificações</span>
+            <span className="btn-text-short">Notif.</span>
+          </>
+        )}
       </button>
       {hint ? (
         <span className="web-notify-hint" role="status">
