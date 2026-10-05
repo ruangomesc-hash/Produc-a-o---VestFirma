@@ -106,6 +106,9 @@ function normalizeCard(
     historicoEtapa: raw.historicoEtapa ?? [],
     comentarios: Array.isArray(raw.comentarios) ? raw.comentarios : [],
     arquivadoEm: raw.arquivadoEm ?? null,
+    origem: raw.origem === 'shopify' || raw.shopifyOrderId ? 'shopify' : raw.origem,
+    shopifyOrderId: raw.shopifyOrderId ? String(raw.shopifyOrderId) : undefined,
+    shopifyOrderName: raw.shopifyOrderName ? String(raw.shopifyOrderName) : undefined,
   }
 }
 

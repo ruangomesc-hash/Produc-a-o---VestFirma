@@ -81,6 +81,10 @@ export interface OrderCard {
   comentarios: PedidoComentario[]
   /** Preenchido ao “arquivar” — pedido some do kanban mas permanece no JSON. */
   arquivadoEm?: string | null
+  /** Pedido criado pela loja Shopify (webhook). */
+  origem?: 'shopify' | 'manual'
+  shopifyOrderId?: string
+  shopifyOrderName?: string
 }
 
 export interface Column {
@@ -98,7 +102,15 @@ export interface BoardState {
 
 export type CardFormData = Omit<
   OrderCard,
-  'id' | 'columnId' | 'createdAt' | 'etapaDesde' | 'historicoEtapa' | 'comentarios'
+  | 'id'
+  | 'columnId'
+  | 'createdAt'
+  | 'etapaDesde'
+  | 'historicoEtapa'
+  | 'comentarios'
+  | 'origem'
+  | 'shopifyOrderId'
+  | 'shopifyOrderName'
 >
 
 export function nomeVendedor(board: BoardState, vendedorId: string | null): string | null {

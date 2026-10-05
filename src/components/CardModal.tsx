@@ -459,6 +459,12 @@ export function CardModal({
                 <option value="ecommerce">E-commerce</option>
               </select>
             </label>
+            {initial?.origem === 'shopify' ? (
+              <p className="field span-2 shopify-pedido-hint">
+                Origem Shopify {initial.shopifyOrderName || initial.shopifyOrderId || ''}. A etapa deste
+                pedido também é enviada de volta para a loja.
+              </p>
+            ) : null}
 
             <label className="field span-2">
               <span>Endereço</span>

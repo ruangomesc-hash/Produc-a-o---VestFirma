@@ -1,4 +1,4 @@
-import { COLUNA_NOVO_PEDIDO_ID } from './defaultBoard'
+import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID } from './defaultBoard'
 import type { BoardState, HistoricoEtapaEntry, OrderCard } from './types'
 import { USER_ROLE_LABELS, type UserRole } from './userRoles'
 import { getAuditActor } from './auditContext'
@@ -139,6 +139,10 @@ function corrigirHistoricoLegado(
 
   if (historico.length === 1 && historico[0].tipo === 'criado') {
     const unico = historico[0]
+
+    if (unico.columnId === COLUNA_PEDIDO_FEITO_ID) {
+      return historico
+    }
 
     if (unico.columnId !== colCriacao && unico.columnId === colAtual) {
       const criadoEm = unico.at || card.createdAt || card.etapaDesde

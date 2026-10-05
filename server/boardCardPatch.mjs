@@ -95,6 +95,10 @@ export async function applyBoardCardPatch(payload, session, ctx) {
 
     await backupBoardBeforeWrite(DATA_FILE)
     await writeBoardAtomic(DATA_FILE, board)
+    const { syncEtapasKanbanParaShopify } = await import('./shopifySync.mjs')
+    void syncEtapasKanbanParaShopify(existing, board).catch((err) => {
+      console.warn('[vestfirma] Shopify sync:', err)
+    })
     const saved = board.cards.find((c) => c.id === cardId)
     return {
       status: 200,

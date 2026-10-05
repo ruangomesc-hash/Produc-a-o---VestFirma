@@ -18,6 +18,7 @@ type ServerHealth = {
   ok?: boolean
   requireLogin?: boolean
   whatsappWebhookConfigured?: boolean
+  shopifyConfigured?: boolean
   boardDataConfigured?: boolean
   timestamp?: string
   maxSaveBodyMb?: number
@@ -325,6 +326,21 @@ export async function runSystemHealthChecks(board: BoardState): Promise<HealthCh
         comGrupo < vendedores.length
           ? 'Complete o campo “Grupo WhatsApp (ID)” em Vendedores.'
           : 'Cada vendedor tem grupo para receber avisos.',
+    })
+  }
+
+  if (remote && serverHealth) {
+    const shopifyOn = serverHealth.shopifyConfigured === true
+    checks.push({
+      id: 'shopify',
+      title: 'Shopify',
+      status: shopifyOn ? 'ok' : 'off',
+      summary: shopifyOn
+        ? 'Webhook e token configurados — pedidos entram em Pedido feito'
+        : 'Sem SHOPIFY_SHOP / TOKEN / WEBHOOK_SECRET',
+      detail: shopifyOn
+        ? 'Na Shopify: Settings → Notifications → Webhooks → /api/shopify/webhook (orders/create e orders/updated).'
+        : 'Preencha as variáveis no servidor para ligar a loja ao kanban.',
     })
   }
 

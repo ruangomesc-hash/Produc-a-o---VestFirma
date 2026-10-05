@@ -69,6 +69,11 @@ export async function handleHealthApi(req, res, corsHeaders) {
       usersOnDisk,
       boardFileBytes: boardCounts?.bytes,
       whatsappWebhookConfigured: webhook,
+      shopifyConfigured: Boolean(
+        process.env.SHOPIFY_SHOP?.trim() &&
+          process.env.SHOPIFY_ADMIN_TOKEN?.trim() &&
+          process.env.SHOPIFY_WEBHOOK_SECRET?.trim(),
+      ),
       timestamp: new Date().toISOString(),
     }),
   )

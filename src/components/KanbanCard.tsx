@@ -2,6 +2,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useState } from 'react'
 import { etapaDevePiscar } from '../etapas'
+import { pedidoFaltaLogo } from '../pedidoShopify'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
 import {
@@ -97,6 +98,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
   const segmento = nomeSegmento(board, card.segmentoId)
   const localLogo = rotuloLocalLogo(card.localLogo)
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
+  const faltaLogo = pedidoFaltaLogo(card)
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -114,7 +116,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
       ref={setNodeRef}
       style={style}
       data-pedido-id={card.id}
-      className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''} ${highlighted ? 'kanban-card--search-highlight' : ''}`}
+      className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${faltaLogo ? 'card-falta-logo-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''} ${highlighted ? 'kanban-card--search-highlight' : ''}`}
     >
       <div className="card-drag-header" {...listeners} {...attributes} title="Arrastar pedido">
         <div className="card-drag-badges">
@@ -123,6 +125,16 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
             columnTitle={columnTitle}
             card={card}
           />
+          {faltaLogo ? (
+            <span className="card-falta-logo-tag" title="Pedido feito na Shopify — ainda sem logo">
+              Falta logo
+            </span>
+          ) : null}
+          {card.origem === 'shopify' ? (
+            <span className="card-shopify-tag" title={card.shopifyOrderName || 'Shopify'}>
+              Shopify
+            </span>
+          ) : null}
           {qtdComentarios > 0 ? (
             <span
               className="card-comentarios-tag"

@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useState } from 'react'
-import { COLUNA_NOVO_PEDIDO_ID } from '../defaultBoard'
+import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID } from '../defaultBoard'
 import { COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
 import { etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
@@ -55,7 +55,7 @@ export function KanbanColumn({
 
   return (
     <section
-      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''}`}
+      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''}`}
     >
       <ConfirmModal
         open={confirmDeleteOpen}

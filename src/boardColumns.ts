@@ -1,4 +1,4 @@
-import { DEFAULT_BOARD } from './defaultBoard'
+import { COLUNA_PEDIDO_FEITO_ID, DEFAULT_BOARD } from './defaultBoard'
 import type { BoardState, Column, OrderCard } from './types'
 
 /** Etapa final — pedido já saiu; não deve voltar sozinho para o início. */
@@ -24,6 +24,16 @@ export function ensureBoardColumns(columns: Column[] | undefined | null): Column
     }
   }
 
+  return posicionarPedidoFeitoAntesDeLogos(list)
+}
+
+function posicionarPedidoFeitoAntesDeLogos(columns: Column[]): Column[] {
+  const list = [...columns]
+  const feitoIdx = list.findIndex((c) => c.id === COLUNA_PEDIDO_FEITO_ID)
+  if (feitoIdx < 0) return list
+  const [feito] = list.splice(feitoIdx, 1)
+  const logosIdx = list.findIndex((c) => c.id === 'logos-recebidas')
+  list.splice(logosIdx < 0 ? 0 : logosIdx, 0, feito)
   return list
 }
 

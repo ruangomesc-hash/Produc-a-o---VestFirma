@@ -13,6 +13,7 @@ export function PedidoSearchBar({ board, onLocalizar, onAbrirFicha }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState(false)
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -27,25 +28,35 @@ export function PedidoSearchBar({ board, onLocalizar, onAbrirFicha }: Props) {
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setOpen(false)
+        if (!query.trim()) setExpanded(false)
+      }
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [])
+  }, [query])
+
+  useEffect(() => {
+    if (expanded) inputRef.current?.focus()
+  }, [expanded])
 
   const pick = (card: OrderCard, abrirFicha: boolean) => {
     if (abrirFicha) onAbrirFicha(card)
     else onLocalizar(card)
     setOpen(false)
+    setExpanded(false)
+    setQuery('')
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter') && results.length > 0) {
-      setOpen(true)
-      return
-    }
     if (e.key === 'Escape') {
       setOpen(false)
+      setExpanded(false)
+      return
+    }
+    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter') && results.length > 0) {
+      setOpen(true)
       return
     }
     if (!results.length) return
@@ -62,55 +73,81 @@ export function PedidoSearchBar({ board, onLocalizar, onAbrirFicha }: Props) {
     }
   }
 
-  const showList = open && query.trim().length > 0
+  const showList = expanded && open && query.trim().length > 0
 
   return (
-    <div className="pedido-search" ref={rootRef}>
-      <label className="pedido-search-label" htmlFor={listId}>
-        <span className="pedido-search-label-text">Pesquisar pedido</span>
-        <div className="pedido-search-field">
-          <input
-            ref={inputRef}
-            id={listId}
-            type="search"
-            className="pedido-search-input"
-            placeholder="Nº do pedido, cliente ou empresa…"
-            autoComplete="off"
-            spellCheck={false}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setOpen(true)
-            }}
-            onFocus={() => {
-              if (query.trim()) setOpen(true)
-            }}
-            onKeyDown={onKeyDown}
-            role="combobox"
-            aria-expanded={showList}
-            aria-controls={`${listId}-list`}
-            aria-autocomplete="list"
-          />
-          {query ? (
+    <div className={`pedido-search${expanded ? ' pedido-search--open' : ''}`} ref={rootRef}>
+      {!expanded ? (
+        <button
+          type="button"
+          className="pedido-search-toggle"
+          aria-label="Pesquisar pedido"
+          title="Pesquisar pedido (número, cliente ou empresa)"
+          onClick={() => {
+            setExpanded(true)
+            setOpen(true)
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path d="M15.2 15.2 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      ) : (
+        <label className="pedido-search-label" htmlFor={listId}>
+          <span className="pedido-search-label-text">Pesquisar pedido</span>
+          <div className="pedido-search-field">
+            <input
+              ref={inputRef}
+              id={listId}
+              type="search"
+              className="pedido-search-input"
+              placeholder="Nº, cliente ou empresa…"
+              autoComplete="off"
+              spellCheck={false}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setOpen(true)
+              }}
+              onFocus={() => {
+                if (query.trim()) setOpen(true)
+              }}
+              onKeyDown={onKeyDown}
+              role="combobox"
+              aria-expanded={showList}
+              aria-controls={`${listId}-list`}
+              aria-autocomplete="list"
+            />
+            {query ? (
+              <button
+                type="button"
+                className="pedido-search-clear"
+                aria-label="Limpar pesquisa"
+                onClick={() => {
+                  setQuery('')
+                  setOpen(false)
+                  inputRef.current?.focus()
+                }}
+              >
+                ×
+              </button>
+            ) : null}
             <button
               type="button"
               className="pedido-search-clear"
-              aria-label="Limpar pesquisa"
+              aria-label="Fechar pesquisa"
               onClick={() => {
                 setQuery('')
                 setOpen(false)
-                inputRef.current?.focus()
+                setExpanded(false)
               }}
             >
               ×
             </button>
-          ) : null}
-        </div>
-      </label>
-      <p className="pedido-search-hint">
-        Busca por número, nome do cliente ou segmento da empresa. Enter vai até o card; Shift+Enter abre a
-        ficha.
-      </p>
+          </div>
+        </label>
+      )}
 
       {showList ? (
         <ul

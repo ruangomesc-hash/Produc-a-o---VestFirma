@@ -3,7 +3,10 @@ import { mesclarSegmentos } from './segmentosEmpresa'
 
 const col = (id: string, title: string) => ({ id, title })
 
-/** Única coluna onde novos pedidos podem ser criados. */
+/** Pedidos da Shopify entram aqui — ainda sem logo. */
+export const COLUNA_PEDIDO_FEITO_ID = 'pedido-feito'
+
+/** Única coluna onde novos pedidos manuais podem ser criados. */
 export const COLUNA_NOVO_PEDIDO_ID = 'logos-recebidas'
 
 /** Coluna padrão onde novos pedidos entram (portal do vendedor e kanban). */
@@ -15,6 +18,7 @@ export function colunaParaNovoPedido(board: BoardState): string {
 
 export const DEFAULT_BOARD: BoardState = {
   columns: [
+    col(COLUNA_PEDIDO_FEITO_ID, 'Pedido feito'),
     col(COLUNA_NOVO_PEDIDO_ID, 'Logos recebidas'),
     col('logos-producao', 'Logos em produção'),
     col('logos-prontas', 'Logos prontas'),

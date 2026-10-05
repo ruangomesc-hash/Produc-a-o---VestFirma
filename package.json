@@ -22,7 +22,8 @@
     "server:api": "API_ONLY=1 PORT=8787 node --env-file=.env server/server.mjs",
     "lint": "oxlint",
     "test:images": "node --test tests/original-images.test.mjs scripts/test-original-images-server.mjs",
-    "test:pedidos": "node --test tests/pedidos-persist.test.mjs && node --test scripts/test-pedidos-server.mjs && node --test scripts/test-users-recover.mjs && node --test scripts/test-users-persist.mjs && node --test scripts/test-users-login.mjs"
+    "test:pedidos": "node --test tests/pedidos-persist.test.mjs && node --test scripts/test-pedidos-server.mjs && node --test scripts/test-users-recover.mjs && node --test scripts/test-users-persist.mjs && node --test scripts/test-users-login.mjs",
+    "test:shopify": "node --test tests/shopify-order-map.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

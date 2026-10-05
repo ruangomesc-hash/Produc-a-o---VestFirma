@@ -43,6 +43,7 @@ export function mergeVendedoresUnion(a, b) {
 }
 
 const DEFAULT_COLUMNS = [
+  { id: 'pedido-feito', title: 'Pedido feito' },
   { id: 'logos-recebidas', title: 'Logos recebidas' },
   { id: 'logos-producao', title: 'Logos em produção' },
   { id: 'logos-prontas', title: 'Logos prontas' },
@@ -56,8 +57,21 @@ export function ensureBoardColumns(columns) {
   const list = [...(columns ?? [])]
   const byId = new Map(list.map((c) => [c.id, c]))
   for (const def of DEFAULT_COLUMNS) {
-    if (!byId.has(def.id)) list.push({ ...def })
+    if (!byId.has(def.id)) {
+      list.push({ ...def })
+      byId.set(def.id, def)
+    }
   }
+  return posicionarPedidoFeitoAntesDeLogos(list)
+}
+
+function posicionarPedidoFeitoAntesDeLogos(columns) {
+  const list = [...columns]
+  const feitoIdx = list.findIndex((c) => c.id === 'pedido-feito')
+  if (feitoIdx < 0) return list
+  const [feito] = list.splice(feitoIdx, 1)
+  const logosIdx = list.findIndex((c) => c.id === 'logos-recebidas')
+  list.splice(logosIdx < 0 ? 0 : logosIdx, 0, feito)
   return list
 }
 

@@ -54,7 +54,7 @@ function logoDirPath() {
   return getBoardPaths().logoDir
 }
 
-async function readBody(req) {
+async function readRawBody(req) {
   const chunks = []
   let size = 0
   for await (const chunk of req) {
@@ -64,7 +64,11 @@ async function readBody(req) {
     }
     chunks.push(chunk)
   }
-  return Buffer.concat(chunks).toString('utf8')
+  return Buffer.concat(chunks)
+}
+
+async function readBody(req) {
+  return (await readRawBody(req)).toString('utf8')
 }
 
 async function handleBoardApi(req, res) {
@@ -245,6 +249,10 @@ async function handleBoardApi(req, res) {
         await fs.writeFile(`${DATA_FILE}.bak`, out, 'utf8')
       }
     })
+    const { syncEtapasKanbanParaShopify } = await import('./shopifySync.mjs')
+    void syncEtapasKanbanParaShopify(existing, board).catch((err) => {
+      console.warn('[vestfirma] Shopify sync:', err)
+    })
     res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify({ ok: true, savedAt: new Date().toISOString() }))
     return
@@ -294,6 +302,7 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
@@ -341,7 +350,7 @@ async function serveStatic(req, res, urlPath) {
 
   const ext = path.extname(target).toLowerCase()
   const cache =
-    ext === '.html'
+    ext === '.html' || ext === '.webmanifest'
       ? 'no-cache, no-store, must-revalidate'
       : ext === '.js' || ext === '.css'
         ? 'no-cache'
@@ -426,6 +435,20 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname.startsWith('/api/logos/')) {
       await handleLogoApi(req, res, url)
+      return
+    }
+
+    if (url.pathname === '/api/shopify/webhook' || url.pathname === '/api/shopify') {
+      const { handleShopifyWebhookApi } = await import('./shopifyWebhook.mjs')
+      await handleShopifyWebhookApi(req, res, {
+        readRawBody,
+        corsHeaders,
+        boardFilePath,
+        readExistingBoard,
+        backupBoardBeforeWrite,
+        writeBoardAtomic,
+        withBoardWriteLock,
+      })
       return
     }
 

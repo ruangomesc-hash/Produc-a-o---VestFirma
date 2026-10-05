@@ -93,3 +93,13 @@ services:
       # Opcional: webhook n8n / Evolution (configure depois no Dashboard)
       - key: WHATSAPP_WEBHOOK_URL
         sync: false
+
+      # Shopify — preencher no Dashboard da Render (não vai no Git)
+      - key: SHOPIFY_SHOP
+        sync: false
+      - key: SHOPIFY_ADMIN_TOKEN
+        sync: false
+      - key: SHOPIFY_WEBHOOK_SECRET
+        sync: false
+      - key: SHOPIFY_API_VERSION
+        value: "2025-01"

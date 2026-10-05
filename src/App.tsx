@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   logout,
   fetchSessionProfile,
@@ -26,7 +26,9 @@ import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
 import { PedidoSearchBar } from './components/PedidoSearchBar'
+import { WebNotifyButton } from './components/WebNotifyButton'
 import { LoginPage } from './components/LoginPage'
+import { PwaInstallBanner } from './components/PwaInstallBanner'
 import { WhatsAppNotifyModal } from './components/WhatsAppNotifyModal'
 import { WhatsAppRedirectModal } from './components/WhatsAppRedirectModal'
 import { VisaoGeralPanel } from './components/VisaoGeralPanel'
@@ -46,7 +48,13 @@ import { useBoard } from './hooks/useBoard'
 import { contagemPedidos, pedidoVisivelNoKanban } from './pedidosPolicy'
 import { pedidoGravadoNoServidor } from './pedidoSaveResult'
 import { isRemoteSyncEnabled } from './remoteBoard'
-import type { OrderCard } from './types'
+import { diffBoardAlerts } from './boardNotifyDiff'
+import {
+  mostrarAvisosQuadro,
+  registerVestfirmaServiceWorker,
+  webNotifyActive,
+} from './webNotify'
+import type { BoardState, OrderCard } from './types'
 
 type AuthState = 'boot' | 'checking' | 'login' | 'ok'
 
@@ -95,18 +103,21 @@ export default function App() {
 
   if (authState === 'login') {
     return (
-      <LoginPage
-        onSuccess={(profile) => {
-          markLoginGrace()
-          setSession(profile)
-          setAuthState('ok')
-          setAuditActor(profile)
-          recordAudit({
-            action: 'auth.login',
-            summary: `${profile.user} entrou no sistema`,
-          })
-        }}
-      />
+      <>
+        <PwaInstallBanner />
+        <LoginPage
+          onSuccess={(profile) => {
+            markLoginGrace()
+            setSession(profile)
+            setAuthState('ok')
+            setAuditActor(profile)
+            recordAudit({
+              action: 'auth.login',
+              summary: `${profile.user} entrou no sistema`,
+            })
+          }}
+        />
+      </>
     )
   }
 
@@ -132,16 +143,22 @@ function AuthenticatedRoot({
   onLogout: () => void | Promise<void>
 }) {
   const userLabel = session?.user ?? null
+  const shell = (node: ReactNode) => (
+    <>
+      <PwaInstallBanner />
+      {node}
+    </>
+  )
   if (isPortalFestaPreviewRoute()) {
-    return <PortalFestaPreviewPage user={userLabel} onLogout={onLogout} />
+    return shell(<PortalFestaPreviewPage user={userLabel} onLogout={onLogout} />)
   }
   if (isPortalPedidoRoute()) {
-    return <VendedorPedidoPortalPage session={session} onLogout={onLogout} />
+    return shell(<VendedorPedidoPortalPage session={session} onLogout={onLogout} />)
   }
   if (isRedirectRoute()) {
-    return <WhatsAppRedirectPage user={userLabel} onLogout={onLogout} />
+    return shell(<WhatsAppRedirectPage user={userLabel} onLogout={onLogout} />)
   }
-  return <AuthenticatedApp session={session} onLogout={onLogout} />
+  return shell(<AuthenticatedApp session={session} onLogout={onLogout} />)
 }
 
 type AuthenticatedProps = {
@@ -188,6 +205,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [pedidoSearchHighlightId, setPedidoSearchHighlightId] = useState<string | null>(null)
   const pedidoSearchHighlightTimer = useRef<number | null>(null)
+  const boardNotifyPrev = useRef<BoardState | null>(null)
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
   const [managedUsersReady, setManagedUsersReady] = useState(false)
 
@@ -332,6 +350,11 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [visaoTvMode, setVisaoTvMode] = useState(false)
 
   useEffect(() => {
+    document.body.classList.toggle('vestfirma-tv', visaoTvMode)
+    return () => document.body.classList.remove('vestfirma-tv')
+  }, [visaoTvMode])
+
+  useEffect(() => {
     if ((view === 'historico' || view === 'equipe') && !isAdmin(session)) {
       setView('kanban')
     }
@@ -347,8 +370,14 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   useEffect(() => {
     if (!ready || !session) return
     const tick = () => {
-      if (document.visibilityState !== 'visible') return
-      if (view === 'kanban' || view === 'visao' || view === 'vendedores') {
+      const hidden = document.visibilityState !== 'visible'
+      if (hidden && !webNotifyActive()) return
+      if (
+        hidden ||
+        view === 'kanban' ||
+        view === 'visao' ||
+        view === 'vendedores'
+      ) {
         void refreshBoardFromServer()
       }
     }
@@ -359,6 +388,24 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       document.removeEventListener('visibilitychange', tick)
     }
   }, [ready, session, view, refreshBoardFromServer])
+
+  useEffect(() => {
+    void registerVestfirmaServiceWorker()
+  }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    const prev = boardNotifyPrev.current
+    if (!prev) {
+      boardNotifyPrev.current = board
+      return
+    }
+    const alerts = diffBoardAlerts(prev, board)
+    boardNotifyPrev.current = board
+    if (!alerts.length) return
+    if (document.visibilityState === 'visible' && document.hasFocus()) return
+    void mostrarAvisosQuadro(alerts)
+  }, [board, ready])
 
   useEffect(() => {
     setAuditActor(session)
@@ -535,6 +582,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                 </button>
               ) : null}
             </div>
+            {view === 'kanban' ? (
+              <PedidoSearchBar
+                board={boardKanban}
+                onLocalizar={localizarPedidoNoKanban}
+                onAbrirFicha={openEdit}
+              />
+            ) : null}
           </nav>
           <div className="brand brand-center">
             <img
@@ -592,6 +646,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             >
               Grupo WhatsApp
             </button>
+            <WebNotifyButton />
             {view === 'visao' && (
               <button type="button" className="btn secondary" onClick={entrarModoTv}>
                 Modo TV
@@ -680,11 +735,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               </div>
             </div>
           ) : null}
-          <PedidoSearchBar
-            board={boardKanban}
-            onLocalizar={localizarPedidoNoKanban}
-            onAbrirFicha={openEdit}
-          />
         <KanbanBoard
           board={boardKanban}
           highlightPedidoId={pedidoSearchHighlightId}
