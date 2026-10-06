@@ -8,6 +8,21 @@ function isoToMs(iso: string | null | undefined): number {
   return Number.isNaN(t) ? 0 : t
 }
 
+/** Última mudança de etapa (arraste manual / Shopify), independente de comentário. */
+export function etapaRevisionMs(
+  card: Pick<OrderCard, 'columnId' | 'etapaDesde' | 'historicoEtapa' | 'createdAt'> | null | undefined,
+): number {
+  if (!card) return 0
+  let max = isoToMs(card.etapaDesde) || isoToMs(card.createdAt)
+  for (const e of card.historicoEtapa ?? []) {
+    const tipo = String(e?.tipo || '')
+    if (tipo === 'criado' || tipo === 'movido' || tipo === 'avancou' || tipo === 'voltou' || e?.fromColumnId) {
+      max = Math.max(max, isoToMs(e?.at))
+    }
+  }
+  return max
+}
+
 /** Momento da última mudança no pedido (etapa, comentário ou arquivo). */
 export function pedidoRevisionMs(card: Pick<
   OrderCard,
@@ -102,7 +117,9 @@ export function mergeOrderCardFields(existing: OrderCard, incoming: OrderCard): 
   const tIn = pedidoRevisionMs(incoming)
   const newer = tIn >= tExist ? incoming : existing
   const older = tIn >= tExist ? existing : incoming
-
+  const etapaExist = etapaRevisionMs(existing)
+  const etapaIn = etapaRevisionMs(incoming)
+  const etapaWinner = etapaIn >= etapaExist ? incoming : existing
   const comentarios = ordenarComentariosPedido(
     mergeById<PedidoComentario>(existing.comentarios, incoming.comentarios),
   )
@@ -110,6 +127,8 @@ export function mergeOrderCardFields(existing: OrderCard, incoming: OrderCard): 
   return {
     ...older,
     ...newer,
+    columnId: etapaWinner.columnId,
+    etapaDesde: etapaWinner.etapaDesde || newer.etapaDesde,
     comentarios,
     historicoEtapa: ordenarHistorico(
       mergeById<HistoricoEtapaEntry>(existing.historicoEtapa, incoming.historicoEtapa),
@@ -167,6 +186,12 @@ export function cardTemConteudoAlemDoOutro(
   const lo = (local.observacao ?? '').trim()
   const ro = (remote.observacao ?? '').trim()
   if (lo && !ro) return true
+  if (
+    local.columnId !== remote.columnId &&
+    etapaRevisionMs(local) > etapaRevisionMs(remote)
+  ) {
+    return true
+  }
   return false
 }
 

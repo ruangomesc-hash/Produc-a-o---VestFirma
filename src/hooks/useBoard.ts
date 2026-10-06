@@ -198,7 +198,7 @@ export function useBoard() {
         void (async () => {
           const payload = boardRef.current
           const result = await saveBoard(payload, {
-            forceRemote: opts?.forceRemote,
+            forceRemote: opts?.skipRemote ? false : (opts?.forceRemote ?? isRemoteSyncEnabled()),
             skipRemote: opts?.skipRemote,
             permanentlyRemoveArchivedCardIds: removeIds.length ? removeIds : undefined,
           })
@@ -767,7 +767,7 @@ export function useBoard() {
         ...board,
         cards: board.cards.map((c) => (c.id === cardId ? updated : c)),
       }
-      persist(nextBoard, { immediate: true })
+      persist(nextBoard, { immediate: true, forceRemote: true })
       if (!opts?.silent) {
         notificarSePedidoMovido(updated, nextBoard, fromColumnId, columnId)
       }

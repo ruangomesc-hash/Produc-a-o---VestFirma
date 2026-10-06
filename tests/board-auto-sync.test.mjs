@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { mergeBoardPreservingPedidos, countBoardCards } from '../server/boardPersist.mjs'
 import { dedupeBoardCards } from '../shared/dedupeBoardCards.mjs'
+import { mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
 
 function boardComCards(...cards) {
   const col = 'pedido-feito'
@@ -70,5 +71,43 @@ describe('sync automático — Shopify duplicado e merge', () => {
     const merged = mergeBoardPreservingPedidos(existing, incoming)
     assert.equal(countBoardCards(merged), 5)
     assert.ok(merged.cards.some((card) => card.id === 'e'))
+  })
+
+  it('arraste manual vence comentário mais novo na outra cópia', () => {
+    const noServidor = {
+      id: 'p1',
+      columnId: 'logos-recebidas',
+      etapaDesde: '2026-10-06T14:00:00.000Z',
+      createdAt: '2026-10-06T10:00:00.000Z',
+      historicoEtapa: [
+        { id: 'h1', tipo: 'avancou', columnId: 'logos-recebidas', at: '2026-10-06T14:00:00.000Z' },
+      ],
+      comentarios: [],
+      cliente: 'Manual',
+      numeroPedido: '7',
+    }
+    const noTablet = {
+      ...noServidor,
+      columnId: 'pedido-feito',
+      etapaDesde: '2026-10-06T10:00:00.000Z',
+      historicoEtapa: [],
+      comentarios: [{ id: 'c1', texto: 'oi', at: '2026-10-06T15:00:00.000Z' }],
+    }
+    const merged = mergeOrderCardFields(noServidor, noTablet)
+    assert.equal(merged.columnId, 'logos-recebidas')
+    assert.equal(merged.comentarios.length, 1)
+  })
+
+  it('PUT com pedido manual novo não some no servidor', () => {
+    const existing = boardComCards(
+      { id: 'shopify-1', numeroPedido: '1049', shopifyOrderId: '1', origem: 'shopify' },
+    )
+    const incoming = boardComCards(
+      { id: 'shopify-1', numeroPedido: '1049', shopifyOrderId: '1', origem: 'shopify' },
+      { id: 'manual-uuid', numeroPedido: '6', cliente: 'Gustavo' },
+    )
+    const merged = mergeBoardPreservingPedidos(existing, incoming)
+    assert.equal(countBoardCards(merged), 2)
+    assert.ok(merged.cards.some((card) => card.id === 'manual-uuid'))
   })
 })
