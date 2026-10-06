@@ -6,6 +6,9 @@ const col = (id: string, title: string) => ({ id, title })
 /** Pedidos da Shopify entram aqui — ainda sem logo. */
 export const COLUNA_PEDIDO_FEITO_ID = 'pedido-feito'
 
+/** Depois de Pedido feito — preview da arte em andamento. */
+export const COLUNA_PREVIEW_EM_ANDAMENTO_ID = 'preview-em-andamento'
+
 /** Única coluna onde novos pedidos manuais podem ser criados. */
 export const COLUNA_NOVO_PEDIDO_ID = 'logos-recebidas'
 
@@ -19,7 +22,8 @@ export function colunaParaNovoPedido(board: BoardState): string {
 export const DEFAULT_BOARD: BoardState = {
   columns: [
     col(COLUNA_PEDIDO_FEITO_ID, 'Pedido feito'),
-    col(COLUNA_NOVO_PEDIDO_ID, 'Logos recebidas'),
+    col(COLUNA_PREVIEW_EM_ANDAMENTO_ID, 'Preview em andamento'),
+    col(COLUNA_NOVO_PEDIDO_ID, 'Logos liberadas para produção'),
     col('logos-producao', 'Logos em produção'),
     col('logos-prontas', 'Logos prontas'),
     col('disponiveis-aplicacao', 'Disponíveis para aplicação'),

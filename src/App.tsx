@@ -49,12 +49,13 @@ import { useBoard } from './hooks/useBoard'
 import { contagemPedidos, pedidoVisivelNoKanban } from './pedidosPolicy'
 import { pedidoGravadoNoServidor } from './pedidoSaveResult'
 import { isRemoteSyncEnabled } from './remoteBoard'
-import { diffBoardAlerts } from './boardNotifyDiff'
+import { contarNovosPedidosShopify, diffBoardAlerts } from './boardNotifyDiff'
 import {
   mostrarAvisosQuadro,
   registerVestfirmaServiceWorker,
   webNotifyActive,
 } from './webNotify'
+import { prepararSinoNovoPedidoShopify, tocarSinoNovosPedidosShopify } from './shopifyPedidoSino'
 import type { BoardState, OrderCard } from './types'
 
 type AuthState = 'boot' | 'checking' | 'login' | 'ok'
@@ -401,13 +402,27 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
   useEffect(() => {
     if (!ready) return
+    prepararSinoNovoPedidoShopify()
+    const warm = () => prepararSinoNovoPedidoShopify()
+    document.addEventListener('pointerdown', warm, true)
+    document.addEventListener('keydown', warm, true)
+    return () => {
+      document.removeEventListener('pointerdown', warm, true)
+      document.removeEventListener('keydown', warm, true)
+    }
+  }, [ready])
+
+  useEffect(() => {
+    if (!ready) return
     const prev = boardNotifyPrev.current
     if (!prev) {
       boardNotifyPrev.current = board
       return
     }
+    const novosShopify = contarNovosPedidosShopify(prev, board)
     const alerts = diffBoardAlerts(prev, board)
     boardNotifyPrev.current = board
+    if (novosShopify > 0) tocarSinoNovosPedidosShopify(novosShopify)
     if (!alerts.length) return
     if (document.visibilityState === 'visible' && document.hasFocus()) return
     void mostrarAvisosQuadro(alerts)

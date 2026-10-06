@@ -3,6 +3,7 @@ import type { OrderCard } from './types'
 
 /** Prazo máximo na etapa (horas). null = sem contagem. */
 const SLA_HORAS_POR_ID: Record<string, number> = {
+  'preview-em-andamento': 24,
   'logos-recebidas': 24,
   'logos-producao': 24,
   'logos-prontas': 24,
@@ -11,7 +12,9 @@ const SLA_HORAS_POR_ID: Record<string, number> = {
 }
 
 const SLA_HORAS_POR_TITULO: Record<string, number> = {
+  'preview em andamento': 24,
   'logos recebidas': 24,
+  'logos liberadas para producao': 24,
   'logos em producao': 24,
   'logos prontas': 24,
   'disponiveis para aplicacao': 6,
@@ -52,7 +55,7 @@ export function etapaPedidoEnviado(columnId: string, columnTitle: string): boole
   return tituloChave(columnTitle) === ENVIADO_TITULO_CHAVE
 }
 
-/** Selo WPP: da Logos recebidas até logística. Pedido feito usa Solicitar logo. */
+/** Selo WPP: da Preview em andamento até logística. Pedido feito usa Solicitar logo. */
 export function etapaMostraSeloWpp(columnId: string, columnTitle: string): boolean {
   if (columnId === 'pedido-feito' || tituloChave(columnTitle) === 'pedido feito') return false
   if (etapaPedidoEnviado(columnId, columnTitle)) return false

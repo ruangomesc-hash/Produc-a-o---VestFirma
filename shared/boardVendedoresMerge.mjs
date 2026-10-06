@@ -44,7 +44,8 @@ export function mergeVendedoresUnion(a, b) {
 
 const DEFAULT_COLUMNS = [
   { id: 'pedido-feito', title: 'Pedido feito' },
-  { id: 'logos-recebidas', title: 'Logos recebidas' },
+  { id: 'preview-em-andamento', title: 'Preview em andamento' },
+  { id: 'logos-recebidas', title: 'Logos liberadas para produção' },
   { id: 'logos-producao', title: 'Logos em produção' },
   { id: 'logos-prontas', title: 'Logos prontas' },
   { id: 'disponiveis-aplicacao', title: 'Disponíveis para aplicação' },
@@ -63,16 +64,34 @@ export function ensureBoardColumns(columns) {
       byId.set(def.id, def)
     }
   }
-  return posicionarCanceladosDepoisDeEnviado(posicionarPedidoFeitoAntesDeLogos(list))
+  return posicionarCanceladosDepoisDeEnviado(posicionarFluxoInicial(aplicarTitulosPadraoColunas(list)))
 }
 
-function posicionarPedidoFeitoAntesDeLogos(columns) {
+function aplicarTitulosPadraoColunas(columns) {
+  return columns.map((c) => {
+    if (c.id === 'logos-recebidas') {
+      const t = String(c.title || '').trim()
+      if (!t || /^logos recebidas$/i.test(t)) {
+        return { ...c, title: 'Logos liberadas para produção' }
+      }
+    }
+    if (c.id === 'preview-em-andamento') {
+      const t = String(c.title || '').trim()
+      if (!t) return { ...c, title: 'Preview em andamento' }
+    }
+    return c
+  })
+}
+
+function posicionarFluxoInicial(columns) {
   const list = [...columns]
-  const feitoIdx = list.findIndex((c) => c.id === 'pedido-feito')
-  if (feitoIdx < 0) return list
-  const [feito] = list.splice(feitoIdx, 1)
-  const logosIdx = list.findIndex((c) => c.id === 'logos-recebidas')
-  list.splice(logosIdx < 0 ? 0 : logosIdx, 0, feito)
+  const ids = ['pedido-feito', 'preview-em-andamento', 'logos-recebidas']
+  const extraidas = []
+  for (const id of ids) {
+    const idx = list.findIndex((c) => c.id === id)
+    if (idx >= 0) extraidas.push(...list.splice(idx, 1))
+  }
+  list.unshift(...extraidas)
   return list
 }
 

@@ -14,6 +14,27 @@ function visivelNoKanban(card: OrderCard): boolean {
   return !card.arquivadoEm
 }
 
+function pedidoVeioDaShopify(card: OrderCard): boolean {
+  if (card.origem === 'shopify') return true
+  return Boolean(String(card.shopifyOrderId || '').trim())
+}
+
+/** Pedidos Shopify que acabaram de entrar no quadro (não dispara na primeira carga). */
+export function contarNovosPedidosShopify(
+  prev: BoardState | null | undefined,
+  next: BoardState,
+): number {
+  if (!prev?.cards) return 0
+  const before = cardById(prev)
+  let n = 0
+  for (const card of next.cards ?? []) {
+    if (!card?.id || before.has(card.id)) continue
+    if (!visivelNoKanban(card) || !pedidoVeioDaShopify(card)) continue
+    n += 1
+  }
+  return n
+}
+
 function rotuloPedido(card: OrderCard): string {
   const n = card.numeroPedido?.trim()
   const nome = card.cliente?.trim()

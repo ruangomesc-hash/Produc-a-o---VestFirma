@@ -1,4 +1,8 @@
-import { COLUNA_PEDIDO_FEITO_ID, DEFAULT_BOARD } from './defaultBoard'
+import {
+  COLUNA_PEDIDO_FEITO_ID,
+  COLUNA_PREVIEW_EM_ANDAMENTO_ID,
+  DEFAULT_BOARD,
+} from './defaultBoard'
 import type { BoardState, Column, OrderCard } from './types'
 
 /** Etapa final — pedido já saiu; não deve voltar sozinho para o início. */
@@ -27,7 +31,25 @@ export function ensureBoardColumns(columns: Column[] | undefined | null): Column
     }
   }
 
-  return posicionarCanceladosDepoisDeEnviado(posicionarPedidoFeitoAntesDeLogos(list))
+  return posicionarCanceladosDepoisDeEnviado(
+    posicionarFluxoInicial(aplicarTitulosPadraoColunas(list)),
+  )
+}
+
+function aplicarTitulosPadraoColunas(columns: Column[]): Column[] {
+  return columns.map((c) => {
+    if (c.id === 'logos-recebidas') {
+      const t = String(c.title || '').trim()
+      if (!t || /^logos recebidas$/i.test(t)) {
+        return { ...c, title: 'Logos liberadas para produção' }
+      }
+    }
+    if (c.id === COLUNA_PREVIEW_EM_ANDAMENTO_ID) {
+      const t = String(c.title || '').trim()
+      if (!t) return { ...c, title: 'Preview em andamento' }
+    }
+    return c
+  })
 }
 
 /** Etapa nova entra no fluxo, sempre antes de Pedido enviado. */
@@ -42,13 +64,15 @@ export function inserirColunaAntesDePedidoEnviado(columns: Column[], nova: Colum
   return list
 }
 
-function posicionarPedidoFeitoAntesDeLogos(columns: Column[]): Column[] {
+function posicionarFluxoInicial(columns: Column[]): Column[] {
   const list = [...columns]
-  const feitoIdx = list.findIndex((c) => c.id === COLUNA_PEDIDO_FEITO_ID)
-  if (feitoIdx < 0) return list
-  const [feito] = list.splice(feitoIdx, 1)
-  const logosIdx = list.findIndex((c) => c.id === 'logos-recebidas')
-  list.splice(logosIdx < 0 ? 0 : logosIdx, 0, feito)
+  const ids = [COLUNA_PEDIDO_FEITO_ID, COLUNA_PREVIEW_EM_ANDAMENTO_ID, 'logos-recebidas']
+  const extraidas: Column[] = []
+  for (const id of ids) {
+    const idx = list.findIndex((c) => c.id === id)
+    if (idx >= 0) extraidas.push(...list.splice(idx, 1))
+  }
+  list.unshift(...extraidas)
   return list
 }
 

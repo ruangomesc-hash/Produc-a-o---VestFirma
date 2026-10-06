@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useState } from 'react'
-import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID } from '../defaultBoard'
+import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID, COLUNA_PREVIEW_EM_ANDAMENTO_ID } from '../defaultBoard'
 import { COLUNA_CANCELADOS_EXPIRADOS_ID, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
 import { etapaCanceladosExpirados, etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
@@ -57,7 +57,7 @@ export function KanbanColumn({
 
   return (
     <section
-      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${colunaCancelados ? 'column-cancelados-expirados' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''}`}
+      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${colunaCancelados ? 'column-cancelados-expirados' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''} ${column.id === COLUNA_PREVIEW_EM_ANDAMENTO_ID ? 'column-preview-andamento' : ''}`}
     >
       <ConfirmModal
         open={confirmDeleteOpen}

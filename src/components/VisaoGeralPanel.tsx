@@ -15,6 +15,7 @@ type Props = {
 
 const TEMA_POR_COLUNA: Record<string, string> = {
   'pedido-feito': 'visao-card--pedido-feito',
+  'preview-em-andamento': 'visao-card--preview',
   'logos-recebidas': 'visao-card--recebidas',
   'logos-producao': 'visao-card--producao',
   'logos-prontas': 'visao-card--prontas',

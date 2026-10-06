@@ -4,7 +4,7 @@ import {
   shopifyOrderIdOf,
 } from './vincularPedido.mjs'
 
-/** Coluna inicial de pedidos da Shopify (antes de Logos recebidas). */
+/** Coluna inicial de pedidos da Shopify (antes de Preview em andamento). */
 export const COLUNA_PEDIDO_FEITO_ID = 'pedido-feito'
 export const COLUNA_PEDIDO_FEITO_TITLE = 'Pedido feito'
 export const COLUNA_CANCELADOS_EXPIRADOS_ID = 'cancelados-expirados'

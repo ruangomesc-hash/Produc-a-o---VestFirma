@@ -2,10 +2,16 @@ export const TAG_MENSAGEM_WPP = 'wpp-atraso'
 
 export const ETAPAS_MENSAGEM_WPP = [
   {
-    id: 'logos-recebidas',
-    title: 'Logos recebidas',
+    id: 'preview-em-andamento',
+    title: 'Preview em andamento',
     texto:
-      'Olá, {cliente}! Tudo bem?\nAqui é da VestFirma. O pedido {pedido} está em Logos recebidas e passou do prazo desta etapa.\nPode confirmar se a logo está ok para seguirmos, ou se precisa ajustar algo? Responda por aqui.',
+      'Olá, {cliente}! Tudo bem?\nAqui é da VestFirma. O pedido {pedido} está em Preview em andamento e passou do prazo desta etapa.\nPode confirmar se a arte está ok, ou se precisa ajustar algo? Responda por aqui.',
+  },
+  {
+    id: 'logos-recebidas',
+    title: 'Logos liberadas para produção',
+    texto:
+      'Olá, {cliente}! Tudo bem?\nAqui é da VestFirma. O pedido {pedido} está em Logos liberadas para produção e passou do prazo desta etapa.\nPode confirmar se a logo está ok para seguirmos, ou se precisa ajustar algo? Responda por aqui.',
   },
   {
     id: 'logos-producao',

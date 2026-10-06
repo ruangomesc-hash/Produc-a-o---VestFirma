@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { diffBoardAlerts } from '../src/boardNotifyDiff.ts'
+import { contarNovosPedidosShopify, diffBoardAlerts } from '../src/boardNotifyDiff.ts'
 
 function board(cards) {
   return {
@@ -55,5 +55,17 @@ describe('diffBoardAlerts', () => {
     assert.ok(tags.includes('mov-1-b'))
     assert.ok(tags.includes('arq-2'))
     assert.ok(tags.includes('novo-3'))
+  })
+
+  it('toca uma campainha por pedido Shopify novo, não na primeira carga', () => {
+    assert.equal(contarNovosPedidosShopify(null, board([card('s1', 'a', { origem: 'shopify' })])), 0)
+    const prev = board([card('1', 'a')])
+    const next = board([
+      card('1', 'a'),
+      card('s2', 'a', { origem: 'shopify', shopifyOrderId: '99' }),
+      card('s3', 'a', { origem: 'shopify', shopifyOrderId: '100' }),
+      card('manual', 'a'),
+    ])
+    assert.equal(contarNovosPedidosShopify(prev, next), 2)
   })
 })
