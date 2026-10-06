@@ -1272,7 +1272,7 @@ body.vestfirma-tv .pwa-install-banner {
   max-width: 100%;
   height: 100%;
   min-height: 0;
-  gap: 2px;
+  gap: calc(2px + 1mm);
 }
 
 .board-scroll--fluxo .kanban-column,
@@ -1323,48 +1323,65 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 @media (min-width: 1100px) and (hover: hover) {
-  .kanban-board-shell .board-scroll--fluxo {
+  .kanban-board-shell .board-scroll--fluxo,
+  .kanban-board-shell .board-scroll--laterais {
     padding: 0;
   }
 
-  .board-columns.board-columns--fluxo {
-    gap: 2px;
+  .board-columns.board-columns--fluxo,
+  .board-columns.board-columns--laterais {
+    gap: calc(2px + 1mm);
   }
 
-  .board-scroll--fluxo .kanban-column {
+  .board-scroll--fluxo .kanban-column,
+  .board-scroll--laterais .kanban-column {
     border-radius: 8px;
   }
 
-  .board-scroll--fluxo .column-header {
+  .board-scroll--laterais .kanban-column,
+  .board-scroll--concluidos .kanban-column,
+  .board-scroll--cancelados .kanban-column {
+    flex: 0 0 12.5vw;
+    width: 12.5vw;
+    min-width: 0;
+    height: 100%;
+    max-height: none;
+  }
+
+  .board-scroll--fluxo .column-header,
+  .board-scroll--laterais .column-header {
     position: relative;
     padding: 0.42rem 0.45rem;
     gap: 0.25rem;
     align-items: flex-end;
   }
 
-  .board-scroll--fluxo .column-header > div:first-child {
+  .board-scroll--fluxo .column-header > div:first-child,
+  .board-scroll--laterais .column-header > div:first-child {
     flex: 1;
     min-width: 0;
     padding-right: 0.15rem;
   }
 
-  .board-scroll--fluxo .column-header-actions {
+  .board-scroll--fluxo .column-header-actions,
+  .board-scroll--laterais .column-header-actions {
     position: static;
     flex-shrink: 0;
     align-self: flex-end;
     padding-bottom: 0.08rem;
   }
 
-  .board-scroll--fluxo .column-header h2 {
+  .board-scroll--fluxo .column-header h2,
+  .board-scroll--laterais .column-header h2,
+  .board-scroll--fluxo .kanban-column.column-logistica .column-header h2,
+  .board-scroll--laterais .kanban-column.column-cancelados-expirados .column-header h2 {
     font-size: 0.74rem;
     line-height: 1.2;
   }
 
-  .board-scroll--fluxo .kanban-column.column-logistica .column-header h2 {
-    font-size: 0.74rem;
-  }
-
-  .board-scroll--fluxo .column-count {
+  .board-scroll--fluxo .column-count,
+  .board-scroll--laterais .column-count,
+  .board-scroll--laterais .kanban-column.column-cancelados-expirados .column-count {
     font-size: 0.6rem;
     margin-top: 0.12rem;
   }
@@ -1379,12 +1396,14 @@ body.vestfirma-tv .pwa-install-banner {
     padding: 0.1rem 0.26rem;
   }
 
-  .board-scroll--fluxo .column-cards {
+  .board-scroll--fluxo .column-cards,
+  .board-scroll--laterais .column-cards {
     padding: 0.32rem;
     gap: 0.32rem;
   }
 
-  .board-scroll--fluxo .column-delete-btn {
+  .board-scroll--fluxo .column-delete-btn,
+  .board-scroll--laterais .column-delete-btn {
     font-size: 0.56rem;
     padding: 0.1rem 0.28rem;
   }
@@ -1395,7 +1414,9 @@ body.vestfirma-tv .pwa-install-banner {
     font-size: 0.7rem;
   }
 
-  .board-scroll--fluxo .column-logistica-badge {
+  .board-scroll--fluxo .column-logistica-badge,
+  .board-scroll--laterais .column-enviado-badge,
+  .board-scroll--laterais .column-cancelados-badge {
     font-size: 0.52rem;
     padding: 0.12rem 0.28rem;
   }
@@ -1459,7 +1480,7 @@ body.vestfirma-tv .pwa-install-banner {
   height: 100%;
   min-height: 0;
   display: flex;
-  gap: 0.45rem;
+  gap: calc(2px + 1mm);
 }
 
 .board-scroll--laterais .kanban-column,
@@ -1482,12 +1503,14 @@ body.vestfirma-tv .pwa-install-banner {
   padding-bottom: 0.25rem;
 }
 
-.board-columns.board-columns--fluxo {
-  gap: 2px;
+.board-columns.board-columns--fluxo,
+.board-columns.board-columns--laterais {
+  gap: calc(2px + 1mm);
 }
 
 @media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
-  .board-columns.board-columns--fluxo {
+  .board-columns.board-columns--fluxo,
+  .board-columns.board-columns--laterais {
     gap: 1rem;
   }
 }
