@@ -1241,6 +1241,9 @@ body.vestfirma-tv .pwa-install-banner {
   background: var(--vestfirma-gold);
   -webkit-overflow-scrolling: touch;
   padding: 1rem 0.25rem max(1.5rem, env(safe-area-inset-bottom, 0px)) 0.25rem;
+  --coluna-gap: calc(2px + 1mm);
+  --fluxo-colunas: 8;
+  container-type: inline-size;
 }
 
 .board-scroll--fluxo,
@@ -1310,7 +1313,10 @@ body.vestfirma-tv .pwa-install-banner {
   .board-scroll--fluxo .kanban-column,
   .board-scroll--fluxo .kanban-column.column-logistica,
   .board-scroll--fluxo .kanban-column.column-pedido-feito,
-  .board-scroll--fluxo .kanban-column.column-preview-andamento {
+  .board-scroll--fluxo .kanban-column.column-preview-andamento,
+  .board-scroll--laterais .kanban-column,
+  .board-scroll--concluidos .kanban-column,
+  .board-scroll--cancelados .kanban-column {
     flex: 0 0 var(--column-width);
     min-width: var(--column-width);
     width: var(--column-width);
@@ -1341,9 +1347,6 @@ body.vestfirma-tv .pwa-install-banner {
   .board-scroll--laterais .kanban-column,
   .board-scroll--concluidos .kanban-column,
   .board-scroll--cancelados .kanban-column {
-    flex: 0 0 12.5vw;
-    width: 12.5vw;
-    min-width: 0;
     height: 100%;
     max-height: none;
   }
@@ -1486,9 +1489,11 @@ body.vestfirma-tv .pwa-install-banner {
 .board-scroll--laterais .kanban-column,
 .board-scroll--concluidos .kanban-column,
 .board-scroll--cancelados .kanban-column {
-  flex: 0 0 min(20rem, 88vw);
-  width: min(20rem, 88vw);
-  min-width: min(18rem, 80vw);
+  flex: 0 0 calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8));
+  width: calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8));
+  min-width: 0;
+  height: 100%;
+  max-height: none;
 }
 
 .board-columns {
@@ -2177,6 +2182,65 @@ body.vestfirma-tv .pwa-install-banner {
   border-radius: 999px;
   background: #fecaca;
   color: #7f1d1d;
+}
+
+.kanban-board-shell .kanban-column {
+  border-radius: 8px;
+}
+
+.kanban-board-shell .column-header {
+  position: relative;
+  padding: 0.42rem 0.45rem;
+  gap: 0.25rem;
+  align-items: flex-end;
+}
+
+.kanban-board-shell .column-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0.15rem;
+}
+
+.kanban-board-shell .column-header-actions {
+  position: static;
+  flex-shrink: 0;
+  align-self: flex-end;
+  padding-bottom: 0.08rem;
+}
+
+.kanban-board-shell .column-header h2,
+.kanban-board-shell .kanban-column.column-logistica .column-header h2,
+.kanban-board-shell .kanban-column.column-pedido-enviado .column-header h2,
+.kanban-board-shell .kanban-column.column-cancelados-expirados .column-header h2 {
+  font-size: 0.74rem;
+  line-height: 1.2;
+}
+
+.kanban-board-shell .kanban-column.column-pedido-enviado .column-header h2 {
+  color: #e2e8f0;
+}
+
+.kanban-board-shell .column-count,
+.kanban-board-shell .kanban-column.column-cancelados-expirados .column-count {
+  font-size: 0.6rem;
+  margin-top: 0.12rem;
+}
+
+.kanban-board-shell .column-cards {
+  padding: 0.32rem;
+  gap: 0.32rem;
+}
+
+.kanban-board-shell .column-delete-btn {
+  font-size: 0.56rem;
+  padding: 0.1rem 0.28rem;
+}
+
+.kanban-board-shell .column-logistica-badge,
+.kanban-board-shell .column-enviado-badge,
+.kanban-board-shell .column-cancelados-badge {
+  font-size: 0.52rem;
+  padding: 0.12rem 0.28rem;
 }
 
 .card-cancelado-tag,

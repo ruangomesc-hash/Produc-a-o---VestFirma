@@ -243,7 +243,11 @@ export function KanbanBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveCard(null)}
     >
-      <div className="kanban-board-shell" ref={shellRef}>
+      <div
+        className="kanban-board-shell"
+        ref={shellRef}
+        style={{ ['--fluxo-colunas' as string]: String(Math.max(colunasFluxo.length, 1)) }}
+      >
         <div className="board-scroll board-scroll--fluxo">
           <div className="board-columns board-columns--fluxo">{colunasFluxo.map(renderColumn)}</div>
         </div>
