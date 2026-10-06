@@ -9,7 +9,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { resolveCardColumnId, COLUNA_PEDIDO_ENVIADO_ID, COLUNA_CANCELADOS_EXPIRADOS_ID } from '../boardColumns'
+import { resolveCardColumnId, ensureBoardColumns, COLUNA_PEDIDO_ENVIADO_ID, COLUNA_CANCELADOS_EXPIRADOS_ID } from '../boardColumns'
 import { etapaCanceladosExpirados, etapaPedidoEnviado } from '../etapas'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState, OrderCard } from '../types'
@@ -81,28 +81,31 @@ export function KanbanBoard({
     }),
   )
 
+  const columns = useMemo(() => ensureBoardColumns(board.columns), [board.columns])
+  const boardComColunas = useMemo(() => ({ ...board, columns }), [board, columns])
+
   const cardsByColumn = useMemo(() => {
     const map = new Map<string, OrderCard[]>()
-    for (const col of board.columns) map.set(col.id, [])
+    for (const col of columns) map.set(col.id, [])
     for (const card of board.cards) {
       if (!pedidoVisivelNoKanban(card)) continue
-      const columnId = resolveCardColumnId(board, card)
+      const columnId = resolveCardColumnId(boardComColunas, card)
       if (!columnId) continue
-      map.get(columnId)!.push(
-        columnId === card.columnId ? card : { ...card, columnId },
-      )
+      const bucket = map.get(columnId)
+      if (!bucket) continue
+      bucket.push(columnId === card.columnId ? card : { ...card, columnId })
     }
     return map
-  }, [board.columns, board.cards])
+  }, [columns, board.cards, boardComColunas])
 
   const resolveColumnId = (overId: string): string | null => {
-    if (board.columns.some((c) => c.id === overId)) return overId
+    if (columns.some((c) => c.id === overId)) return overId
     const card = board.cards.find((c) => c.id === overId)
     return card?.columnId ?? null
   }
 
   const tituloColuna = (columnId: string) =>
-    board.columns.find((c) => c.id === columnId)?.title ?? columnId
+    columns.find((c) => c.id === columnId)?.title ?? columnId
 
   const showMoveToast = (toast: MoveToast) => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -161,37 +164,37 @@ export function KanbanBoard({
 
   const colunasFluxo = useMemo(
     () =>
-      board.columns.filter(
+      columns.filter(
         (c) =>
           c.id !== COLUNA_PEDIDO_ENVIADO_ID &&
           c.id !== COLUNA_CANCELADOS_EXPIRADOS_ID &&
           !etapaPedidoEnviado(c.id, c.title) &&
           !etapaCanceladosExpirados(c.id, c.title),
       ),
-    [board.columns],
+    [columns],
   )
   const colunasConcluidos = useMemo(
     () =>
-      board.columns.filter(
+      columns.filter(
         (c) => c.id === COLUNA_PEDIDO_ENVIADO_ID || etapaPedidoEnviado(c.id, c.title),
       ),
-    [board.columns],
+    [columns],
   )
   const colunasCancelados = useMemo(
     () =>
-      board.columns.filter(
+      columns.filter(
         (c) => c.id === COLUNA_CANCELADOS_EXPIRADOS_ID || etapaCanceladosExpirados(c.id, c.title),
       ),
-    [board.columns],
+    [columns],
   )
 
-  const renderColumn = (column: (typeof board.columns)[number]) => (
+  const renderColumn = (column: (typeof columns)[number]) => (
     <KanbanColumn
       key={column.id}
       column={column}
-      board={board}
+      board={boardComColunas}
       cards={cardsByColumn.get(column.id) ?? []}
-      canDelete={canManageColumns && board.columns.length > 1}
+      canDelete={canManageColumns && columns.length > 1}
       onAddCard={() => onAddCard(column.id)}
       onEditCard={onEditCard}
       onRequestArchiveCard={onRequestArchiveCard}
@@ -212,14 +215,12 @@ export function KanbanBoard({
         <div className="board-scroll board-scroll--fluxo">
           <div className="board-columns board-columns--fluxo">{colunasFluxo.map(renderColumn)}</div>
         </div>
-        {colunasConcluidos.length > 0 ? (
-          <div className="board-scroll board-scroll--concluidos" aria-label="Pedidos concluídos">
-            <div className="board-columns board-columns--concluidos">{colunasConcluidos.map(renderColumn)}</div>
-          </div>
-        ) : null}
-        {colunasCancelados.length > 0 ? (
-          <div className="board-scroll board-scroll--cancelados" aria-label="Pedidos cancelados ou expirados">
-            <div className="board-columns board-columns--cancelados">{colunasCancelados.map(renderColumn)}</div>
+        {(colunasConcluidos.length > 0 || colunasCancelados.length > 0) ? (
+          <div className="board-scroll board-scroll--laterais" aria-label="Pedidos enviados e cancelados">
+            <div className="board-columns board-columns--laterais">
+              {colunasConcluidos.map(renderColumn)}
+              {colunasCancelados.map(renderColumn)}
+            </div>
           </div>
         ) : null}
         {canManageColumns ? (

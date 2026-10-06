@@ -1244,7 +1244,8 @@ body.vestfirma-tv .pwa-install-banner {
 
 .board-scroll--fluxo,
 .board-scroll--concluidos,
-.board-scroll--cancelados {
+.board-scroll--cancelados,
+.board-scroll--laterais {
   display: flex;
   flex-direction: column;
   align-self: stretch;
@@ -1347,29 +1348,42 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll--concluidos,
-.board-scroll--cancelados {
-  flex: 0 0 min(20rem, 88vw);
-  width: min(20rem, 88vw);
-  min-width: min(20rem, 88vw);
+.board-scroll--cancelados,
+.board-scroll--laterais {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
   padding-left: 0.35rem;
 }
 
 @media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
   .board-scroll--concluidos,
-  .board-scroll--cancelados {
-    flex: 0 0 var(--column-width);
-    width: var(--column-width);
-    min-width: var(--column-width);
+  .board-scroll--cancelados,
+  .board-scroll--laterais {
+    flex: 0 0 auto;
+    width: max-content;
+    min-width: 0;
   }
 }
 
 .board-columns--concluidos,
-.board-columns--cancelados {
+.board-columns--cancelados,
+.board-columns--laterais {
   flex: 1 1 auto;
-  width: 100%;
+  width: max-content;
   min-width: 0;
   height: 100%;
   min-height: 0;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.board-scroll--laterais .kanban-column,
+.board-scroll--concluidos .kanban-column,
+.board-scroll--cancelados .kanban-column {
+  flex: 0 0 min(20rem, 88vw);
+  width: min(20rem, 88vw);
+  min-width: min(18rem, 80vw);
 }
 
 .board-columns {
@@ -3762,7 +3776,6 @@ body.vestfirma-tv .pwa-install-banner {
 
 .wa-redirect-logo-tag input {
   margin-top: 0.2rem;
-}
 }
 
 .wa-redirect-footer {

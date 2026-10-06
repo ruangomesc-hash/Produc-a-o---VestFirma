@@ -37,6 +37,7 @@ const {
   writeBoardAtomic,
 } = await import('./boardPersist.mjs')
 const { dedupeBoardCards } = await import('../shared/dedupeBoardCards.mjs')
+const { ensureBoardColumns } = await import('../shared/boardVendedoresMerge.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -89,7 +90,10 @@ async function handleBoardApi(req, res) {
     const DATA_FILE = boardFilePath()
     try {
       const data = await readBoardWithRecovery(DATA_FILE)
-      const board = data ? dedupeBoardCards(data) : data
+      const withCols = data
+        ? { ...data, columns: ensureBoardColumns(data.columns) }
+        : data
+      const board = withCols ? dedupeBoardCards(withCols) : withCols
       const raw = board ? JSON.stringify(board) : 'null'
       res.writeHead(200, {
         ...corsHeaders(),
