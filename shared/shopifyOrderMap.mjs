@@ -7,7 +7,32 @@ import {
 /** Coluna inicial de pedidos da Shopify (antes de Logos recebidas). */
 export const COLUNA_PEDIDO_FEITO_ID = 'pedido-feito'
 export const COLUNA_PEDIDO_FEITO_TITLE = 'Pedido feito'
+export const COLUNA_CANCELADOS_EXPIRADOS_ID = 'cancelados-expirados'
+export const COLUNA_CANCELADOS_EXPIRADOS_TITLE = 'Pedidos cancelados / expirados'
 export const SHOPIFY_ETAPA_TAG_PREFIX = 'vestfirma-etapa:'
+/** Pedido Shopify não pago (pending/authorized/unpaid) após este prazo vai para Cancelados / expirados. */
+export const SHOPIFY_DIAS_EXPIRAR_NAO_PAGO = 7
+
+const FINANCEIRO_PAGO = new Set(['paid', 'partially_paid', 'partially_refunded', 'refunded'])
+const FINANCEIRO_AGUARDANDO = new Set(['pending', 'authorized', 'unpaid'])
+
+/**
+ * Cancelado na loja, ou não pago e já expirado / voided, ou pendente há vários dias.
+ * Sem financial_status não trata como expirado (ordem antiga incompleta).
+ */
+export function statusShopifyPedido(order, agoraMs = Date.now()) {
+  if (!order) return null
+  if (order.cancelled_at) return 'cancelado'
+  const fin = String(order.financial_status || '').toLowerCase()
+  if (!fin) return null
+  if (fin === 'voided' || fin === 'expired') return 'expirado'
+  if (FINANCEIRO_PAGO.has(fin)) return null
+  if (!FINANCEIRO_AGUARDANDO.has(fin)) return null
+  const created = Date.parse(order.created_at || '')
+  if (Number.isNaN(created)) return null
+  if (agoraMs - created >= SHOPIFY_DIAS_EXPIRAR_NAO_PAGO * 86_400_000) return 'expirado'
+  return null
+}
 
 export function cardIdShopify(orderId) {
   return `shopify-${String(orderId)}`
@@ -144,6 +169,10 @@ function observacaoDe(order) {
   const linhas = []
   if (order?.note?.trim()) linhas.push(String(order.note).trim())
   if (order?.cancelled_at) linhas.push('Shopify: pedido cancelado na loja (mantido no kanban).')
+  const status = statusShopifyPedido(order)
+  if (status === 'expirado' && !order?.cancelled_at) {
+    linhas.push('Shopify: pedido não pago / expirado na loja (mantido no kanban).')
+  }
   return linhas.join('\n')
 }
 
@@ -167,7 +196,8 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
     String(order.financial_status || '').toLowerCase() === 'paid' ? dataIso(order.processed_at || order.created_at) : ''
   const numero = String(order.order_number || order.name || order.id).replace(/^#/, '')
   const etapaTag = parseEtapaTag(order.tags)
-  const col = etapaTag || columnId
+  const status = statusShopifyPedido(order)
+  const col = status ? COLUNA_CANCELADOS_EXPIRADOS_ID : etapaTag || columnId
   return {
     id,
     columnId: col,
@@ -205,6 +235,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
     origem: 'shopify',
     shopifyOrderId: String(order.id),
     shopifyOrderName: String(order.name || `#${numero}`),
+    shopifyPedidoStatus: status || null,
   }
 }
 
@@ -222,7 +253,28 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
   if (tagCol && tagCol !== keepCol && shopMs > localMs) {
     columnId = tagCol
   }
+  const status = mapped.shopifyPedidoStatus || null
+  if (status) {
+    columnId = COLUNA_CANCELADOS_EXPIRADOS_ID
+  } else if (keepCol === COLUNA_CANCELADOS_EXPIRADOS_ID) {
+    columnId = tagCol || COLUNA_PEDIDO_FEITO_ID
+  }
   const { shopifyEtapaTag: _tagHint, ...mappedSemHint } = mapped
+  const historicoBase = existing.historicoEtapa?.length ? existing.historicoEtapa : mapped.historicoEtapa
+  const historicoEtapa =
+    columnId !== keepCol && status
+      ? [
+          ...(historicoBase || []),
+          {
+            id: `shopify-${status}-${existing.id}`,
+            tipo: 'movido',
+            columnId,
+            columnTitle: COLUNA_CANCELADOS_EXPIRADOS_TITLE,
+            fromColumnId: keepCol,
+            at: mapped.etapaDesde || new Date().toISOString(),
+          },
+        ]
+      : historicoBase
   return {
     ...existing,
     ...mappedSemHint,
@@ -230,7 +282,7 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
     columnId,
     etapaDesde: columnId === keepCol ? existing.etapaDesde : mapped.etapaDesde,
     createdAt: existing.createdAt || mapped.createdAt,
-    historicoEtapa: existing.historicoEtapa?.length ? existing.historicoEtapa : mapped.historicoEtapa,
+    historicoEtapa,
     comentarios: existing.comentarios?.length ? existing.comentarios : mapped.comentarios,
     logoEnviadaCliente: existing.logoEnviadaCliente?.length
       ? existing.logoEnviadaCliente
@@ -248,6 +300,7 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
     origem: 'shopify',
     shopifyOrderId: mapped.shopifyOrderId || existing.shopifyOrderId,
     shopifyOrderName: mapped.shopifyOrderName || existing.shopifyOrderName,
+    shopifyPedidoStatus: status || null,
     linhasPedido:
       Array.isArray(mapped.linhasPedido) && mapped.linhasPedido.length
         ? mapped.linhasPedido

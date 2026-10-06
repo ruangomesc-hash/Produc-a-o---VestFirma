@@ -22,6 +22,7 @@ const TEMA_POR_COLUNA: Record<string, string> = {
   'em-aplicacao': 'visao-card--aplicacao',
   'liberado-logistica': 'visao-card--logistica visao-card--wide',
   'pedido-enviado': 'visao-card--enviado visao-card--wide',
+  'cancelados-expirados': 'visao-card--cancelados visao-card--wide',
 }
 
 export function VisaoGeralPanel({ board, session = null, tvMode = false, onExitTv }: Props) {

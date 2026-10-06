@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { authHeaders } from '../authSession'
 import { getApiBase } from '../runtimeConfig'
 
@@ -23,6 +23,7 @@ type CheckupResult = {
   ok?: boolean
   error?: string
   imported?: number
+  restaurados?: number
   shopifyTotal?: number
   kanbanTotal?: number
   jaNoKanban?: number
@@ -64,6 +65,7 @@ export function ShopifySetupPanel({ onImported }: { onImported?: () => void }) {
   const [checkup, setCheckup] = useState<CheckupResult | null>(null)
   const [checkupError, setCheckupError] = useState<string | null>(null)
   const [busy, setBusy] = useState<'scan' | 'import' | null>(null)
+  const autoExtractFeito = useRef(false)
   const webhook = webhookUrlAbsoluta()
 
   const refresh = useCallback(async () => {
@@ -104,7 +106,7 @@ export function ShopifySetupPanel({ onImported }: { onImported?: () => void }) {
         return
       }
       setCheckup(data)
-      if (importMissing && (data.imported ?? 0) > 0) onImported?.()
+      if (importMissing && ((data.imported ?? 0) > 0 || (data.restaurados ?? 0) > 0)) onImported?.()
     } catch (err) {
       setCheckupError(err instanceof Error ? err.message : 'Falha no checkup')
     } finally {
@@ -121,6 +123,12 @@ export function ShopifySetupPanel({ onImported }: { onImported?: () => void }) {
   }
 
   const ligado = status?.shopifyConfigured === true
+
+  useEffect(() => {
+    if (!ligado || autoExtractFeito.current) return
+    autoExtractFeito.current = true
+    void runCheckup(true)
+  }, [ligado, runCheckup])
 
   return (
     <div className="shopify-setup">
@@ -190,6 +198,12 @@ export function ShopifySetupPanel({ onImported }: { onImported?: () => void }) {
                 <div>
                   <dt>Extraídos agora</dt>
                   <dd>{checkup.imported}</dd>
+                </div>
+              ) : null}
+              {typeof checkup.restaurados === 'number' && checkup.restaurados > 0 ? (
+                <div>
+                  <dt>De volta ao quadro</dt>
+                  <dd>{checkup.restaurados}</dd>
                 </div>
               ) : null}
             </dl>

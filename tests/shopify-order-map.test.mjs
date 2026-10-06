@@ -142,4 +142,42 @@ describe('Shopify → kanban', () => {
     assert.equal(result.board.cards[0].shopifyOrderId, '555')
     assert.equal(result.board.cards[0].columnId, 'em-aplicacao')
   })
+
+  it('manda cancelado da Shopify para Cancelados / expirados sem arquivar', () => {
+    const mapped = mapShopifyOrderToCard({
+      ...order,
+      cancelled_at: '2026-10-06T15:00:00Z',
+      financial_status: 'voided',
+    })
+    assert.equal(mapped.columnId, 'cancelados-expirados')
+    assert.equal(mapped.shopifyPedidoStatus, 'cancelado')
+    assert.equal(mapped.arquivadoEm, null)
+
+    const existing = {
+      ...mapShopifyOrderToCard(order),
+      columnId: 'em-aplicacao',
+      etapaDesde: '2026-10-05T13:00:00Z',
+    }
+    const out = mesclarCardShopify(existing, mapped, '2026-10-06T15:00:00Z')
+    assert.equal(out.columnId, 'cancelados-expirados')
+    assert.equal(out.shopifyPedidoStatus, 'cancelado')
+    assert.equal(out.arquivadoEm, null)
+  })
+
+  it('manda não pago antigo para Cancelados / expirados como expirado', () => {
+    const mapped = mapShopifyOrderToCard({
+      ...order,
+      financial_status: 'pending',
+      created_at: '2026-09-01T12:00:00Z',
+      cancelled_at: null,
+    })
+    assert.equal(mapped.columnId, 'cancelados-expirados')
+    assert.equal(mapped.shopifyPedidoStatus, 'expirado')
+  })
+
+  it('não trata pedido pago recente como expirado', () => {
+    const mapped = mapShopifyOrderToCard(order)
+    assert.equal(mapped.columnId, COLUNA_PEDIDO_FEITO_ID)
+    assert.equal(mapped.shopifyPedidoStatus, null)
+  })
 })

@@ -113,6 +113,10 @@ function normalizeCard(
     origem: raw.origem === 'shopify' || raw.shopifyOrderId ? 'shopify' : raw.origem,
     shopifyOrderId: raw.shopifyOrderId ? String(raw.shopifyOrderId) : undefined,
     shopifyOrderName: raw.shopifyOrderName ? String(raw.shopifyOrderName) : undefined,
+    shopifyPedidoStatus:
+      raw.shopifyPedidoStatus === 'cancelado' || raw.shopifyPedidoStatus === 'expirado'
+        ? raw.shopifyPedidoStatus
+        : null,
   }
 }
 

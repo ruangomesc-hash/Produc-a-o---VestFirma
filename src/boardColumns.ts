@@ -4,6 +4,9 @@ import type { BoardState, Column, OrderCard } from './types'
 /** Etapa final — pedido já saiu; não deve voltar sozinho para o início. */
 export const COLUNA_PEDIDO_ENVIADO_ID = 'pedido-enviado'
 
+/** Depois de Pedido enviado — Shopify cancelado ou não pago/expirado. */
+export const COLUNA_CANCELADOS_EXPIRADOS_ID = 'cancelados-expirados'
+
 /** Etapas avançadas protegidas contra “regressão” acidental no merge/sync. */
 export const COLUNAS_ETAPA_AVANCADA = new Set([
   'liberado-logistica',
@@ -24,7 +27,7 @@ export function ensureBoardColumns(columns: Column[] | undefined | null): Column
     }
   }
 
-  return posicionarPedidoFeitoAntesDeLogos(list)
+  return posicionarCanceladosDepoisDeEnviado(posicionarPedidoFeitoAntesDeLogos(list))
 }
 
 /** Etapa nova entra no fluxo, sempre antes de Pedido enviado. */
@@ -46,6 +49,16 @@ function posicionarPedidoFeitoAntesDeLogos(columns: Column[]): Column[] {
   const [feito] = list.splice(feitoIdx, 1)
   const logosIdx = list.findIndex((c) => c.id === 'logos-recebidas')
   list.splice(logosIdx < 0 ? 0 : logosIdx, 0, feito)
+  return list
+}
+
+function posicionarCanceladosDepoisDeEnviado(columns: Column[]): Column[] {
+  const list = [...columns]
+  const idx = list.findIndex((c) => c.id === COLUNA_CANCELADOS_EXPIRADOS_ID)
+  if (idx < 0) return list
+  const [cancelados] = list.splice(idx, 1)
+  const envIdx = list.findIndex((c) => c.id === COLUNA_PEDIDO_ENVIADO_ID)
+  list.splice(envIdx < 0 ? list.length : envIdx + 1, 0, cancelados)
   return list
 }
 

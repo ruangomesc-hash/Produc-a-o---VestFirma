@@ -9,8 +9,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { resolveCardColumnId, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
-import { etapaPedidoEnviado } from '../etapas'
+import { resolveCardColumnId, COLUNA_PEDIDO_ENVIADO_ID, COLUNA_CANCELADOS_EXPIRADOS_ID } from '../boardColumns'
+import { etapaCanceladosExpirados, etapaPedidoEnviado } from '../etapas'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import type { BoardState, OrderCard } from '../types'
 import { KanbanColumn } from './KanbanColumn'
@@ -162,7 +162,11 @@ export function KanbanBoard({
   const colunasFluxo = useMemo(
     () =>
       board.columns.filter(
-        (c) => c.id !== COLUNA_PEDIDO_ENVIADO_ID && !etapaPedidoEnviado(c.id, c.title),
+        (c) =>
+          c.id !== COLUNA_PEDIDO_ENVIADO_ID &&
+          c.id !== COLUNA_CANCELADOS_EXPIRADOS_ID &&
+          !etapaPedidoEnviado(c.id, c.title) &&
+          !etapaCanceladosExpirados(c.id, c.title),
       ),
     [board.columns],
   )
@@ -170,6 +174,13 @@ export function KanbanBoard({
     () =>
       board.columns.filter(
         (c) => c.id === COLUNA_PEDIDO_ENVIADO_ID || etapaPedidoEnviado(c.id, c.title),
+      ),
+    [board.columns],
+  )
+  const colunasCancelados = useMemo(
+    () =>
+      board.columns.filter(
+        (c) => c.id === COLUNA_CANCELADOS_EXPIRADOS_ID || etapaCanceladosExpirados(c.id, c.title),
       ),
     [board.columns],
   )
@@ -204,6 +215,11 @@ export function KanbanBoard({
         {colunasConcluidos.length > 0 ? (
           <div className="board-scroll board-scroll--concluidos" aria-label="Pedidos concluídos">
             <div className="board-columns board-columns--concluidos">{colunasConcluidos.map(renderColumn)}</div>
+          </div>
+        ) : null}
+        {colunasCancelados.length > 0 ? (
+          <div className="board-scroll board-scroll--cancelados" aria-label="Pedidos cancelados ou expirados">
+            <div className="board-columns board-columns--cancelados">{colunasCancelados.map(renderColumn)}</div>
           </div>
         ) : null}
         {canManageColumns ? (

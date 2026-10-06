@@ -22,6 +22,10 @@ export function EtapaPrazoBadge({ columnId, columnTitle, card }: Props) {
     return <span className="etapa-tag enviado">Pedido enviado</span>
   }
 
+  if (prazo.tipo === 'cancelados') {
+    return <span className="etapa-tag cancelados">Cancelado / expirado</span>
+  }
+
   return (
     <span className={`etapa-tag ${prazo.atrasado ? 'atrasado' : 'no-prazo'}`}>{prazo.texto}</span>
   )

@@ -51,6 +51,7 @@ const DEFAULT_COLUMNS = [
   { id: 'em-aplicacao', title: 'Em aplicação' },
   { id: 'liberado-logistica', title: 'Liberado para logística' },
   { id: 'pedido-enviado', title: 'Pedido enviado' },
+  { id: 'cancelados-expirados', title: 'Pedidos cancelados / expirados' },
 ]
 
 export function ensureBoardColumns(columns) {
@@ -62,7 +63,7 @@ export function ensureBoardColumns(columns) {
       byId.set(def.id, def)
     }
   }
-  return posicionarPedidoFeitoAntesDeLogos(list)
+  return posicionarCanceladosDepoisDeEnviado(posicionarPedidoFeitoAntesDeLogos(list))
 }
 
 function posicionarPedidoFeitoAntesDeLogos(columns) {
@@ -72,6 +73,16 @@ function posicionarPedidoFeitoAntesDeLogos(columns) {
   const [feito] = list.splice(feitoIdx, 1)
   const logosIdx = list.findIndex((c) => c.id === 'logos-recebidas')
   list.splice(logosIdx < 0 ? 0 : logosIdx, 0, feito)
+  return list
+}
+
+function posicionarCanceladosDepoisDeEnviado(columns) {
+  const list = [...columns]
+  const idx = list.findIndex((c) => c.id === 'cancelados-expirados')
+  if (idx < 0) return list
+  const [cancelados] = list.splice(idx, 1)
+  const envIdx = list.findIndex((c) => c.id === 'pedido-enviado')
+  list.splice(envIdx < 0 ? list.length : envIdx + 1, 0, cancelados)
   return list
 }
 

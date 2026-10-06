@@ -6,6 +6,7 @@ import {
   mesclarCardShopify,
   mergeShopifyEtapaTags,
   parseEtapaTag,
+  statusShopifyPedido,
 } from '../shared/shopifyOrderMap.mjs'
 import { classificarPedidosShopifyNoKanban } from '../shared/shopifyCheckup.mjs'
 import { mergeBoardPreservingPedidos } from './boardPersist.mjs'
@@ -182,7 +183,7 @@ export async function syncEtapasKanbanParaShopify(prevBoard, nextBoard) {
 function aplicarPedidoShopifyNoQuadro(board, order) {
   const mapped = mapShopifyOrderToCard(order, COLUNA_PEDIDO_FEITO_ID)
   const etapaTag = parseEtapaTag(order.tags)
-  if (etapaTag) mapped.columnId = etapaTag
+  if (etapaTag && !mapped.shopifyPedidoStatus) mapped.columnId = etapaTag
   const existing = encontrarCardParaPedidoShopify(board.cards, order)
   const mergedCard = existing
     ? mesclarCardShopify(existing, mapped, order.updated_at)
@@ -213,34 +214,144 @@ function nextApiPathFromLink(linkHeader) {
   return ''
 }
 
-const ORDERS_FIELDS =
-  'id,name,order_number,created_at,updated_at,processed_at,financial_status,tags,note,cancelled_at,phone,shipping_address,billing_address,customer,line_items,note_attributes'
-
-/** Lista todos os pedidos da loja (abertos, fechados, cancelados, arquivados). */
+/** Lista todos os pedidos da loja (abertos, fechados, cancelados, arquivados, de qualquer data). */
 export async function listAllShopifyOrders() {
   if (!shopifyConfigured()) {
     return { ok: false, error: 'Shopify não configurada', orders: [] }
   }
+  const countGot = await shopifyFetch('/orders/count.json?status=any')
+  const expected = Number(countGot.data?.count) || 0
   const orders = []
-  let path = `/orders.json?status=any&limit=250&fields=${ORDERS_FIELDS}`
+  const seen = new Set()
+  const startPaths = [
+    '/orders.json?status=any&limit=250&created_at_min=2010-01-01T00:00:00-03:00',
+    '/orders.json?status=any&limit=250',
+  ]
   let pages = 0
-  while (path && pages < 80) {
-    pages += 1
-    const got = await shopifyFetch(path)
-    if (!got.ok) {
-      return {
-        ok: false,
-        error: got.error || `Shopify ${got.status}`,
-        status: got.status,
-        data: got.data,
-        orders,
+  for (const start of startPaths) {
+    let path = start
+    while (path && pages < 80) {
+      pages += 1
+      const got = await shopifyFetch(path)
+      if (!got.ok) {
+        return {
+          ok: false,
+          error: got.error || `Shopify ${got.status}`,
+          status: got.status,
+          data: got.data,
+          orders,
+          expected,
+        }
+      }
+      const batch = Array.isArray(got.data?.orders) ? got.data.orders : []
+      for (const order of batch) {
+        const id = String(order?.id || '')
+        if (!id || seen.has(id)) continue
+        seen.add(id)
+        orders.push(order)
+      }
+      path = nextApiPathFromLink(got.link)
+    }
+    if (expected && orders.length >= expected) break
+  }
+  if (expected && orders.length < expected) {
+    const extra = await listShopifyOrdersGraphql(seen)
+    for (const order of extra) {
+      const id = String(order?.id || '')
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      orders.push(order)
+    }
+  }
+  return { ok: true, orders, pages, expected }
+}
+
+function gidNumerico(gid) {
+  const m = String(gid || '').match(/(\d+)\s*$/)
+  return m ? m[1] : String(gid || '')
+}
+
+function enderecoGraphql(addr) {
+  if (!addr) return null
+  return {
+    first_name: addr.firstName,
+    last_name: addr.lastName,
+    phone: addr.phone,
+    address1: addr.address1,
+    address2: addr.address2,
+    city: addr.city,
+    province: addr.province,
+    zip: addr.zip,
+    country: addr.country,
+  }
+}
+
+async function listShopifyOrdersGraphql(seen) {
+  const token = await shopifyAdminAccessToken()
+  if (!token || !shopifyShopDomain()) return []
+  const query = `query VestfirmaOrders($cursor: String) {
+    orders(first: 100, after: $cursor, sortKey: CREATED_AT) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id name createdAt updatedAt processedAt cancelledAt displayFinancialStatus tags note phone
+        shippingAddress { firstName lastName phone address1 address2 city province zip country }
+        billingAddress { firstName lastName phone address1 address2 city province zip country }
+        customer { firstName lastName phone email }
+        lineItems(first: 80) { nodes { name title quantity variantTitle } }
       }
     }
-    const batch = Array.isArray(got.data?.orders) ? got.data.orders : []
-    orders.push(...batch)
-    path = nextApiPathFromLink(got.link)
+  }`
+  const out = []
+  let cursor = null
+  for (let i = 0; i < 40; i += 1) {
+    const res = await fetch(`https://${shopifyShopDomain()}/admin/api/${apiVersion()}/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+      },
+      body: JSON.stringify({ query, variables: { cursor } }),
+    })
+    const data = await res.json().catch(() => ({}))
+    const conn = data?.data?.orders
+    const nodes = Array.isArray(conn?.nodes) ? conn.nodes : []
+    for (const node of nodes) {
+      const id = gidNumerico(node?.id)
+      if (!id || seen.has(id)) continue
+      out.push({
+        id,
+        name: node.name,
+        order_number: String(node.name || '').replace(/^#/, ''),
+        created_at: node.createdAt,
+        updated_at: node.updatedAt,
+        processed_at: node.processedAt,
+        cancelled_at: node.cancelledAt,
+        financial_status: String(node.displayFinancialStatus || '').toLowerCase(),
+        tags: Array.isArray(node.tags) ? node.tags.join(', ') : node.tags,
+        note: node.note,
+        phone: node.phone,
+        shipping_address: enderecoGraphql(node.shippingAddress),
+        billing_address: enderecoGraphql(node.billingAddress),
+        customer: node.customer
+          ? {
+              first_name: node.customer.firstName,
+              last_name: node.customer.lastName,
+              phone: node.customer.phone,
+              email: node.customer.email,
+            }
+          : null,
+        line_items: (node.lineItems?.nodes || []).map((li) => ({
+          name: li.name,
+          title: li.title,
+          quantity: li.quantity,
+          variant_title: li.variantTitle,
+        })),
+      })
+    }
+    if (!conn?.pageInfo?.hasNextPage) break
+    cursor = conn.pageInfo.endCursor
   }
-  return { ok: true, orders, pages }
+  return out
 }
 
 export function checkupShopifyVsKanban(board, orders) {
@@ -251,10 +362,27 @@ export function checkupShopifyVsKanban(board, orders) {
 export async function importarPedidosShopifyFaltantes(board, orders) {
   let next = board
   let imported = 0
+  let restaurados = 0
   const ids = []
   for (const order of orders || []) {
     if (!order?.id) continue
-    if (encontrarCardParaPedidoShopify(next.cards, order)) continue
+    const existing = encontrarCardParaPedidoShopify(next.cards, order)
+    if (existing) {
+      const status = statusShopifyPedido(order)
+      if (existing.arquivadoEm && !status) {
+        next = {
+          ...next,
+          cards: next.cards.map((c) =>
+            c.id === existing.id ? { ...c, arquivadoEm: null } : c,
+          ),
+        }
+        restaurados += 1
+        ids.push(String(order.id))
+      }
+      const result = await ingestShopifyOrder(next, order, 'orders/updated')
+      next = result.board
+      continue
+    }
     const result = await ingestShopifyOrder(next, order, 'orders/create')
     next = result.board
     if (result.created) {
@@ -262,7 +390,39 @@ export async function importarPedidosShopifyFaltantes(board, orders) {
       ids.push(String(order.id))
     }
   }
-  return { board: next, imported, importedIds: ids }
+  return { board: next, imported, restaurados, importedIds: ids }
+}
+
+export function startShopifyKanbanBackfill(ctx) {
+  const run = async () => {
+    try {
+      if (!shopifyConfigured()) return
+      const listed = await listAllShopifyOrders()
+      if (!listed.ok) {
+        console.warn('[vestfirma] Shopify backfill:', listed.error)
+        return
+      }
+      const { ensureBoardColumns } = await import('../shared/boardVendedoresMerge.mjs')
+      await ctx.withBoardWriteLock(async () => {
+        const existing =
+          (await ctx.readExistingBoard(ctx.boardFile)) || { columns: [], cards: [], vendedores: [] }
+        existing.columns = ensureBoardColumns(existing.columns)
+        const result = await importarPedidosShopifyFaltantes(existing, listed.orders)
+        const mudou = (result.imported || 0) + (result.restaurados || 0)
+        if (mudou > 0) {
+          await ctx.backupBoardBeforeWrite(ctx.boardFile)
+          await ctx.writeBoardAtomic(ctx.boardFile, result.board)
+          console.log(
+            `[vestfirma] Shopify backfill: +${result.imported} novos, ${result.restaurados || 0} de volta ao kanban (${listed.orders.length} na loja)`,
+          )
+        }
+      })
+    } catch (err) {
+      console.warn('[vestfirma] Shopify backfill:', err)
+    }
+  }
+  setTimeout(() => void run(), 8000)
+  setInterval(() => void run(), 10 * 60 * 1000)
 }
 
 export async function ingestShopifyOrder(board, payload, topic) {

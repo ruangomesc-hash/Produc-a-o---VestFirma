@@ -1,8 +1,8 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useState } from 'react'
 import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID } from '../defaultBoard'
-import { COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
-import { etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
+import { COLUNA_CANCELADOS_EXPIRADOS_ID, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
+import { etapaCanceladosExpirados, etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import type { BoardState, Column as ColumnType, OrderCard } from '../types'
 import { ConfirmModal } from './ConfirmModal'
@@ -45,6 +45,8 @@ export function KanbanColumn({
   const colunaLogistica = etapaDevePiscar(column.id, column.title)
   const colunaEnviado =
     column.id === COLUNA_PEDIDO_ENVIADO_ID || etapaPedidoEnviado(column.id, column.title)
+  const colunaCancelados =
+    column.id === COLUNA_CANCELADOS_EXPIRADOS_ID || etapaCanceladosExpirados(column.id, column.title)
   const resumoPrazos = resumirPrazosColuna(column.id, column.title, cards, agora)
 
   const destinoTitulo = board.columns.find((c) => c.id !== column.id)?.title ?? 'a primeira etapa'
@@ -55,7 +57,7 @@ export function KanbanColumn({
 
   return (
     <section
-      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''}`}
+      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${colunaCancelados ? 'column-cancelados-expirados' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''}`}
     >
       <ConfirmModal
         open={confirmDeleteOpen}
@@ -71,11 +73,16 @@ export function KanbanColumn({
         <div>
           {colunaLogistica && <span className="column-logistica-badge">Prioridade logística</span>}
           {colunaEnviado && <span className="column-enviado-badge">Concluídos</span>}
+          {colunaCancelados && <span className="column-cancelados-badge">Cancelados / expirados</span>}
           <h2>{column.title}</h2>
           {colunaLogistica ? (
             <span className="column-count">{cards.length} pedidos aguardando</span>
           ) : colunaEnviado ? (
             <span className="column-count">{cards.length} enviado{cards.length === 1 ? '' : 's'}</span>
+          ) : colunaCancelados ? (
+            <span className="column-count">
+              {cards.length} pedido{cards.length === 1 ? '' : 's'} — arquivar se quiser ocultar
+            </span>
           ) : resumoPrazos.temContagemPrazo ? (
             <div className="column-prazo-resumo" aria-label="Resumo de prazos na coluna">
               <span className="column-prazo-stat no-prazo">
@@ -90,7 +97,7 @@ export function KanbanColumn({
           )}
         </div>
         <div className="column-header-actions">
-          {canDelete ? (
+          {canDelete && !colunaCancelados ? (
             <button
               type="button"
               className="icon-btn small column-delete-btn"

@@ -25,13 +25,15 @@ export function classificarPedidosShopifyNoKanban(board, orders) {
     if (!order?.id) continue
     const resumo = resumoPedidoShopify(order)
     const found = encontrarCardParaPedidoShopify(cards, order)
-    if (found) noKanbanJa.push({ ...resumo, cardId: found.id, columnId: found.columnId })
+    if (found) noKanbanJa.push({ ...resumo, cardId: found.id, columnId: found.columnId, arquivado: Boolean(found.arquivadoEm) })
     else noKanban.push(resumo)
   }
   return {
     shopifyTotal: list.filter((o) => o?.id).length,
     kanbanTotal: Array.isArray(cards) ? cards.length : 0,
+    kanbanVisiveis: cards.filter((c) => c && !c.arquivadoEm).length,
     noKanban,
     jaNoKanban: noKanbanJa.length,
+    arquivados: noKanbanJa.filter((row) => row.arquivado).length,
   }
 }

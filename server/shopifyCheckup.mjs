@@ -74,6 +74,7 @@ export async function handleShopifyCheckupApi(req, res, ctx) {
       ok: true,
       imported: 0,
       shopifyTotal: report.shopifyTotal,
+      shopifyCountApi: listed.expected || report.shopifyTotal,
       kanbanTotal: report.kanbanTotal,
       jaNoKanban: report.jaNoKanban,
       faltando: report.noKanban.length,
@@ -83,6 +84,7 @@ export async function handleShopifyCheckupApi(req, res, ctx) {
   }
 
   let imported = 0
+  let restaurados = 0
   let reportAfter = null
   let reportBefore = null
   await withBoardWriteLock(async () => {
@@ -92,7 +94,8 @@ export async function handleShopifyCheckupApi(req, res, ctx) {
     const result = await importarPedidosShopifyFaltantes(existing, listed.orders)
     reportAfter = checkupShopifyVsKanban(result.board, listed.orders)
     imported = result.imported
-    if (imported > 0) {
+    restaurados = result.restaurados || 0
+    if (imported > 0 || restaurados > 0) {
       await backupBoardBeforeWrite(DATA_FILE)
       await writeBoardAtomic(DATA_FILE, result.board)
     }
@@ -101,6 +104,7 @@ export async function handleShopifyCheckupApi(req, res, ctx) {
   json(res, corsHeaders, 200, {
     ok: true,
     imported,
+    restaurados,
     shopifyTotal: reportAfter?.shopifyTotal ?? listed.orders.length,
     kanbanTotal: reportAfter?.kanbanTotal ?? 0,
     jaNoKanban: reportAfter?.jaNoKanban ?? 0,

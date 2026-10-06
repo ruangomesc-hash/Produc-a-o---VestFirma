@@ -93,6 +93,8 @@ export interface OrderCard {
   origem?: 'shopify' | 'manual'
   shopifyOrderId?: string
   shopifyOrderName?: string
+  /** Shopify cancelado ou não pago/expirado — coluna Cancelados / expirados. */
+  shopifyPedidoStatus?: 'cancelado' | 'expirado' | null
 }
 
 export interface Column {
@@ -119,6 +121,7 @@ export type CardFormData = Omit<
   | 'origem'
   | 'shopifyOrderId'
   | 'shopifyOrderName'
+  | 'shopifyPedidoStatus'
 >
 
 export function nomeVendedor(board: BoardState, vendedorId: string | null): string | null {

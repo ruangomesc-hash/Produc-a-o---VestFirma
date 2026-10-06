@@ -26,6 +26,7 @@ export const DEFAULT_BOARD: BoardState = {
     col('em-aplicacao', 'Em aplicação'),
     col('liberado-logistica', 'Liberado para logística'),
     col('pedido-enviado', 'Pedido enviado'),
+    col('cancelados-expirados', 'Pedidos cancelados / expirados'),
   ],
   cards: [],
   vendedores: [],

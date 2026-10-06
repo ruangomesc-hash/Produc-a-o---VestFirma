@@ -25,6 +25,9 @@ const PISCAR_TITULO_CHAVE = 'liberado para logistica'
 const ENVIADO_POR_ID = new Set(['pedido-enviado'])
 const ENVIADO_TITULO_CHAVE = 'pedido enviado'
 
+const CANCELADOS_POR_ID = new Set(['cancelados-expirados'])
+const CANCELADOS_TITULO_CHAVE = 'pedidos cancelados / expirados'
+
 function tituloChave(title: string) {
   return title
     .toLowerCase()
@@ -47,6 +50,16 @@ export function etapaDevePiscar(columnId: string, columnTitle: string): boolean 
 export function etapaPedidoEnviado(columnId: string, columnTitle: string): boolean {
   if (ENVIADO_POR_ID.has(columnId)) return true
   return tituloChave(columnTitle) === ENVIADO_TITULO_CHAVE
+}
+
+export function etapaCanceladosExpirados(columnId: string, columnTitle: string): boolean {
+  if (CANCELADOS_POR_ID.has(columnId)) return true
+  const key = tituloChave(columnTitle)
+  return (
+    key === CANCELADOS_TITULO_CHAVE ||
+    key === 'pedidos cancelados / expirados' ||
+    (key.includes('cancelado') && key.includes('expir'))
+  )
 }
 
 function parseInstanteEtapa(iso: string): number {
@@ -74,6 +87,7 @@ export type EtapaPrazoUi =
   | { tipo: 'prazo'; atrasado: boolean; texto: string }
   | { tipo: 'logistica' }
   | { tipo: 'enviado' }
+  | { tipo: 'cancelados' }
 
 export type EtapaPrazoCardRef = Pick<OrderCard, 'columnId' | 'etapaDesde' | 'historicoEtapa'>
 
@@ -85,6 +99,10 @@ export function calcularEtapaPrazo(
 ): EtapaPrazoUi {
   if (etapaPedidoEnviado(columnId, columnTitle)) {
     return { tipo: 'enviado' }
+  }
+
+  if (etapaCanceladosExpirados(columnId, columnTitle)) {
+    return { tipo: 'cancelados' }
   }
 
   if (etapaDevePiscar(columnId, columnTitle)) {
@@ -127,6 +145,7 @@ export function resumirPrazosColuna(
   if (
     etapaDevePiscar(columnId, columnTitle) ||
     etapaPedidoEnviado(columnId, columnTitle) ||
+    etapaCanceladosExpirados(columnId, columnTitle) ||
     slaHorasEtapa(columnId, columnTitle) == null
   ) {
     return { temContagemPrazo: false, noPrazo: 0, atrasado: 0 }

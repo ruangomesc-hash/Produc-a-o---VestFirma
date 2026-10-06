@@ -1243,7 +1243,8 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll--fluxo,
-.board-scroll--concluidos {
+.board-scroll--concluidos,
+.board-scroll--cancelados {
   display: flex;
   flex-direction: column;
   align-self: stretch;
@@ -1345,7 +1346,8 @@ body.vestfirma-tv .pwa-install-banner {
   font-size: 0.72rem;
 }
 
-.board-scroll--concluidos {
+.board-scroll--concluidos,
+.board-scroll--cancelados {
   flex: 0 0 min(20rem, 88vw);
   width: min(20rem, 88vw);
   min-width: min(20rem, 88vw);
@@ -1353,14 +1355,16 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 @media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
-  .board-scroll--concluidos {
+  .board-scroll--concluidos,
+  .board-scroll--cancelados {
     flex: 0 0 var(--column-width);
     width: var(--column-width);
     min-width: var(--column-width);
   }
 }
 
-.board-columns--concluidos {
+.board-columns--concluidos,
+.board-columns--cancelados {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
@@ -2009,8 +2013,68 @@ body.vestfirma-tv .pwa-install-banner {
   color: #475569;
 }
 
+.kanban-column.column-cancelados-expirados {
+  background: color-mix(in srgb, #7f1d1d 10%, var(--surface));
+  border: 1px solid #f87171;
+}
+
+.kanban-column.column-cancelados-expirados .column-header h2 {
+  color: #fecaca;
+  font-size: 0.88rem;
+}
+
+.kanban-column.column-cancelados-expirados .column-count {
+  color: #fca5a5;
+  font-size: 0.72rem;
+}
+
+.column-cancelados-badge {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.card-cancelado-tag,
+.card-expirado-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.card-cancelado-tag {
+  background: #dc2626;
+  color: #fff;
+}
+
+.card-expirado-tag {
+  background: #f59e0b;
+  color: #111;
+}
+
+.etapa-tag.cancelados {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
 .visao-card--enviado {
   border-left-color: #64748b;
+}
+
+.visao-card--cancelados {
+  border-left-color: #dc2626;
 }
 
 @keyframes etapa-atrasado-pulse {

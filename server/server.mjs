@@ -583,4 +583,16 @@ server.listen(PORT, HOST, () => {
   console.log(`Quadro salvo em: ${paths.boardFile}`)
   console.log(`Logos em: ${paths.logoDir}`)
   if (paths.storageNote) console.log(`[vestfirma] ${paths.storageNote}`)
+  void import('./shopifySync.mjs')
+    .then(({ startShopifyKanbanBackfill, shopifyConfigured }) => {
+      if (!shopifyConfigured()) return
+      startShopifyKanbanBackfill({
+        boardFile: paths.boardFile,
+        readExistingBoard,
+        backupBoardBeforeWrite,
+        writeBoardAtomic,
+        withBoardWriteLock,
+      })
+    })
+    .catch((err) => console.warn('[vestfirma] Shopify backfill init:', err))
 })

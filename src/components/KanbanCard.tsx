@@ -175,6 +175,16 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
               Shopify
             </span>
           ) : null}
+          {card.shopifyPedidoStatus === 'cancelado' ? (
+            <span className="card-cancelado-tag" title="Cancelado na Shopify">
+              Cancelado
+            </span>
+          ) : null}
+          {card.shopifyPedidoStatus === 'expirado' ? (
+            <span className="card-expirado-tag" title="Não pago ou expirado na Shopify">
+              Expirado
+            </span>
+          ) : null}
           {qtdComentarios > 0 ? (
             <span
               className="card-comentarios-tag"
