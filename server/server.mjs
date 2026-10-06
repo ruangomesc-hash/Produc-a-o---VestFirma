@@ -36,6 +36,7 @@ const {
   withBoardWriteLock,
   writeBoardAtomic,
 } = await import('./boardPersist.mjs')
+const { dedupeBoardCards } = await import('../shared/dedupeBoardCards.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -88,7 +89,8 @@ async function handleBoardApi(req, res) {
     const DATA_FILE = boardFilePath()
     try {
       const data = await readBoardWithRecovery(DATA_FILE)
-      const raw = data ? JSON.stringify(data) : 'null'
+      const board = data ? dedupeBoardCards(data) : data
+      const raw = board ? JSON.stringify(board) : 'null'
       res.writeHead(200, {
         ...corsHeaders(),
         'Content-Type': 'application/json; charset=utf-8',
@@ -224,11 +226,15 @@ async function handleBoardApi(req, res) {
     board = preserveArquivadoEmUnlessAdmin(existing, board, session)
     const mergedCount = countBoardCards(board)
     if (!force && existingCount > 0 && mergedCount < existingCount) {
-      const removed = existingCount - mergedCount
-      const allowed =
-        removeArchivedIds.length > 0 &&
-        removed === removeArchivedIds.length &&
-        session?.role === 'admin'
+      const { assertBoardCardsNotLost } = await import('./dataProtection.mjs')
+      const allowed = assertBoardCardsNotLost(
+        existingCount,
+        mergedCount,
+        removeArchivedIds,
+        session?.role,
+        existing,
+        board,
+      )
       if (!allowed) {
         res.writeHead(409, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
         res.end(

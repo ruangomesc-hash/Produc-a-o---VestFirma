@@ -92,9 +92,12 @@ export async function handleBoardCommentApi(req, res, ctx) {
       const board = mergeBoardPreservingPedidos(existing, incomingBoard)
       const mergedCount = countBoardCards(board)
       if (existingCount > 0 && mergedCount < existingCount) {
-        return {
-          status: 409,
-          body: { error: 'Recusado: este save removeria pedidos já gravados.' },
+        const { boardPreservouPedidos } = await import('./dataProtection.mjs')
+        if (!boardPreservouPedidos(existing, board)) {
+          return {
+            status: 409,
+            body: { error: 'Recusado: este save removeria pedidos já gravados.' },
+          }
         }
       }
 

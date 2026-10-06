@@ -87,7 +87,10 @@ export async function handleBoardCardMediaApi(req, res, ctx) {
       }
       const board = mergeBoardPreservingPedidos(existing, incomingBoard)
       if (existingCount > 0 && countBoardCards(board) < existingCount) {
-        return { status: 409, body: { error: 'Recusado: este save removeria pedidos já gravados.' } }
+        const { boardPreservouPedidos } = await import('./dataProtection.mjs')
+        if (!boardPreservouPedidos(existing, board)) {
+          return { status: 409, body: { error: 'Recusado: este save removeria pedidos já gravados.' } }
+        }
       }
       await backupBoardBeforeWrite(DATA_FILE)
       await writeBoardAtomic(DATA_FILE, board)

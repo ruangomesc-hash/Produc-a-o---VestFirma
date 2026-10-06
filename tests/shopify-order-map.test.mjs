@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   COLUNA_PEDIDO_FEITO_ID,
   cardIdShopify,
+  encontrarCardParaPedidoShopify,
   mapShopifyOrderToCard,
   mesclarCardShopify,
   mergeShopifyEtapaTags,
@@ -70,5 +71,69 @@ describe('Shopify → kanban', () => {
   it('lê e grava tag de etapa', () => {
     assert.equal(parseEtapaTag('vip, vestfirma-etapa:logos-prontas'), 'logos-prontas')
     assert.equal(mergeShopifyEtapaTags('vip, vestfirma-etapa:pedido-feito', 'em-aplicacao'), 'vip, vestfirma-etapa:em-aplicacao')
+  })
+
+  it('vincula ordem Shopify ao card que já está no kanban pelo número', () => {
+    const found = encontrarCardParaPedidoShopify(
+      [
+        {
+          id: 'manual-1021',
+          numeroPedido: '1021',
+          cliente: 'Cauê Henrique Gonçalves de Lima',
+          columnId: 'em-aplicacao',
+        },
+      ],
+      {
+        id: 999001,
+        order_number: 1021,
+        name: '#1021',
+        shipping_address: { first_name: 'Cauê', last_name: 'Henrique Gonçalves de Lima' },
+      },
+    )
+    assert.equal(found.id, 'manual-1021')
+  })
+
+  it('ingest Shopify não cria segundo card quando o número já existe', async () => {
+    const { ingestShopifyOrder } = await import('../server/shopifySync.mjs')
+    const board = {
+      columns: [
+        { id: COLUNA_PEDIDO_FEITO_ID, title: 'Pedido feito' },
+        { id: 'em-aplicacao', title: 'Em aplicação' },
+      ],
+      vendedores: [],
+      cards: [
+        {
+          id: 'manual-1021',
+          columnId: 'em-aplicacao',
+          cliente: 'Cauê Henrique Gonçalves de Lima',
+          numeroPedido: '1021',
+          quantidade: 1,
+          createdAt: '2026-09-01T00:00:00.000Z',
+          etapaDesde: '2026-10-01T00:00:00.000Z',
+          historicoEtapa: [
+            { id: 'h1', tipo: 'avancou', columnId: 'em-aplicacao', at: '2026-10-01T00:00:00.000Z' },
+          ],
+          comentarios: [],
+        },
+      ],
+    }
+    const result = await ingestShopifyOrder(
+      board,
+      {
+        id: 555,
+        order_number: 1021,
+        name: '#1021',
+        created_at: '2026-09-01T00:00:00Z',
+        updated_at: '2026-10-06T00:00:00Z',
+        shipping_address: { first_name: 'Cauê', last_name: 'Henrique Gonçalves de Lima' },
+        line_items: [{ title: 'Camisa', quantity: 2 }],
+      },
+      'orders/updated',
+    )
+    assert.equal(result.created, false)
+    assert.equal(result.board.cards.length, 1)
+    assert.equal(result.board.cards[0].id, 'manual-1021')
+    assert.equal(result.board.cards[0].shopifyOrderId, '555')
+    assert.equal(result.board.cards[0].columnId, 'em-aplicacao')
   })
 })

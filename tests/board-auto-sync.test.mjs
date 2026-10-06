@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { mergeBoardPreservingPedidos, countBoardCards } from '../server/boardPersist.mjs'
+import { assertBoardCardsNotLost } from '../server/dataProtection.mjs'
 import { dedupeBoardCards } from '../shared/dedupeBoardCards.mjs'
 import { mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
 
@@ -35,7 +36,7 @@ describe('sync automático — Shopify duplicado e merge', () => {
     )
     const deduped = dedupeBoardCards(board)
     assert.equal(countBoardCards(deduped), 1)
-    assert.equal(deduped.cards[0].id, 'shopify-998877')
+    assert.equal(deduped.cards[0].id, 'uuid-local')
     assert.equal(deduped.cards[0].shopifyOrderId, '998877')
   })
 
@@ -109,5 +110,36 @@ describe('sync automático — Shopify duplicado e merge', () => {
     const merged = mergeBoardPreservingPedidos(existing, incoming)
     assert.equal(countBoardCards(merged), 2)
     assert.ok(merged.cards.some((card) => card.id === 'manual-uuid'))
+  })
+
+  it('une pedido manual e Shopify com o mesmo número (ex.: 1021)', () => {
+    const board = boardComCards(
+      {
+        id: 'manual-1021',
+        numeroPedido: '1021',
+        cliente: 'Cauê Henrique Gonçalves de Lima',
+      },
+      {
+        id: 'shopify-555',
+        numeroPedido: '1021',
+        cliente: 'Cauê Henrique',
+        shopifyOrderId: '555',
+        origem: 'shopify',
+      },
+    )
+    const deduped = dedupeBoardCards(board)
+    assert.equal(countBoardCards(deduped), 1)
+    assert.equal(deduped.cards[0].id, 'manual-1021')
+    assert.equal(deduped.cards[0].shopifyOrderId, '555')
+    assert.equal(assertBoardCardsNotLost(2, 1, [], 'producao', board, deduped), true)
+  })
+
+  it('não une dois pedidos manuais com o mesmo número e clientes diferentes', () => {
+    const board = boardComCards(
+      { id: 'a', numeroPedido: '10', cliente: 'João da Silva' },
+      { id: 'b', numeroPedido: '10', cliente: 'Maria Souza' },
+    )
+    const deduped = dedupeBoardCards(board)
+    assert.equal(countBoardCards(deduped), 2)
   })
 })

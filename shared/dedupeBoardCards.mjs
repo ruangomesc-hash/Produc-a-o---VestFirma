@@ -1,39 +1,73 @@
 import { mergeOrderCardFields } from './mergeOrderCard.mjs'
+import {
+  normalizeNumeroPedido,
+  podemVincularPedidos,
+  pickLinkedCardId,
+  shopifyOrderIdOf,
+} from './vincularPedido.mjs'
 
 function shopifyKey(card) {
-  const sid = card?.shopifyOrderId ? String(card.shopifyOrderId).trim() : ''
-  if (sid) return `sid:${sid}`
-  const id = String(card?.id || '')
-  if (id.startsWith('shopify-')) return `sid:${id.slice('shopify-'.length)}`
-  return ''
+  const sid = shopifyOrderIdOf(card)
+  return sid ? `sid:${sid}` : ''
 }
 
-function pickShopifyId(a, b) {
-  const aid = String(a?.id || '')
-  const bid = String(b?.id || '')
-  if (aid.startsWith('shopify-')) return aid
-  if (bid.startsWith('shopify-')) return bid
-  return aid || bid
+function numeroKey(card) {
+  const n = normalizeNumeroPedido(card?.numeroPedido)
+  return n ? `num:${n}` : ''
 }
 
-/** Une pedidos duplicados da mesma ordem Shopify sem apagar o pedido. */
+function mergeVinculados(prev, card) {
+  const merged = mergeOrderCardFields(prev, card)
+  const sid = shopifyOrderIdOf(merged) || shopifyOrderIdOf(prev) || shopifyOrderIdOf(card)
+  const origem =
+    prev?.origem === 'shopify' || card?.origem === 'shopify' || sid ? 'shopify' : merged.origem
+  return {
+    ...merged,
+    id: pickLinkedCardId(prev, card),
+    shopifyOrderId: sid || merged.shopifyOrderId,
+    origem,
+  }
+}
+
+function indiceParaVincular(kept, card, indexBySid, indexByNumero) {
+  const sid = shopifyKey(card)
+  if (sid && indexBySid.has(sid)) return indexBySid.get(sid)
+  const num = numeroKey(card)
+  if (!num) return -1
+  if (indexByNumero.has(num)) {
+    const i = indexByNumero.get(num)
+    if (podemVincularPedidos(kept[i], card)) return i
+  }
+  for (let i = 0; i < kept.length; i++) {
+    if (numeroKey(kept[i]) === num && podemVincularPedidos(kept[i], card)) return i
+  }
+  return -1
+}
+
+/** Une duplicatas da mesma ordem (Shopify ou mesmo número já no kanban) sem apagar o pedido. */
 export function dedupeBoardCards(board) {
   const cards = Array.isArray(board?.cards) ? board.cards : []
   if (cards.length < 2) return board
   const kept = []
-  const indexByKey = new Map()
+  const indexBySid = new Map()
+  const indexByNumero = new Map()
   for (const card of cards) {
     if (!card) continue
-    const key = shopifyKey(card)
-    if (key && indexByKey.has(key)) {
-      const i = indexByKey.get(key)
-      const prev = kept[i]
-      const merged = mergeOrderCardFields(prev, card)
-      kept[i] = { ...merged, id: pickShopifyId(prev, card), shopifyOrderId: merged.shopifyOrderId || prev.shopifyOrderId }
+    const i = indiceParaVincular(kept, card, indexBySid, indexByNumero)
+    if (i >= 0) {
+      kept[i] = mergeVinculados(kept[i], card)
+      const sid = shopifyKey(kept[i])
+      const num = numeroKey(kept[i])
+      if (sid) indexBySid.set(sid, i)
+      if (num) indexByNumero.set(num, i)
       continue
     }
-    if (key) indexByKey.set(key, kept.length)
+    const idx = kept.length
     kept.push(card)
+    const sid = shopifyKey(card)
+    const num = numeroKey(card)
+    if (sid) indexBySid.set(sid, idx)
+    if (num && !indexByNumero.has(num)) indexByNumero.set(num, idx)
   }
   if (kept.length === cards.length) return board
   return { ...board, cards: kept }

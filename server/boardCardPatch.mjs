@@ -86,7 +86,10 @@ export async function applyBoardCardPatch(payload, session, ctx) {
       cards: existing.cards.map((c) => (c.id === cardId ? next : c)),
     })
     if (existingCount > 0 && countBoardCards(board) < existingCount) {
-      return { status: 409, body: { error: 'Recusado: este save removeria pedidos já gravados.' } }
+      const { boardPreservouPedidos } = await import('./dataProtection.mjs')
+      if (!boardPreservouPedidos(existing, board)) {
+        return { status: 409, body: { error: 'Recusado: este save removeria pedidos já gravados.' } }
+      }
     }
 
     if (process.env.EXTERNALIZE_BOARD_LOGOS !== '0' && typeof externalizeBoardLogos === 'function') {

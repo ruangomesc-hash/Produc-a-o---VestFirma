@@ -1,9 +1,10 @@
 import crypto from 'node:crypto'
 import {
   COLUNA_PEDIDO_FEITO_ID,
-  cardIdShopify,
+  encontrarCardParaPedidoShopify,
   mapShopifyOrderToCard,
   mesclarCardShopify,
+  mergeShopifyEtapaTags,
   parseEtapaTag,
 } from '../shared/shopifyOrderMap.mjs'
 import { mergeBoardPreservingPedidos } from './boardPersist.mjs'
@@ -181,9 +182,7 @@ function aplicarPedidoShopifyNoQuadro(board, order) {
   const mapped = mapShopifyOrderToCard(order, COLUNA_PEDIDO_FEITO_ID)
   const etapaTag = parseEtapaTag(order.tags)
   if (etapaTag) mapped.columnId = etapaTag
-  const existing = (board.cards ?? []).find(
-    (c) => c.id === mapped.id || String(c.shopifyOrderId) === String(order.id),
-  )
+  const existing = encontrarCardParaPedidoShopify(board.cards, order)
   const mergedCard = existing
     ? mesclarCardShopify(existing, mapped, order.updated_at)
     : mapped
@@ -204,7 +203,9 @@ export async function ingestShopifyOrder(board, payload, topic) {
   }
   const next = aplicarPedidoShopifyNoQuadro(board, order)
   const beforeIds = new Set((board.cards ?? []).map((c) => c.id))
-  const after = next.cards.find((c) => c.id === cardIdShopify(order.id) || String(c.shopifyOrderId) === String(order.id))
-  const changed = Boolean(after) && (!beforeIds.has(after.id) || JSON.stringify(after) !== JSON.stringify(board.cards.find((c) => c.id === after.id)))
+  const after = encontrarCardParaPedidoShopify(next.cards, order)
+  const changed =
+    Boolean(after) &&
+    (!beforeIds.has(after.id) || JSON.stringify(after) !== JSON.stringify(board.cards.find((c) => c.id === after.id)))
   return { board: next, changed: true, card: after, created: after ? !beforeIds.has(after.id) : false, noop: !changed }
 }

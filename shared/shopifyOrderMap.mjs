@@ -1,3 +1,9 @@
+import {
+  clientesParecidosParaVinculo,
+  normalizeNumeroPedido,
+  shopifyOrderIdOf,
+} from './vincularPedido.mjs'
+
 /** Coluna inicial de pedidos da Shopify (antes de Logos recebidas). */
 export const COLUNA_PEDIDO_FEITO_ID = 'pedido-feito'
 export const COLUNA_PEDIDO_FEITO_TITLE = 'Pedido feito'
@@ -5,6 +11,36 @@ export const SHOPIFY_ETAPA_TAG_PREFIX = 'vestfirma-etapa:'
 
 export function cardIdShopify(orderId) {
   return `shopify-${String(orderId)}`
+}
+
+/** Card já no kanban para esta ordem — por ID Shopify ou pelo número do pedido. */
+export function encontrarCardParaPedidoShopify(cards, order) {
+  const list = Array.isArray(cards) ? cards : []
+  const oid = String(order?.id || '')
+  if (!oid) return null
+  const mappedId = cardIdShopify(oid)
+  const bySid = list.find((c) => c && (c.id === mappedId || String(c.shopifyOrderId || '') === oid))
+  if (bySid) return bySid
+  const numero = normalizeNumeroPedido(order?.order_number || order?.name || '')
+  if (!numero) return null
+  const nome = nomeCliente(order)
+  const candidates = list.filter((c) => {
+    if (!c) return false
+    if (normalizeNumeroPedido(c.numeroPedido) !== numero) return false
+    const sid = shopifyOrderIdOf(c)
+    if (sid && sid !== oid) return false
+    return true
+  })
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0]
+  const named = candidates.filter((c) => clientesParecidosParaVinculo(c.cliente, nome))
+  const pool = named.length ? named : candidates
+  pool.sort((a, b) => {
+    const arq = Number(Boolean(a.arquivadoEm)) - Number(Boolean(b.arquivadoEm))
+    if (arq) return arq
+    return (b.historicoEtapa?.length || 0) - (a.historicoEtapa?.length || 0)
+  })
+  return pool[0]
 }
 
 export function parseEtapaTag(tags) {
@@ -118,6 +154,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
   return {
     id,
     columnId: col,
+    shopifyEtapaTag: etapaTag || undefined,
     cliente: nomeCliente(order),
     whatsappCliente: telefoneDe(order),
     vendedorId: null,
@@ -160,7 +197,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
  */
 export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
   if (!existing) return mapped
-  const tagCol = mapped.columnId
+  const tagCol = mapped.shopifyEtapaTag || null
   const keepCol = existing.columnId
   let columnId = keepCol
   const shopMs = Date.parse(shopifyUpdatedAt || '') || 0
@@ -168,9 +205,10 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
   if (tagCol && tagCol !== keepCol && shopMs > localMs) {
     columnId = tagCol
   }
+  const { shopifyEtapaTag: _tagHint, ...mappedSemHint } = mapped
   return {
     ...existing,
-    ...mapped,
+    ...mappedSemHint,
     id: existing.id,
     columnId,
     etapaDesde: columnId === keepCol ? existing.etapaDesde : mapped.etapaDesde,
