@@ -60,6 +60,7 @@ export function KanbanBoard({
   const [showAddColumn, setShowAddColumn] = useState(false)
   const [moveToast, setMoveToast] = useState<MoveToast | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const shellRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!canManageColumns) setShowAddColumn(false)
@@ -69,6 +70,33 @@ export function KanbanBoard({
     return () => {
       if (toastTimer.current) clearTimeout(toastTimer.current)
     }
+  }, [])
+
+  useEffect(() => {
+    const shell = shellRef.current
+    if (!shell) return
+
+    const onWheel = (event: WheelEvent) => {
+      if (shell.scrollWidth <= shell.clientWidth + 1) return
+
+      const cards = (event.target as HTMLElement | null)?.closest?.('.column-cards')
+      const cardsEl = cards instanceof HTMLElement ? cards : null
+      const verticalNaLista =
+        Boolean(cardsEl) &&
+        cardsEl!.scrollHeight > cardsEl!.clientHeight + 1 &&
+        Math.abs(event.deltaY) >= Math.abs(event.deltaX) &&
+        !event.shiftKey
+
+      if (verticalNaLista) return
+
+      const dx = event.shiftKey || Math.abs(event.deltaX) < 1 ? event.deltaY : event.deltaX
+      if (!dx) return
+      event.preventDefault()
+      shell.scrollLeft += dx
+    }
+
+    shell.addEventListener('wheel', onWheel, { passive: false })
+    return () => shell.removeEventListener('wheel', onWheel)
   }, [])
 
   const sensors = useSensors(
@@ -215,7 +243,7 @@ export function KanbanBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveCard(null)}
     >
-      <div className="kanban-board-shell">
+      <div className="kanban-board-shell" ref={shellRef}>
         <div className="board-scroll board-scroll--fluxo">
           <div className="board-columns board-columns--fluxo">{colunasFluxo.map(renderColumn)}</div>
         </div>

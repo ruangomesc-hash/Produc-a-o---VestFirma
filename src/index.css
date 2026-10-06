@@ -1240,6 +1240,7 @@ body.vestfirma-tv .pwa-install-banner {
   overflow-y: hidden;
   background: var(--vestfirma-gold);
   -webkit-overflow-scrolling: touch;
+  padding: 1rem 0.25rem max(1.5rem, env(safe-area-inset-bottom, 0px)) 0.25rem;
 }
 
 .board-scroll--fluxo,
@@ -1261,7 +1262,7 @@ body.vestfirma-tv .pwa-install-banner {
   max-width: 100%;
   overflow-x: hidden;
   overflow-y: hidden;
-  padding: 0.2rem 0.06rem 0.25rem 0.08rem;
+  padding: 0;
 }
 
 .board-columns--fluxo {
@@ -1296,8 +1297,7 @@ body.vestfirma-tv .pwa-install-banner {
     width: max-content;
     min-width: 0;
     max-width: none;
-    padding: 1rem max(1.25rem, env(safe-area-inset-right, 0px)) max(1.5rem, env(safe-area-inset-bottom, 0px))
-      max(1.25rem, env(safe-area-inset-left, 0px));
+    padding: 0;
   }
 
   .board-columns--fluxo {
@@ -1324,7 +1324,7 @@ body.vestfirma-tv .pwa-install-banner {
 
 @media (min-width: 1100px) and (hover: hover) {
   .kanban-board-shell .board-scroll--fluxo {
-    padding: 0.18rem 0.04rem 0.22rem 0.06rem;
+    padding: 0;
   }
 
   .board-columns.board-columns--fluxo {
@@ -1430,13 +1430,14 @@ body.vestfirma-tv .pwa-install-banner {
   font-size: 0.72rem;
 }
 
-.board-scroll--concluidos,
-.board-scroll--cancelados,
-.board-scroll--laterais {
+.board-scroll.board-scroll--concluidos,
+.board-scroll.board-scroll--cancelados,
+.board-scroll.board-scroll--laterais {
   flex: 0 0 auto;
   width: max-content;
   min-width: 0;
-  padding-left: 0.35rem;
+  padding: 0;
+  align-self: stretch;
 }
 
 @media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
