@@ -215,12 +215,12 @@ export function openWhatsAppRedirect(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-export function abrirWhatsAppSeloLogo(card: {
+export function linkWhatsAppSeloLogo(card: {
   cliente: string
   numeroPedido: string
   quantidade?: number
   whatsappCliente?: string
-}): { ok: true } | { ok: false; error: string } {
+}): { ok: true; url: string } | { ok: false; error: string } {
   const numero = card.whatsappCliente ?? ''
   if (!telefoneBrCompleto(numero)) {
     return {
@@ -234,7 +234,18 @@ export function abrirWhatsAppSeloLogo(card: {
   if (!url) {
     return { ok: false, error: 'Não foi possível montar o WhatsApp. Confira o número na ficha.' }
   }
-  openWhatsAppRedirect(url)
+  return { ok: true, url }
+}
+
+export function abrirWhatsAppSeloLogo(card: {
+  cliente: string
+  numeroPedido: string
+  quantidade?: number
+  whatsappCliente?: string
+}): { ok: true } | { ok: false; error: string } {
+  const linked = linkWhatsAppSeloLogo(card)
+  if (!linked.ok) return linked
+  openWhatsAppRedirect(linked.url)
   return { ok: true }
 }
 

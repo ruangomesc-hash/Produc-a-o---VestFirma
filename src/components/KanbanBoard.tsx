@@ -1,7 +1,7 @@
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -71,15 +71,13 @@ export function KanbanBoard({
   }, [])
 
   const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: dragEnabled ? { distance: 6 } : { distance: 999999 },
+    }),
     useSensor(TouchSensor, {
       activationConstraint: dragEnabled
         ? { delay: HOLD_MS, tolerance: 18 }
         : { delay: 999999, tolerance: 0 },
-    }),
-    useSensor(PointerSensor, {
-      activationConstraint: dragEnabled
-        ? { delay: HOLD_MS, tolerance: 12 }
-        : { distance: 999999 },
     }),
   )
 
@@ -246,6 +244,7 @@ export function KanbanBoard({
       <DragOverlay dropAnimation={null}>
         {activeCard ? (
           <div className="kanban-card overlay kanban-card--lifting">
+            <span className="card-lift-fold" aria-hidden />
             <p className="card-lift-hint">Pedido selecionado — solte na etapa</p>
             <div className="card-logo">
               {activeCard.logoEnviadaCliente[0] ? (

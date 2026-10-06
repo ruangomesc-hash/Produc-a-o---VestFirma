@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { calcularEtapaPrazo, etapaDevePiscar } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import { pedidoFaltaLogo } from '../pedidoShopify'
-import { abrirWhatsAppSeloLogo, abrirWhatsAppSeloWpp } from '../whatsappRedirect'
+import { abrirWhatsAppSeloWpp, linkWhatsAppSeloLogo } from '../whatsappRedirect'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
 import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
@@ -101,6 +101,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
   const localLogo = rotuloLocalLogo(card.localLogo)
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
   const faltaLogo = pedidoFaltaLogo(card)
+  const linkLogo = faltaLogo ? linkWhatsAppSeloLogo(card) : null
   const agora = useRelogioPrazo()
   const prazo = calcularEtapaPrazo(card.columnId, columnTitle, card, agora)
   const atrasado = prazo.tipo === 'prazo' && prazo.atrasado
@@ -122,7 +123,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
       data-pedido-id={card.id}
       className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${faltaLogo ? 'card-falta-logo-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''} ${highlighted ? 'kanban-card--search-highlight' : ''}`}
     >
-      <div className="card-drag-header" {...listeners} {...attributes} title="Segure 1 segundo para mover o pedido">
+      <div className="card-drag-header" {...listeners} {...attributes} title="Arraste para mover. No celular e no tablet, segure um segundo.">
         <div className="card-drag-badges">
           <EtapaPrazoBadge
             columnId={card.columnId}
@@ -130,22 +131,26 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
             card={card}
           />
           {faltaLogo ? (
-            <button
-              type="button"
+            <a
               className="card-falta-logo-tag"
-              title="Solicitar a logo no WhatsApp do cliente"
+              href={linkLogo?.ok ? linkLogo.url : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Solicitar logo no WhatsApp do cliente"
               onPointerDown={pararArrasteCard}
               onMouseDown={pararArrasteCard}
               onTouchStart={pararArrasteCard}
               onClick={(e) => {
-                e.preventDefault()
                 e.stopPropagation()
-                const result = abrirWhatsAppSeloLogo(card)
-                if (!result.ok) window.alert(result.error)
+                const linked = linkLogo ?? linkWhatsAppSeloLogo(card)
+                if (!linked.ok) {
+                  e.preventDefault()
+                  window.alert(linked.error)
+                }
               }}
             >
               Solicitar logo
-            </button>
+            </a>
           ) : null}
           {atrasado ? (
             <button
