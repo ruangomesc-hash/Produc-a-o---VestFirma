@@ -13,13 +13,13 @@ function boardComCards(...cards) {
     segmentos: [],
     cards: cards.map((c, i) => ({
       id: c.id ?? `card-${i}`,
-      columnId: col,
+      columnId: c.columnId ?? col,
       cliente: c.cliente ?? 'Cliente',
       numeroPedido: c.numeroPedido ?? String(1000 + i),
       quantidade: 1,
       vendedorId: null,
       createdAt: '2026-10-06T12:00:00.000Z',
-      etapaDesde: '2026-10-06T12:00:00.000Z',
+      etapaDesde: c.etapaDesde ?? '2026-10-06T12:00:00.000Z',
       historicoEtapa: [],
       comentarios: c.comentarios ?? [],
       shopifyOrderId: c.shopifyOrderId,
@@ -134,10 +134,36 @@ describe('sync automático — Shopify duplicado e merge', () => {
     assert.equal(assertBoardCardsNotLost(2, 1, [], 'producao', board, deduped), true)
   })
 
-  it('não une dois pedidos manuais com o mesmo número e clientes diferentes', () => {
+  it('une pedido já enviado com o mesmo número vindo da Shopify, sem voltar etapa', () => {
     const board = boardComCards(
-      { id: 'a', numeroPedido: '10', cliente: 'João da Silva' },
-      { id: 'b', numeroPedido: '10', cliente: 'Maria Souza' },
+      {
+        id: 'manual-6',
+        numeroPedido: '6',
+        cliente: 'Gustavo',
+        columnId: 'pedido-enviado',
+        etapaDesde: '2026-09-20T00:00:00.000Z',
+      },
+      {
+        id: 'shopify-777',
+        numeroPedido: '06',
+        cliente: 'Gustavo - Filipe joias',
+        shopifyOrderId: '777',
+        origem: 'shopify',
+        columnId: 'pedido-feito',
+        etapaDesde: '2026-10-06T18:00:00.000Z',
+      },
+    )
+    const deduped = dedupeBoardCards(board)
+    assert.equal(countBoardCards(deduped), 1)
+    assert.equal(deduped.cards[0].id, 'manual-6')
+    assert.equal(deduped.cards[0].columnId, 'pedido-enviado')
+    assert.equal(deduped.cards[0].shopifyOrderId, '777')
+  })
+
+  it('não une WPP-01 com pedido Shopify #1', () => {
+    const board = boardComCards(
+      { id: 'wpp', numeroPedido: 'WPP-01', cliente: 'Marcelo' },
+      { id: 'shopify-1', numeroPedido: '1', shopifyOrderId: '1', origem: 'shopify', cliente: 'Outro' },
     )
     const deduped = dedupeBoardCards(board)
     assert.equal(countBoardCards(deduped), 2)

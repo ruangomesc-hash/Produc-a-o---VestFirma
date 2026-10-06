@@ -44,25 +44,34 @@ export function encontrarCardParaPedidoShopify(cards, order) {
   const oid = String(order?.id || '')
   if (!oid) return null
   const mappedId = cardIdShopify(oid)
-  const bySid = list.find((c) => c && (c.id === mappedId || String(c.shopifyOrderId || '') === oid))
+  const oidNorm = shopifyOrderIdOf({ shopifyOrderId: oid, id: mappedId })
+  const bySid = list.find((c) => {
+    if (!c) return false
+    if (c.id === mappedId) return true
+    const sid = shopifyOrderIdOf(c)
+    return Boolean(sid && oidNorm && sid === oidNorm)
+  })
   if (bySid) return bySid
   const numero = normalizeNumeroPedido(order?.order_number || order?.name || '')
   if (!numero) return null
   const nome = nomeCliente(order)
-  const candidates = list.filter((c) => {
-    if (!c) return false
-    if (normalizeNumeroPedido(c.numeroPedido) !== numero) return false
-    const sid = shopifyOrderIdOf(c)
-    if (sid && sid !== oid) return false
-    return true
-  })
+  const candidates = list.filter((c) => c && normalizeNumeroPedido(c.numeroPedido) === numero)
   if (candidates.length === 0) return null
   if (candidates.length === 1) return candidates[0]
   const named = candidates.filter((c) => clientesParecidosParaVinculo(c.cliente, nome))
   const pool = named.length ? named : candidates
+  const rankColuna = (id) => {
+    if (id === 'pedido-enviado') return 80
+    if (id === 'liberado-logistica') return 70
+    if (id === 'cancelados-expirados') return 10
+    if (id === 'pedido-feito') return 0
+    return 40
+  }
   pool.sort((a, b) => {
     const arq = Number(Boolean(a.arquivadoEm)) - Number(Boolean(b.arquivadoEm))
     if (arq) return arq
+    const col = rankColuna(b.columnId) - rankColuna(a.columnId)
+    if (col) return col
     return (b.historicoEtapa?.length || 0) - (a.historicoEtapa?.length || 0)
   })
   return pool[0]

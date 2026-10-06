@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { calcularEtapaPrazo, etapaDevePiscar } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import { pedidoFaltaLogo } from '../pedidoShopify'
-import { abrirWhatsAppSeloWpp, linkWhatsAppSeloLogo } from '../whatsappRedirect'
+import { abrirWhatsAppSeloWpp, buildWhatsAppRedirectUrl, linkWhatsAppSeloLogo } from '../whatsappRedirect'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
 import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
@@ -26,10 +26,7 @@ function formatDate(value: string) {
 }
 
 function whatsappHref(numero: string) {
-  const digits = numero.replace(/\D/g, '')
-  if (!digits) return '#'
-  const withCountry = digits.startsWith('55') ? digits : `55${digits}`
-  return `https://wa.me/${withCountry}`
+  return buildWhatsAppRedirectUrl(numero, '') ?? '#'
 }
 
 function pararArrasteCard(e: { stopPropagation: () => void }) {

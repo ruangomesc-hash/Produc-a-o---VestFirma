@@ -200,15 +200,19 @@ export function mensagemSeloLogo(
   return templates.find((t) => templateEhMensagemLogo(t)) ?? mensagemPadraoLogo()
 }
 
-/** Link wa.me com DDD + número BR e texto opcional. */
+/** Link do WhatsApp Web (não passa pela página de escolher app / wa.me). */
 export function buildWhatsAppRedirectUrl(numeroBr: string, texto: string): string | null {
   if (!telefoneBrCompleto(numeroBr)) return null
   const digits = digitsTelefoneBr(numeroBr)
   const withCountry = digits.startsWith('55') ? digits : `55${digits}`
-  const base = `https://wa.me/${withCountry}`
+  const params = new URLSearchParams({
+    phone: withCountry,
+    type: 'phone_number',
+    app_absent: '0',
+  })
   const msg = texto.trim()
-  if (!msg) return base
-  return `${base}?text=${encodeURIComponent(msg)}`
+  if (msg) params.set('text', msg)
+  return `https://web.whatsapp.com/send/?${params.toString()}`
 }
 
 export function openWhatsAppRedirect(url: string): void {

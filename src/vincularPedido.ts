@@ -2,14 +2,27 @@ export function normalizeNumeroPedido(value: unknown): string {
   const raw = String(value || '').trim()
   if (!raw) return ''
   const digits = raw.replace(/\D/g, '')
-  return digits || raw.toLowerCase()
+  if (!digits) return raw.toLowerCase()
+  if (/[a-zA-Z]/.test(raw)) return digits
+  return digits.replace(/^0+/, '') || '0'
+}
+
+export function normalizeShopifyOrderId(value: unknown): string {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const gid = raw.match(/\/Order\/(\d+)/i)
+  if (gid) return gid[1]
+  const stripped = raw.replace(/^shopify-/i, '')
+  const digits = stripped.replace(/\D/g, '')
+  if (digits && /^\d+$/.test(stripped)) return digits
+  return stripped
 }
 
 export function shopifyOrderIdOf(card: { id?: string; shopifyOrderId?: string } | undefined): string {
   const sid = card?.shopifyOrderId ? String(card.shopifyOrderId).trim() : ''
-  if (sid) return sid
+  if (sid) return normalizeShopifyOrderId(sid)
   const id = String(card?.id || '')
-  if (id.startsWith('shopify-')) return id.slice('shopify-'.length)
+  if (id.startsWith('shopify-')) return normalizeShopifyOrderId(id.slice('shopify-'.length))
   return ''
 }
 
@@ -42,7 +55,7 @@ export function podemVincularPedidos(
   if (!a || !b) return false
   const sa = shopifyOrderIdOf(a)
   const sb = shopifyOrderIdOf(b)
-  if (sa && sb) return sa === sb
+  if (sa && sb && sa === sb) return true
   const na = normalizeNumeroPedido(a.numeroPedido)
   const nb = normalizeNumeroPedido(b.numeroPedido)
   if (!na || na !== nb) return false

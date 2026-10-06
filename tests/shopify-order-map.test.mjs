@@ -143,6 +143,49 @@ describe('Shopify → kanban', () => {
     assert.equal(result.board.cards[0].columnId, 'em-aplicacao')
   })
 
+  it('cruza pelo número mesmo com nome diferente e não cria segundo card', async () => {
+    const { ingestShopifyOrder } = await import('../server/shopifySync.mjs')
+    const board = {
+      columns: [
+        { id: COLUNA_PEDIDO_FEITO_ID, title: 'Pedido feito' },
+        { id: 'pedido-enviado', title: 'Pedido enviado' },
+      ],
+      vendedores: [],
+      cards: [
+        {
+          id: 'manual-6',
+          columnId: 'pedido-enviado',
+          cliente: 'Gustavo',
+          numeroPedido: '6',
+          quantidade: 1,
+          createdAt: '2026-09-01T00:00:00.000Z',
+          etapaDesde: '2026-09-20T00:00:00.000Z',
+          historicoEtapa: [{ id: 'h1', tipo: 'avancou', columnId: 'pedido-enviado', at: '2026-09-20T00:00:00.000Z' }],
+          comentarios: [],
+        },
+      ],
+    }
+    const result = await ingestShopifyOrder(
+      board,
+      {
+        id: 777001,
+        order_number: 6,
+        name: '#6',
+        created_at: '2026-09-01T00:00:00Z',
+        updated_at: '2026-10-06T00:00:00Z',
+        financial_status: 'paid',
+        shipping_address: { first_name: 'Gustavo', last_name: 'Filipe joias' },
+        line_items: [{ title: 'Polo', quantity: 1 }],
+      },
+      'orders/create',
+    )
+    assert.equal(result.created, false)
+    assert.equal(result.board.cards.length, 1)
+    assert.equal(result.board.cards[0].id, 'manual-6')
+    assert.equal(result.board.cards[0].columnId, 'pedido-enviado')
+    assert.equal(result.board.cards[0].shopifyOrderId, '777001')
+  })
+
   it('manda cancelado da Shopify para Cancelados / expirados sem arquivar', () => {
     const mapped = mapShopifyOrderToCard({
       ...order,

@@ -16,14 +16,29 @@ function numeroKey(card) {
   return n ? `num:${n}` : ''
 }
 
+function rankColunaManter(columnId) {
+  if (columnId === 'pedido-enviado') return 80
+  if (columnId === 'liberado-logistica') return 70
+  if (columnId === 'em-aplicacao') return 50
+  if (columnId === 'cancelados-expirados') return 15
+  if (columnId === 'pedido-feito') return 0
+  return 40
+}
+
 function mergeVinculados(prev, card) {
   const merged = mergeOrderCardFields(prev, card)
   const sid = shopifyOrderIdOf(merged) || shopifyOrderIdOf(prev) || shopifyOrderIdOf(card)
   const origem =
     prev?.origem === 'shopify' || card?.origem === 'shopify' || sid ? 'shopify' : merged.origem
+  const keepPrevCol = rankColunaManter(prev.columnId) >= rankColunaManter(card.columnId)
+  const columnId = keepPrevCol ? prev.columnId : card.columnId
+  const etapaDesde =
+    columnId === prev.columnId ? prev.etapaDesde || merged.etapaDesde : card.etapaDesde || merged.etapaDesde
   return {
     ...merged,
     id: pickLinkedCardId(prev, card),
+    columnId,
+    etapaDesde,
     shopifyOrderId: sid || merged.shopifyOrderId,
     origem,
   }
