@@ -1,4 +1,5 @@
 import { ensureBoardColumns, impedirRegressaoEtapaNoMerge } from './boardColumns'
+import { dedupeBoardCards } from './dedupeBoardCards'
 import { mergeOrderCardFields } from './mergeOrderCard'
 import type { BoardState, OrderCard } from './types'
 import { mergeVendedoresUnion } from './vendedorUserSync'
@@ -48,7 +49,7 @@ export function mergeBoardPreservingPedidos(
   const removeSet = new Set(removeCardIds.filter(Boolean))
   if (!existing?.cards?.length) {
     const cards = (incoming.cards ?? []).filter((c) => !c?.id || !removeSet.has(c.id))
-    return { ...incoming, ...shell, cards }
+    return dedupeBoardCards({ ...incoming, ...shell, cards })
   }
 
   const byId = new Map<string, OrderCard>()
@@ -69,11 +70,11 @@ export function mergeBoardPreservingPedidos(
     byId.set(c.id, prev ? mergeOrderCard(prev, c, shell.columns) : c)
   }
 
-  return {
+  return dedupeBoardCards({
     ...incoming,
     ...shell,
     cards: [...legacy, ...Array.from(byId.values())],
-  }
+  })
 }
 
 /**

@@ -10,7 +10,7 @@ import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
 import { inserirColunaAntesDePedidoEnviado } from '../boardColumns'
-import { mergeBoardPreservingPedidos, contagemPedidos, boardTemConteudoAlemDoServidor } from '../pedidosPolicy'
+import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
 import { boardTemPedidosAlemDoServidor, mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
   snapshotBoardPedidos,
@@ -92,7 +92,11 @@ export function useBoard() {
   const [localRestore, setLocalRestore] = useState<BoardState | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const boardRef = useRef(board)
-  boardRef.current = board
+  const refreshInFlight = useRef<Promise<void> | null>(null)
+
+  useEffect(() => {
+    boardRef.current = board
+  }, [board])
 
   useEffect(() => {
     let cancelled = false
@@ -445,9 +449,9 @@ export function useBoard() {
         cards: [...current.cards, card],
       })
       setBoard(next)
+      boardRef.current = next
       setSync((s) => ({ ...s, status: 'saving' }))
-      const forceRemote = actor?.role === 'vendedor' && isRemoteSyncEnabled()
-      const result = await saveBoard(next, forceRemote ? { forceRemote: true } : undefined)
+      const result = await saveBoard(next, isRemoteSyncEnabled() ? { forceRemote: true } : undefined)
       if (result.ok) {
         if (!isRemoteSyncEnabled() || result.remote) {
           setLocalRestore(null)
@@ -746,7 +750,7 @@ export function useBoard() {
   )
 
   const moveCard = useCallback(
-    (cardId: string, columnId: string) => {
+    (cardId: string, columnId: string, opts?: { silent?: boolean }) => {
       const existing = board.cards.find((c) => c.id === cardId)
       if (!existing || existing.columnId === columnId) return
       if (!vendedorLogadoPodeCard(board, existing)) return
@@ -764,11 +768,15 @@ export function useBoard() {
         cards: board.cards.map((c) => (c.id === cardId ? updated : c)),
       }
       persist(nextBoard, { immediate: true })
-      notificarSePedidoMovido(updated, nextBoard, fromColumnId, columnId)
+      if (!opts?.silent) {
+        notificarSePedidoMovido(updated, nextBoard, fromColumnId, columnId)
+      }
       recordAudit({
         action: 'pedido.movido',
-        summary: `Pedido ${existing.numeroPedido}: ${tituloColuna(board, fromColumnId)} → ${tituloColuna(board, columnId)}`,
-        meta: { cardId, fromColumnId, columnId },
+        summary: opts?.silent
+          ? `Desfez movimento do pedido ${existing.numeroPedido} de volta para ${tituloColuna(board, columnId)}`
+          : `Pedido ${existing.numeroPedido}: ${tituloColuna(board, fromColumnId)} → ${tituloColuna(board, columnId)}`,
+        meta: { cardId, fromColumnId, columnId, undo: Boolean(opts?.silent) },
       })
     },
     [board, persist],
@@ -856,23 +864,28 @@ export function useBoard() {
   }, [])
 
   const refreshBoardFromServer = useCallback(async () => {
-    try {
-      const result = await loadBoard()
-      const merged = mergeBoardLoggedInFromServer(result.board, boardRef.current)
-      const unified = relinkOrphanVendedorIdsConservative(
-        unifyVendedorRowsAndRelinkCards(merged),
-      )
-      boardRef.current = unified
-      setBoard(unified)
-      if (result.richerLocal) setLocalRestore(result.richerLocal)
-      if (
-        contagemPedidos(unified) > contagemPedidos(result.board) ||
-        boardTemConteudoAlemDoServidor(unified, result.board)
-      ) {
-        void saveBoard(unified, { immediate: true })
+    if (refreshInFlight.current) return refreshInFlight.current
+    const run = (async () => {
+      try {
+        const result = await loadBoard({ memoryBoard: boardRef.current })
+        const unified = relinkOrphanVendedorIdsConservative(
+          unifyVendedorRowsAndRelinkCards(result.board),
+        )
+        boardRef.current = unified
+        setBoard(unified)
+        if (result.richerLocal) {
+          setLocalRestore(result.richerLocal)
+          void saveBoard(unified, { forceRemote: true })
+        }
+      } catch {
+        /* mantém quadro atual */
       }
-    } catch {
-      /* mantém quadro atual */
+    })()
+    refreshInFlight.current = run
+    try {
+      await run
+    } finally {
+      if (refreshInFlight.current === run) refreshInFlight.current = null
     }
   }, [])
 

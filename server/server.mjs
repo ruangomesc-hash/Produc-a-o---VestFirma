@@ -89,7 +89,13 @@ async function handleBoardApi(req, res) {
     try {
       const data = await readBoardWithRecovery(DATA_FILE)
       const raw = data ? JSON.stringify(data) : 'null'
-      res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+      res.writeHead(200, {
+        ...corsHeaders(),
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      })
       res.end(raw)
     } catch (err) {
       if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
@@ -253,7 +259,11 @@ async function handleBoardApi(req, res) {
     void syncEtapasKanbanParaShopify(existing, board).catch((err) => {
       console.warn('[vestfirma] Shopify sync:', err)
     })
-    res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+    res.writeHead(200, {
+      ...corsHeaders(),
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    })
     res.end(JSON.stringify({ ok: true, savedAt: new Date().toISOString() }))
     return
   }
@@ -376,6 +386,40 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/logout' || url.pathname === '/api/logout.php') {
       await handleLogoutApi(req, res)
+      return
+    }
+
+    if (url.pathname === '/api/board/revision' || url.pathname === '/api/board/revision.php') {
+      if (REQUIRE_LOGIN) {
+        const session = await requireSession(req, res)
+        if (!session) return
+      }
+      const DATA_FILE = boardFilePath()
+      try {
+        const st = await fs.stat(DATA_FILE)
+        const data = await readExistingBoard(DATA_FILE)
+        const cards = Array.isArray(data?.cards) ? data.cards.length : 0
+        res.writeHead(200, {
+          ...corsHeaders(),
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        })
+        res.end(
+          JSON.stringify({
+            ok: true,
+            updatedAt: st.mtime.toISOString(),
+            bytes: st.size,
+            cards,
+          }),
+        )
+      } catch {
+        res.writeHead(200, {
+          ...corsHeaders(),
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        })
+        res.end(JSON.stringify({ ok: true, updatedAt: null, bytes: 0, cards: 0 }))
+      }
       return
     }
 

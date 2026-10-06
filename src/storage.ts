@@ -14,7 +14,6 @@ import { blockLocalFallbackWhenProtected, initRuntimeConfig } from './runtimeCon
 import { mergeBoardPreservingPedidos, contagemPedidos, mergeBoardsMaxPedidos, mergeBoardAddingMissingPedidosOnly, boardTemConteudoAlemDoServidor } from './pedidosPolicy'
 import { mergeBoardLoggedInFromServer, boardTemPedidosAlemDoServidor } from './boardLoadMerge'
 import { loadBoardPedidosSnapshot, snapshotBoardPedidos } from './boardPedidosSnapshot'
-import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
 import { unifyVendedorRowsAndRelinkCards } from './vendedorUserSync'
 import { normalizePedidoImagens } from './pedidoImagens'
 import { normalizeItensProdutoFromCard, quantidadeTotalItensProduto } from './tiposProduto'
@@ -268,6 +267,8 @@ export type LoadBoardResult = {
 
 export type LoadBoardOptions = {
   signal?: AbortSignal
+  /** Quadro em memória (aba aberta) — entra no merge para não perder pedido recém-criado. */
+  memoryBoard?: BoardState
 }
 
 export async function loadBoardFromBrowserCache(): Promise<BoardState | null> {
@@ -277,7 +278,12 @@ export async function loadBoardFromBrowserCache(): Promise<BoardState | null> {
 
 export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardResult> {
   await initRuntimeConfig()
-  const local = await resolveLocalBoardFromIdb()
+  const idbLocal = await resolveLocalBoardFromIdb()
+  const local = options?.memoryBoard
+    ? idbLocal
+      ? mergeBoardPreservingPedidos(idbLocal, options.memoryBoard)
+      : options.memoryBoard
+    : idbLocal
 
   if (!isRemoteSyncEnabled()) {
     const board = local ?? structuredClone(DEFAULT_BOARD)
@@ -294,62 +300,52 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       const snapshotRaw = loadBoardPedidosSnapshot()
       const snapshot = snapshotRaw ? normalizeBoard(snapshotRaw) : null
       const loggedIn = requiresLogin() && Boolean(getSessionToken())
-      const remoteCount = contagemPedidos(remote)
 
       let board: BoardState
       let richerLocal: BoardState | undefined
 
-      if (loggedIn && remoteCount > 0) {
+      if (loggedIn) {
         board = mergeBoardLoggedInFromServer(remote, local)
-        if (boardTemPedidosAlemDoServidor(board, remote)) {
-          richerLocal = board
-        }
-      } else if (loggedIn && remoteCount === 0) {
-        board = mergeBoardLoggedInFromServer(remote, local)
-        if (boardTemPedidosAlemDoServidor(board, remote)) {
-          richerLocal = board
-        }
+        if (snapshot) board = mergeBoardLoggedInFromServer(board, snapshot)
       } else {
         board =
           mergeBoardsMaxPedidos(snapshot, remote, local) ??
           mergeBoardsMaxPedidos(remote, local, snapshot) ??
           (local ? mergeBoardPreservingPedidos(remote, local) : remote)
-
         if (!boardHasPedidos(board) && snapshot && boardHasPedidos(snapshot)) {
           board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
         }
       }
 
-      board = filterBoardRemovendoExcluidos(board)
-
-      const mergedCount = contagemPedidos(board)
-
-      if (!loggedIn && mergedCount > remoteCount) {
+      if (
+        boardTemPedidosAlemDoServidor(board, remote) ||
+        boardTemConteudoAlemDoServidor(board, remote)
+      ) {
         richerLocal = board
       }
 
       await saveBoardToIdb(board)
 
       const shouldPushMissingToServer =
-        loggedIn &&
         !protectedServer &&
         boardHasPedidos(board) &&
         (richerLocal != null ||
           boardTemPedidosAlemDoServidor(board, remote) ||
           boardTemConteudoAlemDoServidor(board, remote))
 
-      const anonRicherPush =
-        richerLocal != null && !protectedServer && !loggedIn && boardHasPedidos(board)
-
       if (shouldPushMissingToServer) {
         const pushResult = await saveBoard(board, { forceRemote: true })
         if (pushResult.ok && pushResult.remote) {
-          richerLocal = undefined
-        }
-      } else if (anonRicherPush) {
-        const pushResult = await saveBoard(board, { forceRemote: true })
-        if (pushResult.ok && pushResult.remote) {
-          richerLocal = undefined
+          const remote2raw = await fetchRemoteBoard({ signal: options?.signal })
+          if (remote2raw) {
+            const remote2 = normalizeBoard(remote2raw)
+            board = mergeBoardLoggedInFromServer(remote2, board)
+            richerLocal = boardTemPedidosAlemDoServidor(board, remote2) ? board : undefined
+            await saveBoardToIdb(board)
+            snapshotBoardPedidos(board)
+          } else {
+            richerLocal = undefined
+          }
         }
       } else {
         snapshotBoardPedidos(board)
@@ -368,6 +364,9 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     const board = local ?? structuredClone(DEFAULT_BOARD)
     return { board }
   } catch (err) {
+    if (options?.signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+      throw err
+    }
     if (protectedServer) {
       console.warn('VestFirma: servidor protegido — não usar cópia local sem login.', err)
       throw err
@@ -379,7 +378,6 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
     if (snapshot && boardHasPedidos(snapshot)) {
       board = mergeBoardAddingMissingPedidosOnly(board, snapshot)
     }
-    board = filterBoardRemovendoExcluidos(board)
     return { board }
   }
 }

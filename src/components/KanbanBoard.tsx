@@ -8,7 +8,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { resolveCardColumnId, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
 import { etapaPedidoEnviado } from '../etapas'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
@@ -17,7 +17,7 @@ import { KanbanColumn } from './KanbanColumn'
 
 type Props = {
   board: BoardState
-  onMoveCard: (cardId: string, columnId: string) => void
+  onMoveCard: (cardId: string, columnId: string, opts?: { silent?: boolean }) => void
   onAddCard: (columnId: string) => void
   onEditCard: (card: OrderCard) => void
   onRequestArchiveCard: (card: OrderCard) => void
@@ -28,6 +28,18 @@ type Props = {
   dragEnabled?: boolean
   highlightPedidoId?: string | null
 }
+
+type MoveToast = {
+  cardId: string
+  fromColumnId: string
+  toColumnId: string
+  cliente: string
+  numero: string
+  fromTitle: string
+  toTitle: string
+}
+
+const HOLD_MS = 650
 
 export function KanbanBoard({
   board,
@@ -45,17 +57,29 @@ export function KanbanBoard({
   const [activeCard, setActiveCard] = useState<OrderCard | null>(null)
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [showAddColumn, setShowAddColumn] = useState(false)
+  const [moveToast, setMoveToast] = useState<MoveToast | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!canManageColumns) setShowAddColumn(false)
   }, [canManageColumns])
 
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current)
+    }
+  }, [])
+
   const sensors = useSensors(
     useSensor(TouchSensor, {
-      activationConstraint: dragEnabled ? { delay: 220, tolerance: 8 } : { delay: 999999, tolerance: 0 },
+      activationConstraint: dragEnabled
+        ? { delay: HOLD_MS, tolerance: 18 }
+        : { delay: 999999, tolerance: 0 },
     }),
     useSensor(PointerSensor, {
-      activationConstraint: { distance: dragEnabled ? 6 : 999999 },
+      activationConstraint: dragEnabled
+        ? { delay: HOLD_MS, tolerance: 12 }
+        : { distance: 999999 },
     }),
   )
 
@@ -79,9 +103,23 @@ export function KanbanBoard({
     return card?.columnId ?? null
   }
 
+  const tituloColuna = (columnId: string) =>
+    board.columns.find((c) => c.id === columnId)?.title ?? columnId
+
+  const showMoveToast = (toast: MoveToast) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setMoveToast(toast)
+    toastTimer.current = setTimeout(() => setMoveToast(null), 8000)
+  }
+
   const handleDragStart = (event: DragStartEvent) => {
     const card = board.cards.find((c) => c.id === event.active.id)
     setActiveCard(card ?? null)
+    try {
+      navigator.vibrate?.(25)
+    } catch {
+      /* ignore */
+    }
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -93,8 +131,25 @@ export function KanbanBoard({
     const cardId = String(active.id)
     const card = board.cards.find((c) => c.id === cardId)
     if (card && card.columnId !== columnId) {
+      const fromColumnId = card.columnId
       onMoveCard(cardId, columnId)
+      showMoveToast({
+        cardId,
+        fromColumnId,
+        toColumnId: columnId,
+        cliente: card.cliente,
+        numero: String(card.numeroPedido || ''),
+        fromTitle: tituloColuna(fromColumnId),
+        toTitle: tituloColuna(columnId),
+      })
     }
+  }
+
+  const undoMove = () => {
+    if (!moveToast) return
+    onMoveCard(moveToast.cardId, moveToast.fromColumnId, { silent: true })
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setMoveToast(null)
   }
 
   const submitColumn = (e: React.FormEvent) => {
@@ -138,7 +193,12 @@ export function KanbanBoard({
   )
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveCard(null)}
+    >
       <div className="kanban-board-shell">
         <div className="board-scroll board-scroll--fluxo">
           <div className="board-columns board-columns--fluxo">{colunasFluxo.map(renderColumn)}</div>
@@ -185,7 +245,8 @@ export function KanbanBoard({
 
       <DragOverlay dropAnimation={null}>
         {activeCard ? (
-          <div className="kanban-card overlay">
+          <div className="kanban-card overlay kanban-card--lifting">
+            <p className="card-lift-hint">Pedido selecionado — solte na etapa</p>
             <div className="card-logo">
               {activeCard.logoEnviadaCliente[0] ? (
                 <img src={activeCard.logoEnviadaCliente[0]} alt="" />
@@ -194,9 +255,26 @@ export function KanbanBoard({
               )}
             </div>
             <strong>{activeCard.cliente}</strong>
+            {activeCard.numeroPedido ? <span>Pedido {activeCard.numeroPedido}</span> : null}
           </div>
         ) : null}
       </DragOverlay>
+      {moveToast ? (
+        <div className="move-undo-toast" role="status" aria-live="polite">
+          <p>
+            Você moveu o pedido <strong>{moveToast.numero}</strong> ({moveToast.cliente}) de{' '}
+            <strong>{moveToast.fromTitle}</strong> para <strong>{moveToast.toTitle}</strong>.
+          </p>
+          <div className="move-undo-toast-actions">
+            <button type="button" className="btn primary small" onClick={undoMove}>
+              Desfazer
+            </button>
+            <button type="button" className="btn ghost small" onClick={() => setMoveToast(null)}>
+              Ok
+            </button>
+          </div>
+        </div>
+      ) : null}
     </DndContext>
   )
 }

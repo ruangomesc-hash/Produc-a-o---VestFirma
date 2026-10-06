@@ -10,7 +10,13 @@ import { shopifyConfigured } from './shopifySync.mjs'
 async function countBoardOnDisk(boardFile) {
   try {
     const st = await fs.stat(boardFile)
-    return { bytes: st.size, total: null, arquivados: null, ativos: null }
+    return {
+      bytes: st.size,
+      updatedAt: st.mtime.toISOString(),
+      total: null,
+      arquivados: null,
+      ativos: null,
+    }
   } catch {
     return null
   }
@@ -41,7 +47,12 @@ export async function handleHealthApi(req, res, corsHeaders) {
   const usersOnDisk = await countUsersOnDisk()
   const boardCounts = paths.boardFile ? await countBoardOnDisk(paths.boardFile) : null
 
-  res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+  res.writeHead(200, {
+    ...corsHeaders(),
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    Pragma: 'no-cache',
+  })
   if (req.method === 'HEAD') {
     res.end()
     return
@@ -69,6 +80,7 @@ export async function handleHealthApi(req, res, corsHeaders) {
       buildTag: 'original-images-client-approval-v1',
       usersOnDisk,
       boardFileBytes: boardCounts?.bytes,
+      boardUpdatedAt: boardCounts?.updatedAt,
       whatsappWebhookConfigured: webhook,
       shopifyConfigured: shopifyConfigured(),
       timestamp: new Date().toISOString(),

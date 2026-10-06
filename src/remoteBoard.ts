@@ -107,11 +107,17 @@ export async function fetchRemoteBoard(
   const base = getApiBase()
   if (!base) return null
 
-  const res = await fetch(`${base}${boardEndpoint()}`, {
+  const url = `${base}${boardEndpoint()}?t=${Date.now()}`
+  const res = await fetch(url, {
     method: 'GET',
     cache: 'no-store',
     signal: options?.signal,
-    headers: { Accept: 'application/json', ...authHeaders() },
+    headers: {
+      Accept: 'application/json',
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
+      ...authHeaders(),
+    },
   })
 
   if (res.status === 401) {

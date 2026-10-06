@@ -113,7 +113,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
       data-pedido-id={card.id}
       className={`kanban-card ${isDragging ? 'dragging' : ''} ${piscar ? 'card-logistica-piscando' : ''} ${faltaLogo ? 'card-falta-logo-piscando' : ''} ${expanded ? 'kanban-card--expanded' : 'kanban-card--collapsed'} ${qtdComentarios > 0 ? 'kanban-card--has-comentarios' : ''} ${highlighted ? 'kanban-card--search-highlight' : ''}`}
     >
-      <div className="card-drag-header" {...listeners} {...attributes} title="Arrastar pedido">
+      <div className="card-drag-header" {...listeners} {...attributes} title="Segure 1 segundo para mover o pedido">
         <div className="card-drag-badges">
           <EtapaPrazoBadge
             columnId={card.columnId}

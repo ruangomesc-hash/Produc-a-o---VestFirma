@@ -18,7 +18,11 @@ export async function handleBoardApi(req, res, readBody) {
 
   if (req.method === 'GET') {
     const raw = await readTextStore(BOARD_STORE)
-    res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
+    res.writeHead(200, {
+      ...corsHeaders(),
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    })
     res.end(raw && raw.trim() ? raw : 'null')
     return true
   }

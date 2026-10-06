@@ -1,9 +1,11 @@
 import type { BoardState } from './types'
+import { dedupeBoardCards } from './dedupeBoardCards'
 import { contagemPedidos, mergeBoardAddingMissingPedidosOnly, mergeBoardRemotePrimary } from './pedidosPolicy'
-import { filterBoardRemovendoExcluidos } from './pedidosExcluidosLocal'
+import { loadPedidosExcluidosIds } from './pedidosExcluidosLocal'
 
 /**
- * Servidor manda, mas pedidos criados neste navegador e ainda não gravados no servidor são mantidos.
+ * Servidor manda. Pedidos só neste navegador entram para serem enviados.
+ * Tombstone local NÃO esconde pedido que já está no servidor (senão tablet/celular ficam com menos cards).
  */
 export function mergeBoardLoggedInFromServer(
   remote: BoardState,
@@ -11,10 +13,15 @@ export function mergeBoardLoggedInFromServer(
 ): BoardState {
   let board = mergeBoardRemotePrimary(remote, local)
   if (local?.cards?.length) {
-    const localSemExcluidos = filterBoardRemovendoExcluidos(local)
-    board = mergeBoardAddingMissingPedidosOnly(board, localSemExcluidos)
+    const remoteIds = new Set((remote.cards ?? []).map((c) => c.id).filter(Boolean))
+    const excluded = loadPedidosExcluidosIds()
+    const extrasOnly = {
+      ...local,
+      cards: local.cards.filter((c) => c?.id && !remoteIds.has(c.id) && !excluded.has(c.id)),
+    }
+    board = mergeBoardAddingMissingPedidosOnly(board, extrasOnly)
   }
-  return filterBoardRemovendoExcluidos(board)
+  return dedupeBoardCards(board)
 }
 
 export function boardTemPedidosAlemDoServidor(board: BoardState, remote: BoardState): boolean {

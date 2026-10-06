@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { mergeBoardShell } from '../shared/boardVendedoresMerge.mjs'
+import { dedupeBoardCards } from '../shared/dedupeBoardCards.mjs'
 import { mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
 
 const MAX_BACKUPS = 48
@@ -65,7 +66,7 @@ export function mergeBoardPreservingPedidos(existing, incoming, removeCardIds = 
   const removeSet = new Set(Array.isArray(removeCardIds) ? removeCardIds.filter(Boolean) : [])
   if (!existing?.cards?.length) {
     const cards = (incoming.cards ?? []).filter((c) => !c?.id || !removeSet.has(c.id))
-    return { ...incoming, ...shell, cards }
+    return dedupeBoardCards({ ...incoming, ...shell, cards })
   }
 
   const byId = new Map()
@@ -86,11 +87,11 @@ export function mergeBoardPreservingPedidos(existing, incoming, removeCardIds = 
     byId.set(c.id, prev ? mergeOrderCard(prev, c, shell.columns) : c)
   }
 
-  return {
+  return dedupeBoardCards({
     ...incoming,
     ...shell,
     cards: [...legacy, ...Array.from(byId.values())],
-  }
+  })
 }
 
 /** Só inclui pedidos que faltam em `primary` — ideal para restaurar backup. */

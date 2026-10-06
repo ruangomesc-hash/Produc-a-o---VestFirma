@@ -341,6 +341,7 @@ export default async function handler(req, res) {
       if (req.method === 'GET') {
         const raw = await blobReadText('board.json')
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
         res.status(200).send(raw && raw.trim() ? raw : 'null')
         return
       }
