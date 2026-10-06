@@ -12,6 +12,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { resolveCardColumnId, ensureBoardColumns, COLUNA_PEDIDO_ENVIADO_ID, COLUNA_CANCELADOS_EXPIRADOS_ID } from '../boardColumns'
 import { etapaCanceladosExpirados, etapaPedidoEnviado } from '../etapas'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
+import { ordenarCardsPorNumeroPedido } from '../ordenarCardsKanban'
 import type { BoardState, OrderCard } from '../types'
 import { KanbanColumn } from './KanbanColumn'
 
@@ -94,6 +95,9 @@ export function KanbanBoard({
       const bucket = map.get(columnId)
       if (!bucket) continue
       bucket.push(columnId === card.columnId ? card : { ...card, columnId })
+    }
+    for (const [id, list] of map) {
+      map.set(id, ordenarCardsPorNumeroPedido(list))
     }
     return map
   }, [columns, board.cards, boardComColunas])
