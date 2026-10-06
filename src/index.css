@@ -1836,11 +1836,49 @@ body.vestfirma-tv .pwa-install-banner {
 .card-falta-logo-tag {
   background: var(--vestfirma-gold);
   color: #111;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.card-falta-logo-tag:hover,
+.card-falta-logo-tag:focus-visible {
+  filter: brightness(1.08);
+  outline: 2px solid #111;
+  outline-offset: 1px;
 }
 
 .card-shopify-tag {
   background: #96bf48;
   color: #111;
+}
+
+.card-wpp-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #25d366;
+  color: #052e16;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-wpp-tag:hover,
+.card-wpp-tag:focus-visible {
+  filter: brightness(1.08);
+  outline: 2px solid #052e16;
+  outline-offset: 1px;
 }
 
 @keyframes card-logistica-pulse {
@@ -3609,6 +3647,21 @@ body.vestfirma-tv .pwa-install-banner {
   color: var(--danger);
 }
 
+.wa-redirect-logo-tag {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.wa-redirect-logo-tag input {
+  margin-top: 0.2rem;
+}
+}
+
 .wa-redirect-footer {
   display: flex;
   justify-content: flex-end;
@@ -3694,7 +3747,7 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .shopify-setup-inner {
-  max-width: 44rem;
+  max-width: 52rem;
   margin: 0 auto;
   padding-bottom: 2rem;
 }
@@ -3816,6 +3869,68 @@ body.vestfirma-tv .pwa-install-banner {
 
 .shopify-setup-steps code {
   font-size: 0.82em;
+}
+
+.shopify-checkup-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  margin: 0.85rem 0 0;
+}
+
+.shopify-checkup-stats div {
+  min-width: 6.5rem;
+}
+
+.shopify-checkup-stats dt {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.shopify-checkup-stats dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.shopify-checkup-error {
+  margin: 0.65rem 0 0;
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+.shopify-checkup-ok {
+  margin: 0.65rem 0 0;
+  color: #166534;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.shopify-checkup-table-wrap {
+  margin-top: 0.85rem;
+  max-height: 18rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.shopify-checkup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.shopify-checkup-table th,
+.shopify-checkup-table td {
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shopify-checkup-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
 }
 
 .system-status {

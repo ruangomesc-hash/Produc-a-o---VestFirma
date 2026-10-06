@@ -50,7 +50,13 @@ describe('Shopify → kanban', () => {
     assert.equal(card.linhasPedido[0].quantidade, 5)
     assert.equal(card.linhasPedido[0].titulo, 'Polo')
     assert.equal(card.origem, 'shopify')
+    assert.equal(card.dataPedido, '2026-10-05')
     assert.equal(pedidoFaltaLogo(card), true)
+  })
+
+  it('usa a data da loja no fuso do Brasil, não o dia UTC', async () => {
+    const { dataPedidoNaLoja } = await import('../shared/shopifyOrderMap.mjs')
+    assert.equal(dataPedidoNaLoja('2026-10-06T02:00:00Z'), '2026-10-05')
   })
 
   it('não apaga nem regride etapa local sem tag mais nova', () => {

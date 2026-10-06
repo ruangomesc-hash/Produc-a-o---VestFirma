@@ -2,7 +2,9 @@
 export const TELEFONE_BR_DIGITOS = 11
 
 export function digitsTelefoneBr(value: string): string {
-  return value.replace(/\D/g, '').slice(0, TELEFONE_BR_DIGITOS)
+  let d = value.replace(/\D/g, '')
+  if (d.startsWith('55') && (d.length === 12 || d.length === 13)) d = d.slice(2)
+  return d.slice(0, TELEFONE_BR_DIGITOS)
 }
 
 /** Máscara (XX) XXXXX-XXXX enquanto digita; não aceita mais que 11 dígitos. */

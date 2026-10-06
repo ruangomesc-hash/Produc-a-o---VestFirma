@@ -3,8 +3,11 @@ import { formatTelefoneBr, telefoneBrCompleto } from '../telefoneBr'
 import {
   buildWhatsAppRedirectUrl,
   loadWhatsAppMensagensPadrao,
+  marcarMensagemLogo,
   openWhatsAppRedirect,
   saveWhatsAppMensagensPadrao,
+  templateEhMensagemLogo,
+  templateEhMensagemWpp,
   type WhatsAppMensagemPadrao,
 } from '../whatsappRedirect'
 
@@ -29,6 +32,15 @@ export function WhatsAppRedirectPanel({ layout = 'page', onClose }: Props) {
     setSelectedId(loaded[0]?.id ?? '')
   }, [])
 
+  const templatesGerais = useMemo(
+    () => templates.filter((t) => !templateEhMensagemWpp(t)),
+    [templates],
+  )
+  const templatesWpp = useMemo(
+    () => templates.filter((t) => templateEhMensagemWpp(t)),
+    [templates],
+  )
+
   const selected = useMemo(
     () => templates.find((t) => t.id === selectedId) ?? templates[0] ?? null,
     [templates, selectedId],
@@ -40,10 +52,14 @@ export function WhatsAppRedirectPanel({ layout = 'page', onClose }: Props) {
   }, [numero, selected])
 
   const persistTemplates = (next: WhatsAppMensagemPadrao[]) => {
-    setTemplates(next)
-    saveWhatsAppMensagensPadrao(next)
+    const stored = saveWhatsAppMensagensPadrao(next)
+    setTemplates(stored)
     setSavedHint(true)
     window.setTimeout(() => setSavedHint(false), 2200)
+  }
+
+  const definirMensagemLogo = (id: string) => {
+    persistTemplates(marcarMensagemLogo(templates, id))
   }
 
   const updateTemplate = (
@@ -64,7 +80,9 @@ export function WhatsAppRedirectPanel({ layout = 'page', onClose }: Props) {
   }
 
   const removeTemplate = (id: string) => {
-    if (templates.length <= 1) return
+    const alvo = templates.find((t) => t.id === id)
+    if (!alvo || templateEhMensagemWpp(alvo)) return
+    if (templatesGerais.length <= 1) return
     const next = templates.filter((t) => t.id !== id)
     persistTemplates(next)
     if (selectedId === id) setSelectedId(next[0]?.id ?? '')
@@ -188,11 +206,14 @@ export function WhatsAppRedirectPanel({ layout = 'page', onClose }: Props) {
           </p>
         ) : null}
         <p className="field-hint">
-          Edite o nome e o texto. Ficam gravadas no navegador — pode cadastrar quantas quiser.
+          Edite o nome e o texto. Ficam gravadas neste aparelho. A mensagem marcada como{' '}
+          <strong>Solicitar logo</strong> abre no botão do kanban; as de <strong>WPP</strong> abrem quando o pedido
+          atrasa na etapa. Use <code>{'{cliente}'}</code>, <code>{'{pedido}'}</code>,{' '}
+          <code>{'{quantidade}'}</code> e <code>{'{etapa}'}</code>.
         </p>
 
         <ul className="wa-redirect-template-list">
-          {templates.map((t, index) => (
+          {templatesGerais.map((t, index) => (
             <li key={t.id} className="wa-redirect-template-item">
               <label className="field">
                 <span>Nome {index + 1}</span>
@@ -208,10 +229,22 @@ export function WhatsAppRedirectPanel({ layout = 'page', onClose }: Props) {
                   rows={4}
                   value={t.texto}
                   onChange={(e) => updateTemplate(t.id, { texto: e.target.value })}
-                  placeholder="Olá! Segue informação do seu pedido…"
+                  placeholder="Olá, {cliente}! Precisamos da logo do pedido {pedido}…"
                 />
               </label>
-              {templates.length > 1 ? (
+              <label className="wa-redirect-logo-tag">
+                <input
+                  type="radio"
+                  name="wa-mensagem-logo-kanban"
+                  checked={templateEhMensagemLogo(t)}
+                  onChange={() => definirMensagemLogo(t.id)}
+                />
+                <span>
+                  Selo <strong>Solicitar logo</strong> no kanban — ao clicar, abre o WhatsApp do
+                  cliente com este texto
+                </span>
+              </label>
+              {templatesGerais.length > 1 ? (
                 <button
                   type="button"
                   className="btn-text wa-redirect-remove-btn"
@@ -220,6 +253,33 @@ export function WhatsAppRedirectPanel({ layout = 'page', onClose }: Props) {
                   Remover mensagem
                 </button>
               ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="wa-redirect-templates" aria-labelledby="wa-redirect-wpp-title">
+        <div className="wa-redirect-templates-head">
+          <h2 id="wa-redirect-wpp-title" className="wa-redirect-section-title">
+            Selo WPP — pedido atrasado
+          </h2>
+        </div>
+        <p className="field-hint">
+          Quando o prazo da etapa estoura, o card ganha a tag <strong>WPP</strong>. O clique abre o
+          WhatsApp do cliente com a mensagem desta etapa. Altere o texto quando quiser.
+        </p>
+        <ul className="wa-redirect-template-list">
+          {templatesWpp.map((t) => (
+            <li key={t.id} className="wa-redirect-template-item">
+              <label className="field">
+                <span>{t.nome}</span>
+                <textarea
+                  rows={5}
+                  value={t.texto}
+                  onChange={(e) => updateTemplate(t.id, { texto: e.target.value })}
+                  placeholder="Olá, {cliente}! O pedido {pedido} atrasou na etapa {etapa}…"
+                />
+              </label>
             </li>
           ))}
         </ul>

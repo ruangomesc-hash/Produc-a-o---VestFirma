@@ -7,6 +7,7 @@ import {
   mergeShopifyEtapaTags,
   parseEtapaTag,
 } from '../shared/shopifyOrderMap.mjs'
+import { classificarPedidosShopifyNoKanban } from '../shared/shopifyCheckup.mjs'
 import { mergeBoardPreservingPedidos } from './boardPersist.mjs'
 
 function shopifyClientId() {
@@ -133,7 +134,7 @@ async function shopifyFetch(path, init = {}) {
   } catch {
     data = { raw: text }
   }
-  return { ok: res.ok, status: res.status, data }
+  return { ok: res.ok, status: res.status, data, link: res.headers.get('link') }
 }
 
 export async function pushEtapaParaShopify(card, columnTitle) {
@@ -195,6 +196,75 @@ function aplicarPedidoShopifyNoQuadro(board, order) {
   return mergeBoardPreservingPedidos(board, incoming)
 }
 
+function nextApiPathFromLink(linkHeader) {
+  const raw = String(linkHeader || '')
+  for (const part of raw.split(',')) {
+    if (!/rel="next"/i.test(part)) continue
+    const m = part.match(/<([^>]+)>/)
+    if (!m) continue
+    try {
+      const u = new URL(m[1])
+      const api = u.pathname.replace(/^\/admin\/api\/[^/]+/, '') || '/orders.json'
+      return `${api}${u.search}`
+    } catch {
+      return ''
+    }
+  }
+  return ''
+}
+
+const ORDERS_FIELDS =
+  'id,name,order_number,created_at,updated_at,processed_at,financial_status,tags,note,cancelled_at,phone,shipping_address,billing_address,customer,line_items,note_attributes'
+
+/** Lista todos os pedidos da loja (abertos, fechados, cancelados, arquivados). */
+export async function listAllShopifyOrders() {
+  if (!shopifyConfigured()) {
+    return { ok: false, error: 'Shopify não configurada', orders: [] }
+  }
+  const orders = []
+  let path = `/orders.json?status=any&limit=250&fields=${ORDERS_FIELDS}`
+  let pages = 0
+  while (path && pages < 80) {
+    pages += 1
+    const got = await shopifyFetch(path)
+    if (!got.ok) {
+      return {
+        ok: false,
+        error: got.error || `Shopify ${got.status}`,
+        status: got.status,
+        data: got.data,
+        orders,
+      }
+    }
+    const batch = Array.isArray(got.data?.orders) ? got.data.orders : []
+    orders.push(...batch)
+    path = nextApiPathFromLink(got.link)
+  }
+  return { ok: true, orders, pages }
+}
+
+export function checkupShopifyVsKanban(board, orders) {
+  return classificarPedidosShopifyNoKanban(board, orders)
+}
+
+/** Cria no kanban só o que ainda não existe; datas vêm do pedido Shopify. */
+export async function importarPedidosShopifyFaltantes(board, orders) {
+  let next = board
+  let imported = 0
+  const ids = []
+  for (const order of orders || []) {
+    if (!order?.id) continue
+    if (encontrarCardParaPedidoShopify(next.cards, order)) continue
+    const result = await ingestShopifyOrder(next, order, 'orders/create')
+    next = result.board
+    if (result.created) {
+      imported += 1
+      ids.push(String(order.id))
+    }
+  }
+  return { board: next, imported, importedIds: ids }
+}
+
 export async function ingestShopifyOrder(board, payload, topic) {
   const order = payload?.order || payload
   if (!order?.id) return { board, changed: false }
@@ -209,3 +279,4 @@ export async function ingestShopifyOrder(board, payload, topic) {
     (!beforeIds.has(after.id) || JSON.stringify(after) !== JSON.stringify(board.cards.find((c) => c.id === after.id)))
   return { board: next, changed: true, card: after, created: after ? !beforeIds.has(after.id) : false, noop: !changed }
 }
+

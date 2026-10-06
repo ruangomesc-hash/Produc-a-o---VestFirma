@@ -488,6 +488,22 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    if (url.pathname === '/api/shopify/checkup' || url.pathname === '/api/shopify/checkup.php') {
+      const { handleShopifyCheckupApi } = await import('./shopifyCheckup.mjs')
+      await handleShopifyCheckupApi(req, res, {
+        corsHeaders,
+        readBody,
+        requireSession,
+        requireLogin: REQUIRE_LOGIN,
+        boardFilePath,
+        readExistingBoard,
+        backupBoardBeforeWrite,
+        writeBoardAtomic,
+        withBoardWriteLock,
+      })
+      return
+    }
+
     if (url.pathname === '/api/shopify/webhook' || url.pathname === '/api/shopify') {
       const { handleShopifyWebhookApi } = await import('./shopifyWebhook.mjs')
       await handleShopifyWebhookApi(req, res, {

@@ -1,8 +1,10 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useState } from 'react'
-import { etapaDevePiscar } from '../etapas'
+import { calcularEtapaPrazo, etapaDevePiscar } from '../etapas'
+import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import { pedidoFaltaLogo } from '../pedidoShopify'
+import { abrirWhatsAppSeloLogo, abrirWhatsAppSeloWpp } from '../whatsappRedirect'
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
 import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
@@ -28,6 +30,10 @@ function whatsappHref(numero: string) {
   if (!digits) return '#'
   const withCountry = digits.startsWith('55') ? digits : `55${digits}`
   return `https://wa.me/${withCountry}`
+}
+
+function pararArrasteCard(e: { stopPropagation: () => void }) {
+  e.stopPropagation()
 }
 
 function CardLogoBlock({
@@ -95,6 +101,9 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
   const localLogo = rotuloLocalLogo(card.localLogo)
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
   const faltaLogo = pedidoFaltaLogo(card)
+  const agora = useRelogioPrazo()
+  const prazo = calcularEtapaPrazo(card.columnId, columnTitle, card, agora)
+  const atrasado = prazo.tipo === 'prazo' && prazo.atrasado
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -121,9 +130,40 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
             card={card}
           />
           {faltaLogo ? (
-            <span className="card-falta-logo-tag" title="Pedido feito na Shopify — ainda sem logo">
-              Falta logo
-            </span>
+            <button
+              type="button"
+              className="card-falta-logo-tag"
+              title="Solicitar a logo no WhatsApp do cliente"
+              onPointerDown={pararArrasteCard}
+              onMouseDown={pararArrasteCard}
+              onTouchStart={pararArrasteCard}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                const result = abrirWhatsAppSeloLogo(card)
+                if (!result.ok) window.alert(result.error)
+              }}
+            >
+              Solicitar logo
+            </button>
+          ) : null}
+          {atrasado ? (
+            <button
+              type="button"
+              className="card-wpp-tag"
+              title="Avisar o cliente no WhatsApp — pedido atrasado nesta etapa"
+              onPointerDown={pararArrasteCard}
+              onMouseDown={pararArrasteCard}
+              onTouchStart={pararArrasteCard}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                const result = abrirWhatsAppSeloWpp(card, columnTitle)
+                if (!result.ok) window.alert(result.error)
+              }}
+            >
+              WPP
+            </button>
           ) : null}
           {card.origem === 'shopify' ? (
             <span className="card-shopify-tag" title={card.shopifyOrderName || 'Shopify'}>

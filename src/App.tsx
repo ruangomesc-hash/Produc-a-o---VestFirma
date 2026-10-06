@@ -804,7 +804,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         </div>
       ) : view === 'shopify' ? (
         <div id="panel-shopify" className="app-panel" role="tabpanel" aria-labelledby="tab-shopify">
-          <ShopifySetupPanel />
+          <ShopifySetupPanel onImported={() => void refreshBoardFromServer()} />
         </div>
       ) : (
         <div id="panel-status" className="app-panel" role="tabpanel" aria-labelledby="tab-status">

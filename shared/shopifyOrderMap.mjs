@@ -100,6 +100,23 @@ function dataIso(value) {
   return new Date(t).toISOString()
 }
 
+/** Data que a loja mostra (Brasil), não o dia UTC. */
+export function dataPedidoNaLoja(value, timeZone = 'America/Sao_Paulo') {
+  if (!value) return ''
+  const t = Date.parse(value)
+  if (Number.isNaN(t)) return String(value).slice(0, 10)
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(t))
+  } catch {
+    return new Date(t).toISOString().slice(0, 10)
+  }
+}
+
 function quantidadeTotal(order) {
   const items = linhasPedidoDe(order)
   const n = items.reduce((sum, item) => sum + item.quantidade, 0)
@@ -166,8 +183,8 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
     observacao: observacaoDe(order),
     itensProduto: [],
     linhasPedido: linhasPedidoDe(order),
-    dataPedido: created.slice(0, 10),
-    dataPagamento: paid ? paid.slice(0, 10) : '',
+    dataPedido: dataPedidoNaLoja(order.created_at) || created.slice(0, 10),
+    dataPagamento: paid ? dataPedidoNaLoja(order.processed_at || order.created_at) : '',
     logoEnviadaCliente: [],
     logoProntaImpressao: [],
     previewAprovacaoCliente: [],

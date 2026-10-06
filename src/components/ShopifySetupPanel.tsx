@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { authHeaders } from '../authSession'
 import { getApiBase } from '../runtimeConfig'
 
 type ShopifyStatus = {
@@ -6,6 +7,34 @@ type ShopifyStatus = {
   shopifyConfigured?: boolean
   shop?: string | null
   webhook?: string
+}
+
+type PedidoFaltando = {
+  shopifyOrderId: string
+  numeroPedido: string
+  cliente: string
+  dataPedido: string
+  createdAt: string
+  quantidade: number
+  cancelado?: boolean
+}
+
+type CheckupResult = {
+  ok?: boolean
+  error?: string
+  imported?: number
+  shopifyTotal?: number
+  kanbanTotal?: number
+  jaNoKanban?: number
+  faltando?: number
+  noKanban?: PedidoFaltando[]
+  extraidos?: PedidoFaltando[]
+}
+
+function checkupUrl(): string {
+  const api = getApiBase()
+  if (api?.startsWith('http')) return `${api.replace(/\/$/, '')}/shopify/checkup`
+  return `${(api || '/api').replace(/\/$/, '')}/shopify/checkup`
 }
 
 function webhookUrlAbsoluta(): string {
@@ -29,9 +58,12 @@ async function copiar(texto: string) {
   }
 }
 
-export function ShopifySetupPanel() {
+export function ShopifySetupPanel({ onImported }: { onImported?: () => void }) {
   const [status, setStatus] = useState<ShopifyStatus | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [checkup, setCheckup] = useState<CheckupResult | null>(null)
+  const [checkupError, setCheckupError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<'scan' | 'import' | null>(null)
   const webhook = webhookUrlAbsoluta()
 
   const refresh = useCallback(async () => {
@@ -51,6 +83,34 @@ export function ShopifySetupPanel() {
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  const runCheckup = useCallback(async (importMissing: boolean) => {
+    setBusy(importMissing ? 'import' : 'scan')
+    setCheckupError(null)
+    try {
+      const res = await fetch(checkupUrl(), {
+        method: importMissing ? 'POST' : 'GET',
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+        body: importMissing ? JSON.stringify({ importMissing: true }) : undefined,
+      })
+      const data = (await res.json().catch(() => ({}))) as CheckupResult
+      if (!res.ok || data.ok === false) {
+        setCheckupError(data.error || `Falha no checkup (${res.status})`)
+        return
+      }
+      setCheckup(data)
+      if (importMissing && (data.imported ?? 0) > 0) onImported?.()
+    } catch (err) {
+      setCheckupError(err instanceof Error ? err.message : 'Falha no checkup')
+    } finally {
+      setBusy(null)
+    }
+  }, [onImported])
 
   const onCopy = async (id: string, texto: string) => {
     const ok = await copiar(texto)
@@ -80,6 +140,91 @@ export function ShopifySetupPanel() {
               : 'Ainda não conectada'}
           </span>
         </header>
+
+        <section className="shopify-setup-card shopify-checkup-card">
+          <h2>Checkup: Shopify × kanban</h2>
+          <p className="shopify-setup-hint">
+            Lê todos os pedidos da loja, mostra o que ainda não está no quadro e, se você pedir, traz
+            os que faltam para <strong>Pedido feito</strong> com a data do pedido na Shopify.
+          </p>
+          <div className="shopify-setup-copy-row">
+            <button
+              type="button"
+              className="btn secondary small"
+              disabled={busy !== null || !ligado}
+              onClick={() => void runCheckup(false)}
+            >
+              {busy === 'scan' ? 'Conferindo…' : 'Conferir pedidos da loja'}
+            </button>
+            <button
+              type="button"
+              className="btn primary small"
+              disabled={busy !== null || !ligado}
+              onClick={() => void runCheckup(true)}
+            >
+              {busy === 'import'
+                ? 'Extraindo…'
+                : `Trazer os que faltam${checkup?.faltando ? ` (${checkup.faltando})` : ''}`}
+            </button>
+          </div>
+          {checkupError ? (
+            <p className="shopify-checkup-error" role="alert">
+              {checkupError}
+            </p>
+          ) : null}
+          {checkup ? (
+            <dl className="shopify-checkup-stats">
+              <div>
+                <dt>Na Shopify</dt>
+                <dd>{checkup.shopifyTotal ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Já no kanban</dt>
+                <dd>{checkup.jaNoKanban ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Faltando</dt>
+                <dd>{checkup.faltando ?? 0}</dd>
+              </div>
+              {typeof checkup.imported === 'number' && checkup.imported > 0 ? (
+                <div>
+                  <dt>Extraídos agora</dt>
+                  <dd>{checkup.imported}</dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
+          {checkup && (checkup.faltando ?? 0) === 0 ? (
+            <p className="shopify-checkup-ok">Todos os pedidos da Shopify já estão no kanban.</p>
+          ) : null}
+          {(checkup?.noKanban?.length || checkup?.extraidos?.length) ? (
+            <div className="shopify-checkup-table-wrap">
+              <table className="shopify-checkup-table">
+                <thead>
+                  <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Data na loja</th>
+                    <th>Peças</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(checkup.noKanban?.length ? checkup.noKanban : checkup.extraidos ?? []).map((p) => (
+                    <tr key={p.shopifyOrderId}>
+                      <td>{p.numeroPedido}</td>
+                      <td>
+                        {p.cliente}
+                        {p.cancelado ? ' (cancelado)' : ''}
+                      </td>
+                      <td>{p.dataPedido}</td>
+                      <td>{p.quantidade}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
 
         <section className="shopify-setup-card">
           <h2>O que você vai copiar neste kanban</h2>
@@ -180,7 +325,8 @@ export function ShopifySetupPanel() {
             <h3>8. Conferir</h3>
             <p>
               Faça um pedido de teste na loja. Ele deve aparecer em <strong>Pedido feito</strong>,
-              piscando <strong>Falta logo</strong>. Ao arrastar para a próxima etapa, a Shopify
+              piscando <strong>Solicitar logo</strong>. Ao clicar, abre o WhatsApp do cliente com a
+              mensagem de logo (configurável no Redirect). Ao arrastar para a próxima etapa, a Shopify
               recebe a etapa de volta.
             </p>
             <button type="button" className="btn secondary small" onClick={() => void refresh()}>
