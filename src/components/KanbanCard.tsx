@@ -167,6 +167,11 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
               WPP
             </button>
           ) : null}
+          {card.pedidoTeste ? (
+            <span className="card-pedido-teste-tag" title="Pedido teste — logo não obrigatória">
+              Pedido teste
+            </span>
+          ) : null}
           {card.origem === 'shopify' ? (
             <span className="card-shopify-tag" title={card.shopifyOrderName || 'Shopify'}>
               Shopify

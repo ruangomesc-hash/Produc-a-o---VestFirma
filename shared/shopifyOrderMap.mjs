@@ -245,6 +245,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
     shopifyOrderId: String(order.id),
     shopifyOrderName: String(order.name || `#${numero}`),
     shopifyPedidoStatus: status || null,
+    pedidoTeste: false,
   }
 }
 
@@ -267,6 +268,9 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
     columnId = COLUNA_CANCELADOS_EXPIRADOS_ID
   } else if (keepCol === COLUNA_CANCELADOS_EXPIRADOS_ID) {
     columnId = tagCol || COLUNA_PEDIDO_FEITO_ID
+  }
+  if (existing.pedidoTeste) {
+    columnId = COLUNA_CANCELADOS_EXPIRADOS_ID
   }
   const { shopifyEtapaTag: _tagHint, ...mappedSemHint } = mapped
   const historicoBase = existing.historicoEtapa?.length ? existing.historicoEtapa : mapped.historicoEtapa
@@ -310,6 +314,7 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
     shopifyOrderId: mapped.shopifyOrderId || existing.shopifyOrderId,
     shopifyOrderName: mapped.shopifyOrderName || existing.shopifyOrderName,
     shopifyPedidoStatus: status || null,
+    pedidoTeste: Boolean(existing.pedidoTeste),
     linhasPedido:
       Array.isArray(mapped.linhasPedido) && mapped.linhasPedido.length
         ? mapped.linhasPedido
@@ -320,6 +325,7 @@ export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
 
 export function pedidoFaltaLogo(card) {
   if (!card) return false
+  if (card.pedidoTeste) return false
   if (card.columnId !== COLUNA_PEDIDO_FEITO_ID) return false
   return !Array.isArray(card.logoEnviadaCliente) || card.logoEnviadaCliente.length === 0
 }

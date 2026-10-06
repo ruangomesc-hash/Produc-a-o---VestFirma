@@ -41,6 +41,7 @@ function buildForm(
       logoProntaImpressao: initial.logoProntaImpressao,
       previewAprovacaoCliente: initial.previewAprovacaoCliente,
       localLogo: initial.localLogo,
+      pedidoTeste: Boolean(initial.pedidoTeste),
     }
   }
   const base: CardFormData = {
@@ -61,6 +62,7 @@ function buildForm(
     logoProntaImpressao: [],
     previewAprovacaoCliente: [],
     localLogo: null,
+    pedidoTeste: false,
   }
   if (preferredVendedorId && vendedores.some((v) => v.id === preferredVendedorId)) {
     base.vendedorId = preferredVendedorId
@@ -223,7 +225,7 @@ export function CardModal({
         : lockVendedorToSession && form.vendedorId
           ? form.vendedorId
           : form.vendedorId
-    if (vendedores.length > 0 && !vendedorIdEfetivo) {
+    if (vendedores.length > 0 && !vendedorIdEfetivo && !form.pedidoTeste) {
       showAlert(
         allowVendedorCadastro
           ? 'Selecione um vendedor ou cadastre um em Usuários.'
@@ -236,11 +238,11 @@ export function CardModal({
       showAlert('Salve o novo segmento ou escolha um segmento existente.', 'Segmento da empresa')
       return
     }
-    if (!form.segmentoId) {
+    if (!form.pedidoTeste && !form.segmentoId) {
       showAlert('Selecione o segmento da empresa.', 'Segmento da empresa')
       return
     }
-    if (!form.localLogo) {
+    if (!form.pedidoTeste && !form.localLogo) {
       showAlert(
         'Escolha uma opção: Frente, Costas ou Frente e costas.',
         'Local da logo',
@@ -345,7 +347,7 @@ export function CardModal({
               <span>Segmento da empresa *</span>
               <select
                 value={addingSegmento ? ADD_SEGMENTO : (form.segmentoId ?? '')}
-                required={!addingSegmento}
+                required={!addingSegmento && !form.pedidoTeste}
                 onChange={(e) => {
                   const v = e.target.value
                   if (v === ADD_SEGMENTO) {
@@ -467,6 +469,28 @@ export function CardModal({
                 pedido também é enviada de volta para a loja.
               </p>
             ) : null}
+
+            <div className="field span-2 pedido-teste-field">
+              <button
+                type="button"
+                className={`pedido-teste-switch ${form.pedidoTeste ? 'on' : ''}`}
+                role="switch"
+                aria-checked={form.pedidoTeste}
+                onClick={() => setForm((f) => ({ ...f, pedidoTeste: !f.pedidoTeste }))}
+              >
+                <span className="pedido-teste-switch-track" aria-hidden>
+                  <span className="pedido-teste-switch-knob" />
+                </span>
+                <span className="pedido-teste-switch-copy">
+                  <strong>Pedido teste</strong>
+                  <span>
+                    {form.pedidoTeste
+                      ? 'Logo não é obrigatória. Ao salvar, o pedido vai para Cancelados / expirados.'
+                      : 'Ligue para marcar como teste: sem logo obrigatória e envia para Cancelados / expirados.'}
+                  </span>
+                </span>
+              </button>
+            </div>
 
             <label className="field span-2">
               <span>Endereço</span>

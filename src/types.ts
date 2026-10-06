@@ -95,6 +95,8 @@ export interface OrderCard {
   shopifyOrderName?: string
   /** Shopify cancelado ou não pago/expirado — coluna Cancelados / expirados. */
   shopifyPedidoStatus?: 'cancelado' | 'expirado' | null
+  /** Pedido de teste: sem obrigatoriedade de logo; vai para Cancelados / expirados. */
+  pedidoTeste?: boolean
 }
 
 export interface Column {

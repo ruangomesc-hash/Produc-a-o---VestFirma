@@ -9,7 +9,7 @@ import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
-import { inserirColunaAntesDePedidoEnviado } from '../boardColumns'
+import { COLUNA_CANCELADOS_EXPIRADOS_ID, ensureBoardColumns, inserirColunaAntesDePedidoEnviado } from '../boardColumns'
 import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
 import { boardTemPedidosAlemDoServidor, mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
@@ -435,17 +435,21 @@ export function useBoard() {
         return fail
       }
       const now = new Date().toISOString()
+      const columns = ensureBoardColumns(current.columns)
+      const destino = payload.pedidoTeste ? COLUNA_CANCELADOS_EXPIRADOS_ID : columnId
       const card: OrderCard = {
         ...payload,
         id: newId(),
-        columnId,
+        columnId: destino,
         etapaDesde: now,
         createdAt: now,
-        historicoEtapa: registrarCriacaoPedido(current, columnId, now),
+        historicoEtapa: registrarCriacaoPedido({ ...current, columns }, destino, now),
         comentarios: [],
+        pedidoTeste: Boolean(payload.pedidoTeste),
       }
       const next = mergeBoardPreservingPedidos(current, {
         ...current,
+        columns,
         cards: [...current.cards, card],
       })
       setBoard(next)
@@ -482,11 +486,29 @@ export function useBoard() {
       const prev = current.cards.find((c) => c.id === cardId)
       if (!vendedorLogadoPodeCard(current, prev)) return
       const payload = cardFormDataParaVendedorLogado(current, data)
+      const columns = ensureBoardColumns(current.columns)
+      const now = new Date().toISOString()
       persist({
         ...current,
-        cards: current.cards.map((c) =>
-          c.id === cardId ? { ...c, ...payload } : c,
-        ),
+        columns,
+        cards: current.cards.map((c) => {
+          if (c.id !== cardId) return c
+          const nextCard = { ...c, ...payload, pedidoTeste: Boolean(payload.pedidoTeste) }
+          if (!payload.pedidoTeste || nextCard.columnId === COLUNA_CANCELADOS_EXPIRADOS_ID) {
+            return nextCard
+          }
+          return {
+            ...nextCard,
+            columnId: COLUNA_CANCELADOS_EXPIRADOS_ID,
+            etapaDesde: now,
+            historicoEtapa: registrarMudancaEtapa(
+              { ...nextCard, columnId: c.columnId },
+              { ...current, columns },
+              COLUNA_CANCELADOS_EXPIRADOS_ID,
+              now,
+            ),
+          }
+        }),
       })
       recordAudit({
         action: 'pedido.editado',

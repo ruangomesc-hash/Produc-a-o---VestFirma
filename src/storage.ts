@@ -117,6 +117,7 @@ function normalizeCard(
       raw.shopifyPedidoStatus === 'cancelado' || raw.shopifyPedidoStatus === 'expirado'
         ? raw.shopifyPedidoStatus
         : null,
+    pedidoTeste: Boolean(raw.pedidoTeste),
   }
 }
 
