@@ -1,8 +1,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useState } from 'react'
-import { calcularEtapaPrazo, etapaDevePiscar } from '../etapas'
-import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
+import { etapaDevePiscar, etapaMostraSeloWpp } from '../etapas'
 import { pedidoFaltaLogo } from '../pedidoShopify'
 import { abrirWhatsAppSeloWpp, buildWhatsAppRedirectUrl, linkWhatsAppSeloLogo } from '../whatsappRedirect'
 import { rotuloLocalLogo } from '../logoLocal'
@@ -99,9 +98,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
   const piscar = etapaDevePiscar(card.columnId, columnTitle)
   const faltaLogo = pedidoFaltaLogo(card)
   const linkLogo = faltaLogo ? linkWhatsAppSeloLogo(card) : null
-  const agora = useRelogioPrazo()
-  const prazo = calcularEtapaPrazo(card.columnId, columnTitle, card, agora)
-  const atrasado = prazo.tipo === 'prazo' && prazo.atrasado
+  const mostraWpp = etapaMostraSeloWpp(card.columnId, columnTitle)
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -149,11 +146,11 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
               Solicitar logo
             </a>
           ) : null}
-          {atrasado ? (
+          {mostraWpp ? (
             <button
               type="button"
               className="card-wpp-tag"
-              title="Avisar o cliente no WhatsApp — pedido atrasado nesta etapa"
+              title="Abrir WhatsApp do cliente nesta etapa"
               onPointerDown={pararArrasteCard}
               onMouseDown={pararArrasteCard}
               onTouchStart={pararArrasteCard}

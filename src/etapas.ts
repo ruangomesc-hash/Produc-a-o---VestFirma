@@ -52,6 +52,14 @@ export function etapaPedidoEnviado(columnId: string, columnTitle: string): boole
   return tituloChave(columnTitle) === ENVIADO_TITULO_CHAVE
 }
 
+/** Selo WPP: da Logos recebidas até logística. Pedido feito usa Solicitar logo. */
+export function etapaMostraSeloWpp(columnId: string, columnTitle: string): boolean {
+  if (columnId === 'pedido-feito' || tituloChave(columnTitle) === 'pedido feito') return false
+  if (etapaPedidoEnviado(columnId, columnTitle)) return false
+  if (etapaCanceladosExpirados(columnId, columnTitle)) return false
+  return true
+}
+
 export function etapaCanceladosExpirados(columnId: string, columnTitle: string): boolean {
   if (CANCELADOS_POR_ID.has(columnId)) return true
   const key = tituloChave(columnTitle)

@@ -1870,8 +1870,8 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .card-shopify-tag {
-  background: #96bf48;
-  color: #111;
+  background: #25d366;
+  color: #052e16;
 }
 
 .card-wpp-tag {
@@ -1879,8 +1879,8 @@ body.vestfirma-tv .pwa-install-banner {
   align-items: center;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  background: #25d366;
-  color: #052e16;
+  background: #475569;
+  color: #cbd5e1;
   border: 0;
   cursor: pointer;
   font: inherit;
@@ -1888,12 +1888,14 @@ body.vestfirma-tv .pwa-install-banner {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  opacity: 0.78;
 }
 
 .card-wpp-tag:hover,
 .card-wpp-tag:focus-visible {
-  filter: brightness(1.08);
-  outline: 2px solid #052e16;
+  opacity: 1;
+  filter: none;
+  outline: 1px solid #94a3b8;
   outline-offset: 1px;
 }
 
