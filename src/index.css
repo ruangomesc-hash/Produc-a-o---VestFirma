@@ -2001,6 +2001,11 @@ body.vestfirma-tv .pwa-install-banner {
   color: #052e16;
 }
 
+.card-shopify-tag--cancelado {
+  background: #dc2626;
+  color: #fff;
+}
+
 .card-wpp-tag {
   display: inline-flex;
   align-items: center;

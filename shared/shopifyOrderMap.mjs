@@ -102,7 +102,7 @@ export function mergeShopifyEtapaTags(existingTags, columnId) {
 
 /**
  * Só estes textos existem na lista da Shopify. Várias colunas compartilham o mesmo status.
- * Cancelados e coluna sem mapa não gravam nada — a lista não tem esses nomes.
+ * Coluna sem mapa não grava nada.
  */
 const STATUS_PRODUCAO_POR_COLUNA = {
   'pedido-feito': 'Pedido recebido',
@@ -114,6 +114,7 @@ const STATUS_PRODUCAO_POR_COLUNA = {
   'em-aplicacao': 'Processo de estamparia',
   'liberado-logistica': 'Liberado para envio',
   'pedido-enviado': 'Enviado',
+  'cancelados-expirados': 'Pedido cancelado / expirado',
 }
 
 export function statusProducaoShopify(columnId) {

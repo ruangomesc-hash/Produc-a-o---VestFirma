@@ -237,6 +237,6 @@ describe('status de produção na Shopify', () => {
     assert.equal(statusProducaoShopify('em-aplicacao'), 'Processo de estamparia')
     assert.equal(statusProducaoShopify('liberado-logistica'), 'Liberado para envio')
     assert.equal(statusProducaoShopify('pedido-enviado'), 'Enviado')
-    assert.equal(statusProducaoShopify('cancelados-expirados'), null)
+    assert.equal(statusProducaoShopify('cancelados-expirados'), 'Pedido cancelado / expirado')
   })
 })

@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useState } from 'react'
-import { etapaDevePiscar, etapaMostraSeloWpp } from '../etapas'
+import { etapaCanceladosExpirados, etapaDevePiscar, etapaMostraSeloWpp } from '../etapas'
 import { pedidoFaltaLogo } from '../pedidoShopify'
 import { abrirWhatsAppSeloWpp, buildWhatsAppRedirectUrl, linkWhatsAppSeloLogo } from '../whatsappRedirect'
 import { rotuloLocalLogo } from '../logoLocal'
@@ -99,6 +99,7 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
   const faltaLogo = pedidoFaltaLogo(card)
   const linkLogo = faltaLogo ? linkWhatsAppSeloLogo(card) : null
   const mostraWpp = etapaMostraSeloWpp(card.columnId, columnTitle)
+  const seloShopifyCancelado = etapaCanceladosExpirados(card.columnId, columnTitle)
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -170,7 +171,10 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
             </span>
           ) : null}
           {card.origem === 'shopify' ? (
-            <span className="card-shopify-tag" title={card.shopifyOrderName || 'Shopify'}>
+            <span
+              className={`card-shopify-tag${seloShopifyCancelado ? ' card-shopify-tag--cancelado' : ''}`}
+              title={card.shopifyOrderName || 'Shopify'}
+            >
               Shopify
             </span>
           ) : null}
