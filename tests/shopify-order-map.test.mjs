@@ -224,3 +224,19 @@ describe('Shopify → kanban', () => {
     assert.equal(mapped.shopifyPedidoStatus, null)
   })
 })
+
+describe('status de produção na Shopify', () => {
+  it('grava só um texto que já existe na lista da loja', async () => {
+    const { statusProducaoShopify } = await import('../shared/shopifyOrderMap.mjs')
+    assert.equal(statusProducaoShopify('pedido-feito'), 'Pedido recebido')
+    assert.equal(statusProducaoShopify('preview-em-andamento'), 'Preview em andamento')
+    assert.equal(statusProducaoShopify('logos-recebidas'), 'Logos em produção')
+    assert.equal(statusProducaoShopify('logos-producao'), 'Logos em produção')
+    assert.equal(statusProducaoShopify('logos-prontas'), 'Logos Prontas')
+    assert.equal(statusProducaoShopify('disponiveis-aplicacao'), 'Disponível para aplicação')
+    assert.equal(statusProducaoShopify('em-aplicacao'), 'Processo de estamparia')
+    assert.equal(statusProducaoShopify('liberado-logistica'), 'Liberado para envio')
+    assert.equal(statusProducaoShopify('pedido-enviado'), 'Enviado')
+    assert.equal(statusProducaoShopify('cancelados-expirados'), null)
+  })
+})

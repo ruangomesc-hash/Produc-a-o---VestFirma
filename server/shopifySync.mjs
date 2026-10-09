@@ -138,6 +138,52 @@ async function shopifyFetch(path, init = {}) {
   return { ok: res.ok, status: res.status, data, link: res.headers.get('link') }
 }
 
+async function shopifyGraphql(query, variables) {
+  const token = await shopifyAdminAccessToken()
+  if (!token || !shopifyShopDomain()) return { ok: false, error: 'Shopify não configurada' }
+  const res = await fetch(`https://${shopifyShopDomain()}/admin/api/${apiVersion()}/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': token,
+    },
+    body: JSON.stringify({ query, variables }),
+  })
+  const data = await res.json().catch(() => ({}))
+  return { ok: res.ok && !data?.errors?.length, status: res.status, data }
+}
+
+async function gravarStatusProducaoShopify(orderId, status) {
+  const { SHOPIFY_STATUS_PRODUCAO_KEY, SHOPIFY_STATUS_PRODUCAO_NS } = await import(
+    '../shared/shopifyOrderMap.mjs'
+  )
+  const numeric = String(orderId).replace(/\D/g, '') || String(orderId)
+  const got = await shopifyGraphql(
+    `mutation VestfirmaStatusSet($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        metafields { key namespace value }
+        userErrors { field message code }
+      }
+    }`,
+    {
+      metafields: [
+        {
+          ownerId: `gid://shopify/Order/${numeric}`,
+          namespace: SHOPIFY_STATUS_PRODUCAO_NS,
+          key: SHOPIFY_STATUS_PRODUCAO_KEY,
+          type: 'single_line_text_field',
+          value: status,
+        },
+      ],
+    },
+  )
+  const errors = got.data?.data?.metafieldsSet?.userErrors || []
+  if (!got.ok || errors.length) {
+    return { ok: false, status: got.status, error: errors[0]?.message || 'Falha ao gravar status', data: got.data }
+  }
+  return { ok: true, value: got.data?.data?.metafieldsSet?.metafields?.[0]?.value || status }
+}
+
 export async function pushEtapaParaShopify(card, columnTitle) {
   const orderId = card?.shopifyOrderId
   if (!orderId || !shopifyConfigured()) return { ok: false, skipped: true }
@@ -151,7 +197,7 @@ export async function pushEtapaParaShopify(card, columnTitle) {
   const without = attrs.filter((a) => a?.name !== 'vestfirma_etapa' && a?.name !== 'vestfirma_etapa_titulo')
   without.push({ name: 'vestfirma_etapa', value: String(card.columnId) })
   without.push({ name: 'vestfirma_etapa_titulo', value: String(columnTitle || card.columnId) })
-  return shopifyFetch(`/orders/${orderId}.json`, {
+  const saved = await shopifyFetch(`/orders/${orderId}.json`, {
     method: 'PUT',
     body: JSON.stringify({
       order: {
@@ -161,6 +207,15 @@ export async function pushEtapaParaShopify(card, columnTitle) {
       },
     }),
   })
+  const { statusProducaoShopify } = await import('../shared/shopifyOrderMap.mjs')
+  const status = statusProducaoShopify(card.columnId)
+  const metafield = status
+    ? await gravarStatusProducaoShopify(orderId, status)
+    : { ok: false, skipped: true }
+  if (!metafield.ok && !metafield.skipped) {
+    console.warn('[vestfirma] Shopify status de produção:', metafield.error || metafield.data)
+  }
+  return { ...saved, statusProducao: metafield.ok ? status : null, statusProducaoOk: Boolean(metafield.ok) }
 }
 
 export async function syncEtapasKanbanParaShopify(prevBoard, nextBoard) {

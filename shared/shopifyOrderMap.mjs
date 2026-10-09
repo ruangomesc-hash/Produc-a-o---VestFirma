@@ -10,6 +10,9 @@ export const COLUNA_PEDIDO_FEITO_TITLE = 'Pedido feito'
 export const COLUNA_CANCELADOS_EXPIRADOS_ID = 'cancelados-expirados'
 export const COLUNA_CANCELADOS_EXPIRADOS_TITLE = 'Pedidos cancelados / expirados'
 export const SHOPIFY_ETAPA_TAG_PREFIX = 'vestfirma-etapa:'
+/** Metafield do pedido: Status de produção (`custom.status_producao`), lista fechada da loja. */
+export const SHOPIFY_STATUS_PRODUCAO_NS = 'custom'
+export const SHOPIFY_STATUS_PRODUCAO_KEY = 'status_producao'
 /** Pedido Shopify não pago (pending/authorized/unpaid) após este prazo vai para Cancelados / expirados. */
 export const SHOPIFY_DIAS_EXPIRAR_NAO_PAGO = 7
 
@@ -95,6 +98,27 @@ export function mergeShopifyEtapaTags(existingTags, columnId) {
     .filter((t) => !t.toLowerCase().startsWith(SHOPIFY_ETAPA_TAG_PREFIX))
   if (columnId) list.push(`${SHOPIFY_ETAPA_TAG_PREFIX}${columnId}`)
   return list.join(', ')
+}
+
+/**
+ * Só estes textos existem na lista da Shopify. Várias colunas compartilham o mesmo status.
+ * Cancelados e coluna sem mapa não gravam nada — a lista não tem esses nomes.
+ */
+const STATUS_PRODUCAO_POR_COLUNA = {
+  'pedido-feito': 'Pedido recebido',
+  'preview-em-andamento': 'Preview em andamento',
+  'logos-recebidas': 'Logos em produção',
+  'logos-producao': 'Logos em produção',
+  'logos-prontas': 'Logos Prontas',
+  'disponiveis-aplicacao': 'Disponível para aplicação',
+  'em-aplicacao': 'Processo de estamparia',
+  'liberado-logistica': 'Liberado para envio',
+  'pedido-enviado': 'Enviado',
+}
+
+export function statusProducaoShopify(columnId) {
+  const id = String(columnId || '').trim()
+  return STATUS_PRODUCAO_POR_COLUNA[id] || null
 }
 
 function telefoneDe(order) {

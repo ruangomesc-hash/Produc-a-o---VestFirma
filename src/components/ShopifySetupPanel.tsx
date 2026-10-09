@@ -338,10 +338,10 @@ export function ShopifySetupPanel({ onImported }: { onImported?: () => void }) {
           <li>
             <h3>8. Conferir</h3>
             <p>
-              Faça um pedido de teste na loja. Ele deve aparecer em <strong>Pedido feito</strong>,
-              piscando <strong>Solicitar logo</strong>. Ao clicar, abre o WhatsApp do cliente com a
-              mensagem de logo (configurável no Redirect). Ao arrastar para a próxima etapa, a Shopify
-              recebe a etapa de volta.
+              Faça um pedido de teste na loja. Ele deve aparecer em <strong>Pedido feito</strong>.
+              Ao arrastar o card, a Shopify grava um dos status que já existem em{' '}
+              <strong>Status de produção</strong> (<code>custom.status_producao</code>), usando só os
+              textos da lista da loja. A lista não é alterada.
             </p>
             <button type="button" className="btn secondary small" onClick={() => void refresh()}>
               Verificar conexão agora
