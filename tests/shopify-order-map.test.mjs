@@ -223,6 +223,37 @@ describe('Shopify → kanban', () => {
     assert.equal(mapped.columnId, COLUNA_PEDIDO_FEITO_ID)
     assert.equal(mapped.shopifyPedidoStatus, null)
   })
+
+  it('volta a coluna mesmo com tag antiga e pedido de teste', () => {
+    const mapped = mapShopifyOrderToCard({
+      ...order,
+      tags: 'vestfirma-etapa:cancelados-expirados',
+      updated_at: '2026-10-09T04:51:00Z',
+    })
+    const existing = {
+      ...mapShopifyOrderToCard(order),
+      columnId: 'pedido-feito',
+      pedidoTeste: true,
+      etapaDesde: '2026-10-09T04:50:00.000Z',
+    }
+    const out = mesclarCardShopify(existing, mapped, '2026-10-09T04:51:00Z')
+    assert.equal(out.columnId, 'pedido-feito')
+    assert.equal(out.pedidoTeste, true)
+  })
+
+  it('não devolve o card para a tag quando a etapa voltou uma casa', () => {
+    const mapped = mapShopifyOrderToCard({
+      ...order,
+      tags: 'vestfirma-etapa:pedido-enviado',
+    })
+    const existing = {
+      ...mapShopifyOrderToCard(order),
+      columnId: 'liberado-logistica',
+      etapaDesde: '2026-10-09T04:50:00.000Z',
+    }
+    const out = mesclarCardShopify(existing, mapped, '2026-10-09T04:52:00Z')
+    assert.equal(out.columnId, 'liberado-logistica')
+  })
 })
 
 describe('status de produção na Shopify', () => {

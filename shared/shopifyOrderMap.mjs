@@ -291,26 +291,17 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
 }
 
 /**
- * Atualiza dados da loja sem apagar o pedido nem regredir etapa
- * (salvo se a Shopify mandar tag vestfirma-etapa diferente e mais recente).
+ * Atualiza dados da loja sem apagar o pedido e sem mexer na coluna.
+ * A coluna do quadro manda, para a frente e para trás.
+ * A tag vestfirma-etapa é só o que o quadro grava na loja — um webhook não devolve o card.
+ * Cancelado ou expirado de verdade na Shopify ainda vai para Cancelados / expirados.
  */
-export function mesclarCardShopify(existing, mapped, shopifyUpdatedAt) {
+export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {
   if (!existing) return mapped
-  const tagCol = mapped.shopifyEtapaTag || null
   const keepCol = existing.columnId
   let columnId = keepCol
-  const shopMs = Date.parse(shopifyUpdatedAt || '') || 0
-  const localMs = Date.parse(existing.etapaDesde || existing.createdAt || '') || 0
-  if (tagCol && tagCol !== keepCol && shopMs > localMs) {
-    columnId = tagCol
-  }
   const status = mapped.shopifyPedidoStatus || null
   if (status) {
-    columnId = COLUNA_CANCELADOS_EXPIRADOS_ID
-  } else if (keepCol === COLUNA_CANCELADOS_EXPIRADOS_ID) {
-    columnId = tagCol || COLUNA_PEDIDO_FEITO_ID
-  }
-  if (existing.pedidoTeste) {
     columnId = COLUNA_CANCELADOS_EXPIRADOS_ID
   }
   const { shopifyEtapaTag: _tagHint, ...mappedSemHint } = mapped
