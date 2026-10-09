@@ -1,4 +1,4 @@
-import { verifyShopifyHmac, shopifyConfigured, ingestShopifyOrder, shopifyShopDomain, shopifyShopAllowed, shopifyWebhookSecret } from './shopifySync.mjs'
+import { verifyShopifyHmac, shopifyConfigured, ingestShopifyOrder, shopifyShopDomain, shopifyShopAllowed, shopifyWebhookSecret, quadroParaDiffEtapa, syncEtapasKanbanParaShopify } from './shopifySync.mjs'
 import { ensureBoardColumns } from '../shared/boardVendedoresMerge.mjs'
 
 export async function handleShopifyWebhookApi(req, res, ctx) {
@@ -65,14 +65,23 @@ export async function handleShopifyWebhookApi(req, res, ctx) {
 
   const DATA_FILE = boardFilePath()
   let created = false
+  let prevBoard = null
+  let nextBoard = null
   await withBoardWriteLock(async () => {
     const existing = (await readExistingBoard(DATA_FILE)) || { columns: [], cards: [], vendedores: [] }
     existing.columns = ensureBoardColumns(existing.columns)
+    prevBoard = quadroParaDiffEtapa(existing)
     const result = await ingestShopifyOrder(existing, payload, topic)
+    nextBoard = result.board
     await backupBoardBeforeWrite(DATA_FILE)
     await writeBoardAtomic(DATA_FILE, result.board)
     created = Boolean(result.created)
   })
+  if (prevBoard && nextBoard) {
+    void syncEtapasKanbanParaShopify(prevBoard, nextBoard).catch((err) => {
+      console.warn('[vestfirma] Shopify sync:', err)
+    })
+  }
 
   res.writeHead(200, { ...corsHeaders(), 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify({ ok: true, topic, created }))

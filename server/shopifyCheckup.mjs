@@ -3,6 +3,7 @@ import {
   listAllShopifyOrders,
   checkupShopifyVsKanban,
   importarPedidosShopifyFaltantes,
+  syncEtapasKanbanParaShopify,
 } from './shopifySync.mjs'
 import { ensureBoardColumns } from '../shared/boardVendedoresMerge.mjs'
 
@@ -87,11 +88,19 @@ export async function handleShopifyCheckupApi(req, res, ctx) {
   let restaurados = 0
   let reportAfter = null
   let reportBefore = null
+  let prevBoard = null
+  let nextBoard = null
   await withBoardWriteLock(async () => {
     const existing = (await readExistingBoard(DATA_FILE)) || { columns: [], cards: [], vendedores: [] }
     existing.columns = ensureBoardColumns(existing.columns)
     reportBefore = checkupShopifyVsKanban(existing, listed.orders)
+    prevBoard = { columns: existing.columns, cards: (existing.cards ?? []).map((card) => ({
+      id: card?.id,
+      columnId: card?.columnId,
+      shopifyOrderId: card?.shopifyOrderId,
+    })) }
     const result = await importarPedidosShopifyFaltantes(existing, listed.orders)
+    nextBoard = result.board
     reportAfter = checkupShopifyVsKanban(result.board, listed.orders)
     imported = result.imported
     restaurados = result.restaurados || 0
@@ -100,6 +109,11 @@ export async function handleShopifyCheckupApi(req, res, ctx) {
       await writeBoardAtomic(DATA_FILE, result.board)
     }
   })
+  if ((imported > 0 || restaurados > 0) && prevBoard && nextBoard) {
+    void syncEtapasKanbanParaShopify(prevBoard, nextBoard).catch((err) => {
+      console.warn('[vestfirma] Shopify sync:', err)
+    })
+  }
 
   json(res, corsHeaders, 200, {
     ok: true,

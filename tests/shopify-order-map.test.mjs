@@ -239,4 +239,21 @@ describe('status de produção na Shopify', () => {
     assert.equal(statusProducaoShopify('pedido-enviado'), 'Enviado')
     assert.equal(statusProducaoShopify('cancelados-expirados'), 'Pedido cancelado / expirado')
   })
+
+  it('lista o status de cada pedido da Shopify que está no quadro', async () => {
+    const { atualizacoesStatusProducao } = await import('../shared/shopifyOrderMap.mjs')
+    const lista = atualizacoesStatusProducao({
+      cards: [
+        { id: 'a', shopifyOrderId: '1002', columnId: 'cancelados-expirados' },
+        { id: 'b', shopifyOrderId: '1059', columnId: 'pedido-feito' },
+        { id: 'c', columnId: 'pedido-feito' },
+        { id: 'd', shopifyOrderId: '1002', columnId: 'logos-prontas' },
+        { id: 'e', shopifyOrderId: '1010', columnId: 'cancelados-expirados', arquivadoEm: '2026-10-01' },
+      ],
+    })
+    assert.deepEqual(lista, [
+      { orderId: '1002', status: 'Pedido cancelado / expirado', columnId: 'cancelados-expirados' },
+      { orderId: '1059', status: 'Pedido recebido', columnId: 'pedido-feito' },
+    ])
+  })
 })

@@ -122,6 +122,22 @@ export function statusProducaoShopify(columnId) {
   return STATUS_PRODUCAO_POR_COLUNA[id] || null
 }
 
+/** Pedidos da Shopify visíveis no quadro e o texto que a coluna deve gravar na loja. */
+export function atualizacoesStatusProducao(board) {
+  const out = []
+  const vistos = new Set()
+  for (const card of board?.cards ?? []) {
+    if (!card || card.arquivadoEm) continue
+    const orderId = String(card.shopifyOrderId || '').replace(/\D/g, '')
+    if (!orderId || vistos.has(orderId)) continue
+    const status = statusProducaoShopify(card.columnId)
+    if (!status) continue
+    vistos.add(orderId)
+    out.push({ orderId, status, columnId: String(card.columnId) })
+  }
+  return out
+}
+
 function telefoneDe(order) {
   const raw =
     order?.shipping_address?.phone ||

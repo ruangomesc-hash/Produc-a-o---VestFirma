@@ -153,11 +153,10 @@ async function shopifyGraphql(query, variables) {
   return { ok: res.ok && !data?.errors?.length, status: res.status, data }
 }
 
-async function gravarStatusProducaoShopify(orderId, status) {
+async function gravarStatusProducaoEmLote(lista) {
   const { SHOPIFY_STATUS_PRODUCAO_KEY, SHOPIFY_STATUS_PRODUCAO_NS } = await import(
     '../shared/shopifyOrderMap.mjs'
   )
-  const numeric = String(orderId).replace(/\D/g, '') || String(orderId)
   const got = await shopifyGraphql(
     `mutation VestfirmaStatusSet($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) {
@@ -166,22 +165,61 @@ async function gravarStatusProducaoShopify(orderId, status) {
       }
     }`,
     {
-      metafields: [
-        {
-          ownerId: `gid://shopify/Order/${numeric}`,
-          namespace: SHOPIFY_STATUS_PRODUCAO_NS,
-          key: SHOPIFY_STATUS_PRODUCAO_KEY,
-          type: 'single_line_text_field',
-          value: status,
-        },
-      ],
+      metafields: lista.map((item) => ({
+        ownerId: `gid://shopify/Order/${item.orderId}`,
+        namespace: SHOPIFY_STATUS_PRODUCAO_NS,
+        key: SHOPIFY_STATUS_PRODUCAO_KEY,
+        type: 'single_line_text_field',
+        value: item.status,
+      })),
     },
   )
   const errors = got.data?.data?.metafieldsSet?.userErrors || []
   if (!got.ok || errors.length) {
     return { ok: false, status: got.status, error: errors[0]?.message || 'Falha ao gravar status', data: got.data }
   }
-  return { ok: true, value: got.data?.data?.metafieldsSet?.metafields?.[0]?.value || status }
+  return { ok: true, count: got.data?.data?.metafieldsSet?.metafields?.length || lista.length }
+}
+
+async function gravarStatusProducaoShopify(orderId, status) {
+  const numeric = String(orderId).replace(/\D/g, '') || String(orderId)
+  const got = await gravarStatusProducaoEmLote([{ orderId: numeric, status }])
+  if (!got.ok) return got
+  return { ok: true, value: status }
+}
+
+/** Grava o status da coluna atual de cada pedido da Shopify que está no quadro. */
+export async function reconciliarStatusProducaoShopify(board) {
+  if (!shopifyConfigured()) return { ok: false, skipped: true, gravados: 0, falhas: 0 }
+  const { atualizacoesStatusProducao } = await import('../shared/shopifyOrderMap.mjs')
+  const lista = atualizacoesStatusProducao(board)
+  let gravados = 0
+  let falhas = 0
+  for (let i = 0; i < lista.length; i += 25) {
+    const lote = lista.slice(i, i + 25)
+    const got = await gravarStatusProducaoEmLote(lote)
+    if (!got.ok) {
+      falhas += lote.length
+      console.warn('[vestfirma] Shopify status de produção:', got.error || got.data)
+      continue
+    }
+    gravados += got.count
+  }
+  console.log(
+    `[vestfirma] Shopify status de produção alinhado: ${gravados} pedido(s), ${falhas} falha(s)`,
+  )
+  return { ok: falhas === 0, gravados, falhas }
+}
+
+export function quadroParaDiffEtapa(board) {
+  return {
+    columns: board?.columns ?? [],
+    cards: (board?.cards ?? []).map((card) => ({
+      id: card?.id,
+      columnId: card?.columnId,
+      shopifyOrderId: card?.shopifyOrderId,
+    })),
+  }
 }
 
 export async function pushEtapaParaShopify(card, columnTitle) {
@@ -449,6 +487,7 @@ export async function importarPedidosShopifyFaltantes(board, orders) {
 }
 
 export function startShopifyKanbanBackfill(ctx) {
+  let statusAlinhado = false
   const run = async () => {
     try {
       if (!shopifyConfigured()) return
@@ -458,20 +497,34 @@ export function startShopifyKanbanBackfill(ctx) {
         return
       }
       const { ensureBoardColumns } = await import('../shared/boardVendedoresMerge.mjs')
+      let boardSalvo = null
+      let prevBoard = null
+      let mudouBoard = false
       await ctx.withBoardWriteLock(async () => {
         const existing =
           (await ctx.readExistingBoard(ctx.boardFile)) || { columns: [], cards: [], vendedores: [] }
         existing.columns = ensureBoardColumns(existing.columns)
+        prevBoard = quadroParaDiffEtapa(existing)
         const result = await importarPedidosShopifyFaltantes(existing, listed.orders)
         const mudou = (result.imported || 0) + (result.restaurados || 0)
-        if (mudou > 0) {
+        mudouBoard = mudou > 0
+        if (mudouBoard) {
           await ctx.backupBoardBeforeWrite(ctx.boardFile)
           await ctx.writeBoardAtomic(ctx.boardFile, result.board)
+          boardSalvo = result.board
           console.log(
             `[vestfirma] Shopify backfill: +${result.imported} novos, ${result.restaurados || 0} de volta ao kanban (${listed.orders.length} na loja)`,
           )
+        } else {
+          boardSalvo = existing
         }
       })
+      if (!statusAlinhado && boardSalvo) {
+        const alinhado = await reconciliarStatusProducaoShopify(boardSalvo)
+        if (alinhado?.ok) statusAlinhado = true
+      } else if (mudouBoard && prevBoard && boardSalvo) {
+        await syncEtapasKanbanParaShopify(prevBoard, boardSalvo)
+      }
     } catch (err) {
       console.warn('[vestfirma] Shopify backfill:', err)
     }
