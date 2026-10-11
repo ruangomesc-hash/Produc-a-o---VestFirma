@@ -143,16 +143,11 @@ export function colunaParaStatusProducao(status, colunaAtual) {
   return cols[0]
 }
 
-function msIso(value) {
-  const t = Date.parse(value || '')
-  return Number.isNaN(t) ? 0 : t
-}
-
 /**
- * A loja e o quadro se encontram pela hora.
- * Status de produção mais novo que a etapa do card move a coluna.
- * Etapa do quadro mais nova manda gravar de volta na Shopify.
- * Entregue não move o card e não é apagado.
+ * O status de produção da Shopify manda na coluna, novo ou antigo.
+ * Se o texto da loja aponta para outra etapa, o card vai para lá.
+ * Entregue não tem coluna e não é apagado.
+ * Metafield vazio recebe o status da coluna atual.
  */
 export function aplicarStatusProducaoNoQuadro(board, leituras) {
   const porPedido = new Map()
@@ -162,6 +157,7 @@ export function aplicarStatusProducaoNoQuadro(board, leituras) {
   }
   let mudou = false
   const paraGravar = []
+  const agora = new Date().toISOString()
   const cards = (board?.cards ?? []).map((card) => {
     if (!card?.shopifyOrderId || card.arquivadoEm) return card
     const orderId = String(card.shopifyOrderId).replace(/\D/g, '')
@@ -176,31 +172,24 @@ export function aplicarStatusProducaoNoQuadro(board, leituras) {
     if (valor.toLowerCase() === 'entregue') return card
     const destino = colunaParaStatusProducao(valor, card.columnId)
     if (!destino || destino === card.columnId) return card
-    const metaMs = msIso(meta?.updatedAt)
-    const etapaMs = msIso(card.etapaDesde) || msIso(card.createdAt)
-    if (metaMs > etapaMs) {
-      mudou = true
-      const at = new Date(metaMs).toISOString()
-      const columnTitle = board.columns?.find((c) => c.id === destino)?.title || valor
-      return {
-        ...card,
-        columnId: destino,
-        etapaDesde: at,
-        historicoEtapa: [
-          ...(card.historicoEtapa || []),
-          {
-            id: `shopify-status-${card.id}-${metaMs}`,
-            tipo: 'movido',
-            columnId: destino,
-            columnTitle,
-            fromColumnId: card.columnId,
-            at,
-          },
-        ],
-      }
+    mudou = true
+    const columnTitle = board.columns?.find((c) => c.id === destino)?.title || valor
+    return {
+      ...card,
+      columnId: destino,
+      etapaDesde: agora,
+      historicoEtapa: [
+        ...(card.historicoEtapa || []),
+        {
+          id: `shopify-status-${card.id}-${agora}`,
+          tipo: 'movido',
+          columnId: destino,
+          columnTitle,
+          fromColumnId: card.columnId,
+          at: agora,
+        },
+      ],
     }
-    if (metaMs > 0 && statusColuna && statusColuna !== valor) paraGravar.push({ orderId, status: statusColuna })
-    return card
   })
   return { board: mudou ? { ...board, cards } : board, mudou, paraGravar }
 }
@@ -377,7 +366,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
 /**
  * Atualiza dados da loja sem apagar o pedido.
  * A tag vestfirma-etapa não devolve o card.
- * O status de produção da Shopify move a coluna quando é mais novo que a etapa do quadro.
+ * O status de produção da Shopify move a coluna, mesmo que a etapa do quadro seja mais recente.
  * Cancelado ou expirado de verdade na Shopify ainda vai para Cancelados / expirados.
  */
 export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {
