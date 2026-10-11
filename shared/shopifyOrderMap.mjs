@@ -144,7 +144,7 @@ export function colunaParaStatusProducao(status, colunaAtual) {
 }
 
 /**
- * O status de produção da Shopify manda na coluna, novo ou antigo.
+ * O status de produção da Shopify manda na coluna de cada pedido, novo ou antigo.
  * Se o texto da loja aponta para outra etapa, o card vai para lá.
  * Entregue não tem coluna e não é apagado.
  * Metafield vazio recebe o status da coluna atual.
@@ -159,7 +159,7 @@ export function aplicarStatusProducaoNoQuadro(board, leituras) {
   const paraGravar = []
   const agora = new Date().toISOString()
   const cards = (board?.cards ?? []).map((card) => {
-    if (!card?.shopifyOrderId || card.arquivadoEm) return card
+    if (!card?.shopifyOrderId) return card
     const orderId = String(card.shopifyOrderId).replace(/\D/g, '')
     if (!orderId || !porPedido.has(orderId)) return card
     const meta = porPedido.get(orderId)

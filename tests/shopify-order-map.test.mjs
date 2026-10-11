@@ -270,6 +270,31 @@ describe('Shopify → kanban', () => {
     assert.equal(out.paraGravar.length, 0)
   })
 
+  it('move todos os pedidos de uma vez, não um número só', () => {
+    const board = {
+      columns: [
+        { id: 'pedido-feito', title: 'Pedido feito' },
+        { id: 'preview-em-andamento', title: 'Preview em andamento' },
+        { id: 'cancelados-expirados', title: 'Pedidos cancelados / expirados' },
+      ],
+      cards: [
+        { id: 'a', shopifyOrderId: '1', numeroPedido: '2001', columnId: 'pedido-feito', historicoEtapa: [] },
+        { id: 'b', shopifyOrderId: '2', numeroPedido: '2002', columnId: 'pedido-feito', historicoEtapa: [] },
+        { id: 'c', shopifyOrderId: '3', numeroPedido: '2003', columnId: 'logos-prontas', historicoEtapa: [], arquivadoEm: '2026-10-01T00:00:00.000Z' },
+      ],
+    }
+    const out = aplicarStatusProducaoNoQuadro(board, [
+      { orderId: '1', value: 'Preview em andamento', updatedAt: '2026-10-01T00:00:00.000Z' },
+      { orderId: '2', value: 'Pedido cancelado / expirado', updatedAt: '2026-10-01T00:00:00.000Z' },
+      { orderId: '3', value: 'Pedido recebido', updatedAt: '2026-10-01T00:00:00.000Z' },
+    ])
+    assert.equal(out.board.cards.find((c) => c.id === 'a').columnId, 'preview-em-andamento')
+    assert.equal(out.board.cards.find((c) => c.id === 'b').columnId, 'cancelados-expirados')
+    assert.equal(out.board.cards.find((c) => c.id === 'c').columnId, 'pedido-feito')
+    assert.equal(out.board.cards.find((c) => c.id === 'c').arquivadoEm, '2026-10-01T00:00:00.000Z')
+    assert.equal(out.paraGravar.length, 0)
+  })
+
   it('status antigo da Shopify também move o card', () => {
     const board = {
       columns: [{ id: 'pedido-feito', title: 'Pedido feito' }],

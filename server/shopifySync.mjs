@@ -510,7 +510,7 @@ async function lerStatusProducaoPorPedidos(orderIds) {
       }`,
       { ids: slice.map((id) => `gid://shopify/Order/${id}`) },
     )
-    if (!got.ok) return null
+    if (!got.ok) continue
     const nodes = got.data?.data?.nodes || []
     for (const node of nodes) {
       if (!node?.id) continue
@@ -543,7 +543,7 @@ async function sincronizarStatusProducaoNoDisco(ctx) {
   if (!shopifyConfigured()) return
   const existing = await ctx.readExistingBoard(ctx.boardFile)
   const ids = (existing?.cards || [])
-    .filter((card) => card?.shopifyOrderId && !card.arquivadoEm)
+    .filter((card) => card?.shopifyOrderId)
     .map((card) => card.shopifyOrderId)
   if (!ids.length) return
   const lidos = await lerStatusProducaoPorPedidos(ids)
