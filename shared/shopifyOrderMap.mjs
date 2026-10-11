@@ -122,6 +122,89 @@ export function statusProducaoShopify(columnId) {
   return STATUS_PRODUCAO_POR_COLUNA[id] || null
 }
 
+/** Status da loja → coluna. Textos iguais em duas colunas mantêm a coluna atual. Entregue não tem coluna. */
+const COLUNAS_POR_STATUS_PRODUCAO = {
+  'pedido recebido': ['pedido-feito'],
+  'preview em andamento': ['preview-em-andamento'],
+  'logos em produção': ['logos-producao', 'logos-recebidas'],
+  'logos prontas': ['logos-prontas'],
+  'disponível para aplicação': ['disponiveis-aplicacao'],
+  'processo de estamparia': ['em-aplicacao'],
+  'liberado para envio': ['liberado-logistica'],
+  'enviado': ['pedido-enviado'],
+  'pedido cancelado / expirado': ['cancelados-expirados'],
+}
+
+export function colunaParaStatusProducao(status, colunaAtual) {
+  const key = String(status || '').trim().toLowerCase()
+  const cols = COLUNAS_POR_STATUS_PRODUCAO[key]
+  if (!cols?.length) return null
+  if (colunaAtual && cols.includes(colunaAtual)) return colunaAtual
+  return cols[0]
+}
+
+function msIso(value) {
+  const t = Date.parse(value || '')
+  return Number.isNaN(t) ? 0 : t
+}
+
+/**
+ * A loja e o quadro se encontram pela hora.
+ * Status de produção mais novo que a etapa do card move a coluna.
+ * Etapa do quadro mais nova manda gravar de volta na Shopify.
+ * Entregue não move o card e não é apagado.
+ */
+export function aplicarStatusProducaoNoQuadro(board, leituras) {
+  const porPedido = new Map()
+  for (const item of leituras || []) {
+    const orderId = String(item?.orderId || '').replace(/\D/g, '')
+    if (orderId) porPedido.set(orderId, item)
+  }
+  let mudou = false
+  const paraGravar = []
+  const cards = (board?.cards ?? []).map((card) => {
+    if (!card?.shopifyOrderId || card.arquivadoEm) return card
+    const orderId = String(card.shopifyOrderId).replace(/\D/g, '')
+    if (!orderId || !porPedido.has(orderId)) return card
+    const meta = porPedido.get(orderId)
+    const valor = String(meta?.value || '').trim()
+    const statusColuna = statusProducaoShopify(card.columnId)
+    if (!valor) {
+      if (statusColuna) paraGravar.push({ orderId, status: statusColuna })
+      return card
+    }
+    if (valor.toLowerCase() === 'entregue') return card
+    const destino = colunaParaStatusProducao(valor, card.columnId)
+    if (!destino || destino === card.columnId) return card
+    const metaMs = msIso(meta?.updatedAt)
+    const etapaMs = msIso(card.etapaDesde) || msIso(card.createdAt)
+    if (metaMs > etapaMs) {
+      mudou = true
+      const at = new Date(metaMs).toISOString()
+      const columnTitle = board.columns?.find((c) => c.id === destino)?.title || valor
+      return {
+        ...card,
+        columnId: destino,
+        etapaDesde: at,
+        historicoEtapa: [
+          ...(card.historicoEtapa || []),
+          {
+            id: `shopify-status-${card.id}-${metaMs}`,
+            tipo: 'movido',
+            columnId: destino,
+            columnTitle,
+            fromColumnId: card.columnId,
+            at,
+          },
+        ],
+      }
+    }
+    if (metaMs > 0 && statusColuna && statusColuna !== valor) paraGravar.push({ orderId, status: statusColuna })
+    return card
+  })
+  return { board: mudou ? { ...board, cards } : board, mudou, paraGravar }
+}
+
 /** Pedidos da Shopify visíveis no quadro e o texto que a coluna deve gravar na loja. */
 export function atualizacoesStatusProducao(board) {
   const out = []
@@ -247,7 +330,8 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
   const numero = String(order.order_number || order.name || order.id).replace(/^#/, '')
   const etapaTag = parseEtapaTag(order.tags)
   const status = statusShopifyPedido(order)
-  const col = status ? COLUNA_CANCELADOS_EXPIRADOS_ID : etapaTag || columnId
+  const destinoStatus = colunaParaStatusProducao(order.status_producao, null)
+  const col = status ? COLUNA_CANCELADOS_EXPIRADOS_ID : destinoStatus || etapaTag || columnId
   return {
     id,
     columnId: col,
@@ -291,9 +375,9 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
 }
 
 /**
- * Atualiza dados da loja sem apagar o pedido e sem mexer na coluna.
- * A coluna do quadro manda, para a frente e para trás.
- * A tag vestfirma-etapa é só o que o quadro grava na loja — um webhook não devolve o card.
+ * Atualiza dados da loja sem apagar o pedido.
+ * A tag vestfirma-etapa não devolve o card.
+ * O status de produção da Shopify move a coluna quando é mais novo que a etapa do quadro.
  * Cancelado ou expirado de verdade na Shopify ainda vai para Cancelados / expirados.
  */
 export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {
@@ -304,7 +388,23 @@ export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {
   if (status) {
     columnId = COLUNA_CANCELADOS_EXPIRADOS_ID
   }
-  const { shopifyEtapaTag: _tagHint, ...mappedSemHint } = mapped
+  const statusLoja = String(mapped.statusProducaoValor || '').trim()
+  const atualizadoEm = mapped.statusProducaoAtualizadoEm || null
+  let cardStatus = existing
+  if (!status && statusLoja) {
+    const aplicado = aplicarStatusProducaoNoQuadro(
+      { columns: [], cards: [{ ...existing, columnId }] },
+      [{ orderId: existing.shopifyOrderId || mapped.shopifyOrderId, value: statusLoja, updatedAt: atualizadoEm }],
+    )
+    cardStatus = aplicado.board.cards[0] || existing
+    columnId = cardStatus.columnId || columnId
+  }
+  const {
+    shopifyEtapaTag: _tagHint,
+    statusProducaoValor: _statusValor,
+    statusProducaoAtualizadoEm: _statusQuando,
+    ...mappedSemHint
+  } = mapped
   const historicoBase = existing.historicoEtapa?.length ? existing.historicoEtapa : mapped.historicoEtapa
   const historicoEtapa =
     columnId !== keepCol && status
@@ -319,13 +419,20 @@ export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {
             at: mapped.etapaDesde || new Date().toISOString(),
           },
         ]
-      : historicoBase
+      : columnId !== keepCol
+        ? cardStatus.historicoEtapa
+        : historicoBase
   return {
     ...existing,
     ...mappedSemHint,
     id: existing.id,
     columnId,
-    etapaDesde: columnId === keepCol ? existing.etapaDesde : mapped.etapaDesde,
+    etapaDesde:
+      columnId === keepCol
+        ? existing.etapaDesde
+        : status
+          ? mapped.etapaDesde
+          : cardStatus.etapaDesde || mapped.etapaDesde,
     createdAt: existing.createdAt || mapped.createdAt,
     historicoEtapa,
     comentarios: existing.comentarios?.length ? existing.comentarios : mapped.comentarios,

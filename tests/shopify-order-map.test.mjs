@@ -4,6 +4,7 @@ import {
   COLUNA_PEDIDO_FEITO_ID,
   cardIdShopify,
   encontrarCardParaPedidoShopify,
+  aplicarStatusProducaoNoQuadro,
   mapShopifyOrderToCard,
   mesclarCardShopify,
   mergeShopifyEtapaTags,
@@ -239,6 +240,75 @@ describe('Shopify → kanban', () => {
     const out = mesclarCardShopify(existing, mapped, '2026-10-09T04:51:00Z')
     assert.equal(out.columnId, 'pedido-feito')
     assert.equal(out.pedidoTeste, true)
+  })
+
+  it('status de produção mais novo na Shopify move o card, inclusive para trás e para cancelado', () => {
+    const board = {
+      columns: [
+        { id: 'pedido-feito', title: 'Pedido feito' },
+        { id: 'cancelados-expirados', title: 'Pedidos cancelados / expirados' },
+      ],
+      cards: [
+        {
+          id: 'c1065',
+          shopifyOrderId: '19020674597163',
+          columnId: 'pedido-feito',
+          etapaDesde: '2026-10-11T23:05:28.000Z',
+          historicoEtapa: [],
+        },
+      ],
+    }
+    const out = aplicarStatusProducaoNoQuadro(board, [
+      {
+        orderId: '19020674597163',
+        value: 'Pedido cancelado / expirado',
+        updatedAt: '2026-10-11T23:06:18Z',
+      },
+    ])
+    assert.equal(out.mudou, true)
+    assert.equal(out.board.cards[0].columnId, 'cancelados-expirados')
+    assert.equal(out.paraGravar.length, 0)
+  })
+
+  it('status antigo da Shopify não desfaz a etapa do quadro', () => {
+    const board = {
+      columns: [],
+      cards: [
+        {
+          id: 'c1',
+          shopifyOrderId: '10',
+          columnId: 'liberado-logistica',
+          etapaDesde: '2026-10-11T21:00:00.000Z',
+          historicoEtapa: [],
+        },
+      ],
+    }
+    const out = aplicarStatusProducaoNoQuadro(board, [
+      { orderId: '10', value: 'Pedido recebido', updatedAt: '2026-10-11T18:00:00.000Z' },
+    ])
+    assert.equal(out.mudou, false)
+    assert.equal(out.board.cards[0].columnId, 'liberado-logistica')
+    assert.equal(out.paraGravar[0].status, 'Liberado para envio')
+  })
+
+  it('Entregue não move o card e não é apagado', () => {
+    const board = {
+      columns: [],
+      cards: [
+        {
+          id: 'c1',
+          shopifyOrderId: '10',
+          columnId: 'pedido-enviado',
+          etapaDesde: '2026-10-11T18:00:00.000Z',
+        },
+      ],
+    }
+    const out = aplicarStatusProducaoNoQuadro(board, [
+      { orderId: '10', value: 'Entregue', updatedAt: '2026-10-11T21:00:00.000Z' },
+    ])
+    assert.equal(out.mudou, false)
+    assert.equal(out.board.cards[0].columnId, 'pedido-enviado')
+    assert.equal(out.paraGravar.length, 0)
   })
 
   it('não devolve o card para a tag quando a etapa voltou uma casa', () => {

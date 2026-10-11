@@ -1,4 +1,4 @@
-import { verifyShopifyHmac, shopifyConfigured, ingestShopifyOrder, shopifyShopDomain, shopifyShopAllowed, shopifyWebhookSecret, quadroParaDiffEtapa, syncEtapasKanbanParaShopify } from './shopifySync.mjs'
+import { verifyShopifyHmac, shopifyConfigured, ingestShopifyOrder, anexarStatusProducao, shopifyShopDomain, shopifyShopAllowed, shopifyWebhookSecret, quadroParaDiffEtapa, syncEtapasKanbanParaShopify } from './shopifySync.mjs'
 import { ensureBoardColumns } from '../shared/boardVendedoresMerge.mjs'
 
 export async function handleShopifyWebhookApi(req, res, ctx) {
@@ -71,7 +71,8 @@ export async function handleShopifyWebhookApi(req, res, ctx) {
     const existing = (await readExistingBoard(DATA_FILE)) || { columns: [], cards: [], vendedores: [] }
     existing.columns = ensureBoardColumns(existing.columns)
     prevBoard = quadroParaDiffEtapa(existing)
-    const result = await ingestShopifyOrder(existing, payload, topic)
+    const order = await anexarStatusProducao(payload?.order || payload)
+    const result = await ingestShopifyOrder(existing, order, topic)
     nextBoard = result.board
     await backupBoardBeforeWrite(DATA_FILE)
     await writeBoardAtomic(DATA_FILE, result.board)

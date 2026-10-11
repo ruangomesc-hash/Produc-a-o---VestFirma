@@ -276,10 +276,17 @@ export async function syncEtapasKanbanParaShopify(prevBoard, nextBoard) {
 function aplicarPedidoShopifyNoQuadro(board, order) {
   const mapped = mapShopifyOrderToCard(order, COLUNA_PEDIDO_FEITO_ID)
   const etapaTag = parseEtapaTag(order.tags)
-  if (etapaTag && !mapped.shopifyPedidoStatus) mapped.columnId = etapaTag
+  if (etapaTag && !mapped.shopifyPedidoStatus && !order.status_producao) mapped.columnId = etapaTag
   const existing = encontrarCardParaPedidoShopify(board.cards, order)
+  const mappedComStatus = order.status_producao
+    ? {
+        ...mapped,
+        statusProducaoValor: order.status_producao,
+        statusProducaoAtualizadoEm: order.status_producao_updated_at || null,
+      }
+    : mapped
   const mergedCard = existing
-    ? mesclarCardShopify(existing, mapped, order.updated_at)
+    ? mesclarCardShopify(existing, mappedComStatus, order.updated_at)
     : mapped
   const incoming = {
     ...board,
@@ -486,8 +493,88 @@ export async function importarPedidosShopifyFaltantes(board, orders) {
   return { board: next, imported, restaurados, importedIds: ids }
 }
 
+async function lerStatusProducaoPorPedidos(orderIds) {
+  const ids = [...new Set((orderIds || []).map((id) => String(id).replace(/\D/g, '')).filter(Boolean))]
+  if (!ids.length) return new Map()
+  const out = new Map()
+  for (let i = 0; i < ids.length; i += 50) {
+    const slice = ids.slice(i, i + 50)
+    const got = await shopifyGraphql(
+      `query VestfirmaStatusLote($ids: [ID!]!) {
+        nodes(ids: $ids) {
+          ... on Order {
+            id
+            metafield(namespace: "custom", key: "status_producao") { value updatedAt }
+          }
+        }
+      }`,
+      { ids: slice.map((id) => `gid://shopify/Order/${id}`) },
+    )
+    if (!got.ok) return null
+    const nodes = got.data?.data?.nodes || []
+    for (const node of nodes) {
+      if (!node?.id) continue
+      const orderId = gidNumerico(node.id)
+      out.set(orderId, {
+        orderId,
+        value: node.metafield?.value || '',
+        updatedAt: node.metafield?.updatedAt || null,
+      })
+    }
+  }
+  return out
+}
+
+export async function anexarStatusProducao(order) {
+  const id = String(order?.id || '').replace(/\D/g, '')
+  if (!id || !shopifyConfigured()) return order
+  const lidos = await lerStatusProducaoPorPedidos([id])
+  if (!lidos) return order
+  const meta = lidos.get(id)
+  if (!meta?.value) return order
+  return {
+    ...order,
+    status_producao: meta.value,
+    status_producao_updated_at: meta.updatedAt,
+  }
+}
+
+async function sincronizarStatusProducaoNoDisco(ctx) {
+  if (!shopifyConfigured()) return
+  const existing = await ctx.readExistingBoard(ctx.boardFile)
+  const ids = (existing?.cards || [])
+    .filter((card) => card?.shopifyOrderId && !card.arquivadoEm)
+    .map((card) => card.shopifyOrderId)
+  if (!ids.length) return
+  const lidos = await lerStatusProducaoPorPedidos(ids)
+  if (!lidos) return
+  const { aplicarStatusProducaoNoQuadro } = await import('../shared/shopifyOrderMap.mjs')
+  let paraGravar = []
+  let prevBoard = null
+  let savedBoard = null
+  await ctx.withBoardWriteLock(async () => {
+    const latest = (await ctx.readExistingBoard(ctx.boardFile)) || existing
+    const applied = aplicarStatusProducaoNoQuadro(latest, [...lidos.values()])
+    paraGravar = applied.paraGravar
+    if (!applied.mudou) return
+    prevBoard = quadroParaDiffEtapa(latest)
+    await ctx.backupBoardBeforeWrite(ctx.boardFile)
+    await ctx.writeBoardAtomic(ctx.boardFile, applied.board)
+    savedBoard = applied.board
+    const antes = new Map((latest.cards || []).filter((card) => card?.id).map((card) => [card.id, card.columnId]))
+    const movidos = (applied.board.cards || []).filter((card) => card?.id && antes.get(card.id) !== card.columnId).length
+    console.log(`[vestfirma] Status da Shopify moveu ${movidos} pedido(s) no kanban`)
+  })
+  if (prevBoard && savedBoard) {
+    await syncEtapasKanbanParaShopify(prevBoard, savedBoard)
+  }
+  if (paraGravar.length) {
+    const gravado = await gravarStatusProducaoEmLote(paraGravar)
+    if (!gravado.ok) console.warn('[vestfirma] Shopify status de produção:', gravado.error || gravado.data)
+  }
+}
+
 export function startShopifyKanbanBackfill(ctx) {
-  let statusAlinhado = false
   const run = async () => {
     try {
       if (!shopifyConfigured()) return
@@ -519,10 +606,7 @@ export function startShopifyKanbanBackfill(ctx) {
           boardSalvo = existing
         }
       })
-      if (!statusAlinhado && boardSalvo) {
-        const alinhado = await reconciliarStatusProducaoShopify(boardSalvo)
-        if (alinhado?.ok) statusAlinhado = true
-      } else if (mudouBoard && prevBoard && boardSalvo) {
+      if (mudouBoard && prevBoard && boardSalvo) {
         await syncEtapasKanbanParaShopify(prevBoard, boardSalvo)
       }
     } catch (err) {
@@ -531,6 +615,20 @@ export function startShopifyKanbanBackfill(ctx) {
   }
   setTimeout(() => void run(), 8000)
   setInterval(() => void run(), 10 * 60 * 1000)
+  let puxandoStatus = false
+  const puxarStatus = () => {
+    if (puxandoStatus) return
+    puxandoStatus = true
+    void sincronizarStatusProducaoNoDisco(ctx)
+      .catch((err) => {
+        console.warn('[vestfirma] Shopify status:', err)
+      })
+      .finally(() => {
+        puxandoStatus = false
+      })
+  }
+  setTimeout(puxarStatus, 4000)
+  setInterval(puxarStatus, 15 * 1000)
 }
 
 export async function ingestShopifyOrder(board, payload, topic) {
