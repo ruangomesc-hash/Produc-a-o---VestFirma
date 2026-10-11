@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
-import { isRemoteSyncEnabled, fetchRemoteBoard, postPedidoComentario, postPedidoMidia, postPedidoCampos } from '../remoteBoard'
+import {
+  isRemoteSyncEnabled,
+  fetchBoardRevision,
+  fetchRemoteBoard,
+  postPedidoComentario,
+  postPedidoMidia,
+  postPedidoCampos,
+} from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
 import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
@@ -93,6 +100,7 @@ export function useBoard() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const boardRef = useRef(board)
   const refreshInFlight = useRef<Promise<void> | null>(null)
+  const serverRevisionRef = useRef<string | null>(null)
 
   useEffect(() => {
     boardRef.current = board
@@ -889,16 +897,17 @@ export function useBoard() {
     if (refreshInFlight.current) return refreshInFlight.current
     const run = (async () => {
       try {
-        const result = await loadBoard({ memoryBoard: boardRef.current })
+        const rev = await fetchBoardRevision().catch(() => null)
+        const stamp = rev ? `${rev.updatedAt ?? ''}|${rev.cards}` : ''
+        if (stamp && stamp === serverRevisionRef.current) return
+        const result = await loadBoard({ memoryBoard: boardRef.current, pullOnly: true })
         const unified = relinkOrphanVendedorIdsConservative(
           unifyVendedorRowsAndRelinkCards(result.board),
         )
         boardRef.current = unified
         setBoard(unified)
-        if (result.richerLocal) {
-          setLocalRestore(result.richerLocal)
-          void saveBoard(unified, { forceRemote: true })
-        }
+        if (result.richerLocal) setLocalRestore(result.richerLocal)
+        if (stamp) serverRevisionRef.current = stamp
       } catch {
         /* mantém quadro atual */
       }

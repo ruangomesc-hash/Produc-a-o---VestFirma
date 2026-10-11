@@ -101,6 +101,30 @@ export type RemoteBoardFetchOptions = {
   signal?: AbortSignal
 }
 
+export async function fetchBoardRevision(): Promise<{ updatedAt: string | null; cards: number } | null> {
+  const base = getApiBase()
+  if (!base) return null
+
+  const res = await fetch(`${base}${boardEndpoint()}/revision?t=${Date.now()}`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
+      ...authHeaders(),
+    },
+  })
+
+  if (!res.ok) return null
+  const data = (await res.json().catch(() => null)) as { updatedAt?: string | null; cards?: number } | null
+  if (!data) return null
+  return {
+    updatedAt: data.updatedAt ?? null,
+    cards: Number(data.cards) || 0,
+  }
+}
+
 export async function fetchRemoteBoard(
   options?: RemoteBoardFetchOptions,
 ): Promise<BoardState | null> {

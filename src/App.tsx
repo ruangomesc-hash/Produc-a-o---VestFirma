@@ -384,7 +384,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         void refreshBoardFromServer()
       }
     }
-    const id = window.setInterval(tick, 4_000)
+    const id = window.setInterval(tick, 2_000)
     document.addEventListener('visibilitychange', tick)
     window.addEventListener('focus', tick)
     window.addEventListener('pageshow', tick)

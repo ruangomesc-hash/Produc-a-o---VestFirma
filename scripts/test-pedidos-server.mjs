@@ -32,6 +32,39 @@ const baseBoard = () => ({
   ],
 })
 
+test('servidor: quadro atrasado não desfaz a etapa mais nova', () => {
+  const latest = baseBoard()
+  latest.cards[0] = {
+    ...latest.cards[0],
+    columnId: 'liberado-logistica',
+    etapaDesde: '2026-10-11T21:00:00.000Z',
+    historicoEtapa: [
+      {
+        id: 'h-novo',
+        tipo: 'avancou',
+        columnId: 'liberado-logistica',
+        at: '2026-10-11T21:00:00.000Z',
+      },
+    ],
+  }
+  const stale = baseBoard()
+  stale.cards[0] = {
+    ...stale.cards[0],
+    columnId: 'em-aplicacao',
+    etapaDesde: '2026-10-11T18:00:00.000Z',
+    historicoEtapa: [
+      {
+        id: 'h-velho',
+        tipo: 'avancou',
+        columnId: 'em-aplicacao',
+        at: '2026-10-11T18:00:00.000Z',
+      },
+    ],
+  }
+  const merged = mergeBoardPreservingPedidos(latest, stale)
+  assert.equal(merged.cards.find((c) => c.id === 'existente')?.columnId, 'liberado-logistica')
+})
+
 test('servidor: merge preserva existente e adiciona novo id', () => {
   const existing = baseBoard()
   const incoming = {

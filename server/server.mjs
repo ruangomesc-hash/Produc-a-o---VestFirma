@@ -258,15 +258,22 @@ async function handleBoardApi(req, res) {
       board = await externalizeBoardLogos(board, LOGO_DIR)
     }
 
+    let savedBoard = board
+    let syncBase = existing
     await withBoardWriteLock(async () => {
+      const latest = (await readExistingBoard(DATA_FILE)) ?? existing
+      let merged = mergeBoardPreservingPedidos(latest, board, removeArchivedIds)
+      merged = preserveArquivadoEmUnlessAdmin(latest, merged, session)
       await backupBoardBeforeWrite(DATA_FILE)
-      const out = await writeBoardAtomic(DATA_FILE, board)
-      if (mergedCount === 0) {
+      const out = await writeBoardAtomic(DATA_FILE, merged)
+      if (countBoardCards(merged) === 0) {
         await fs.writeFile(`${DATA_FILE}.bak`, out, 'utf8')
       }
+      savedBoard = merged
+      syncBase = latest
     })
     const { syncEtapasKanbanParaShopify } = await import('./shopifySync.mjs')
-    void syncEtapasKanbanParaShopify(existing, board).catch((err) => {
+    void syncEtapasKanbanParaShopify(syncBase, savedBoard).catch((err) => {
       console.warn('[vestfirma] Shopify sync:', err)
     })
     res.writeHead(200, {

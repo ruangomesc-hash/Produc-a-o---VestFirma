@@ -274,6 +274,11 @@ export type LoadBoardOptions = {
   signal?: AbortSignal
   /** Quadro em memória (aba aberta) — entra no merge para não perder pedido recém-criado. */
   memoryBoard?: BoardState
+  /**
+   * Atualização automática: traz o servidor e não reenvia o quadro inteiro.
+   * Reenviar a cada poucos segundos fazia um computador atrasado gravar por cima do outro.
+   */
+  pullOnly?: boolean
 }
 
 export async function loadBoardFromBrowserCache(): Promise<BoardState | null> {
@@ -331,12 +336,15 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
 
       await saveBoardToIdb(board)
 
+      const missingOnServer = boardTemPedidosAlemDoServidor(board, remote)
       const shouldPushMissingToServer =
         !protectedServer &&
         boardHasPedidos(board) &&
-        (richerLocal != null ||
-          boardTemPedidosAlemDoServidor(board, remote) ||
-          boardTemConteudoAlemDoServidor(board, remote))
+        (options?.pullOnly
+          ? missingOnServer
+          : richerLocal != null ||
+            missingOnServer ||
+            boardTemConteudoAlemDoServidor(board, remote))
 
       if (shouldPushMissingToServer) {
         const pushResult = await saveBoard(board, { forceRemote: true })
