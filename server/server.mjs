@@ -33,6 +33,7 @@ const {
   readExistingBoard,
   readBoardWithRecovery,
   preserveArquivadoEmUnlessAdmin,
+  preservarColunasDoQuadroGravado,
   withBoardWriteLock,
   writeBoardAtomic,
 } = await import('./boardPersist.mjs')
@@ -265,6 +266,7 @@ async function handleBoardApi(req, res) {
       const latest = (await readExistingBoard(DATA_FILE)) ?? existing
       let merged = mergeBoardPreservingPedidos(latest, board, removeArchivedIds)
       merged = preserveArquivadoEmUnlessAdmin(latest, merged, session)
+      merged = preservarColunasDoQuadroGravado(latest, merged)
       await backupBoardBeforeWrite(DATA_FILE)
       const out = await writeBoardAtomic(DATA_FILE, merged)
       if (countBoardCards(merged) === 0) {

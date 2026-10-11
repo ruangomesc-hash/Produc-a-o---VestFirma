@@ -10,6 +10,7 @@ import {
   mergeBoardPreservingPedidos,
   mergeBoardAddingMissingPedidosOnly,
   countBoardCards,
+  preservarColunasDoQuadroGravado,
   readBoardWithRecovery,
 } from '../server/boardPersist.mjs'
 
@@ -192,4 +193,104 @@ test('servidor: simula gravação em disco após merge', async () => {
   await fs.writeFile(file, JSON.stringify(incoming), 'utf8')
   const raw = JSON.parse(await fs.readFile(file, 'utf8'))
   assert.equal(countBoardCards(raw), 2)
+})
+
+test('save do quadro inteiro não desfaz a coluna gravada, nem ao voltar etapa', () => {
+  const latest = baseBoard()
+  latest.columns = [
+    { id: 'pedido-feito', title: 'Pedido feito' },
+    { id: 'liberado-logistica', title: 'Liberado' },
+  ]
+  latest.cards[0] = {
+    ...latest.cards[0],
+    columnId: 'liberado-logistica',
+    etapaDesde: '2026-10-11T18:00:00.000Z',
+  }
+  const stale = {
+    ...latest,
+    cards: [
+      {
+        ...latest.cards[0],
+        columnId: 'pedido-feito',
+        etapaDesde: '2026-10-11T21:30:00.000Z',
+        historicoEtapa: [{ id: 'h', tipo: 'voltou', columnId: 'pedido-feito', at: '2026-10-11T21:30:00.000Z' }],
+      },
+    ],
+  }
+  const kept = preservarColunasDoQuadroGravado(latest, stale)
+  assert.equal(kept.cards[0].columnId, 'liberado-logistica')
+  assert.equal(countBoardCards(kept), 1)
+})
+
+test('save do quadro inteiro aceita pedido novo e coluna que foi apagada', () => {
+  const latest = baseBoard()
+  latest.columns = [
+    { id: col, title: 'Entrada' },
+    { id: 'custom', title: 'Extra' },
+  ]
+  latest.cards[0] = { ...latest.cards[0], columnId: 'custom' }
+  const incoming = {
+    ...latest,
+    columns: [{ id: col, title: 'Entrada' }],
+    cards: [
+      { ...latest.cards[0], columnId: col },
+      {
+        id: 'novo',
+        columnId: col,
+        cliente: 'Novo',
+        numeroPedido: '301',
+        quantidade: 1,
+        vendedorId: 'v1',
+      },
+    ],
+  }
+  const kept = preservarColunasDoQuadroGravado(latest, incoming)
+  assert.equal(kept.cards.find((c) => c.id === 'existente').columnId, col)
+  assert.equal(kept.cards.find((c) => c.id === 'novo').columnId, col)
+  assert.equal(countBoardCards(kept), 2)
+})
+
+test('arraste grava só aquele pedido e avisa os painéis', async () => {
+  const { applyBoardCardMove } = await import('../server/boardCardPatch.mjs')
+  const { writeBoardAtomic, readExistingBoard, withBoardWriteLock, backupBoardBeforeWrite } = await import(
+    '../server/boardPersist.mjs'
+  )
+  const { addBoardLiveClient } = await import('../server/boardLive.mjs')
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vf-move-'))
+  const file = path.join(dir, 'board.json')
+  const board = baseBoard()
+  board.columns = [
+    { id: 'pedido-feito', title: 'Pedido feito' },
+    { id: 'preview-em-andamento', title: 'Preview' },
+  ]
+  board.cards[0] = { ...board.cards[0], columnId: 'preview-em-andamento', shopifyOrderId: '1' }
+  await writeBoardAtomic(file, board)
+  const chunks = []
+  const remove = addBoardLiveClient({
+    write(line) {
+      chunks.push(line)
+    },
+  })
+  try {
+    const result = await applyBoardCardMove(
+      { cardId: 'existente', columnId: 'pedido-feito' },
+      { user: 'Admin', email: 'a@test', role: 'admin' },
+      {
+        boardFilePath: () => file,
+        backupBoardBeforeWrite,
+        readExistingBoard,
+        withBoardWriteLock,
+        writeBoardAtomic,
+      },
+    )
+    assert.equal(result.status, 200)
+    assert.equal(result.body.columnId, 'pedido-feito')
+    const saved = await readExistingBoard(file)
+    assert.equal(saved.cards[0].columnId, 'pedido-feito')
+    assert.equal(saved.cards[0].historicoEtapa.at(-1).tipo, 'voltou')
+    assert.ok(chunks.some((line) => String(line).includes('event: board')))
+  } finally {
+    remove()
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 })

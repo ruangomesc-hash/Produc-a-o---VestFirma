@@ -6,6 +6,7 @@ import {
   isRemoteSyncEnabled,
   fetchBoardRevision,
   fetchRemoteBoard,
+  postMoverPedido,
   postPedidoComentario,
   postPedidoMidia,
   postPedidoCampos,
@@ -102,6 +103,7 @@ export function useBoard() {
   const refreshInFlight = useRef<Promise<void> | null>(null)
   const refreshAgain = useRef(false)
   const serverRevisionRef = useRef<string | null>(null)
+  const movesEmAndamento = useRef(new Map<string, string>())
 
   useEffect(() => {
     boardRef.current = board
@@ -497,28 +499,39 @@ export function useBoard() {
       const payload = cardFormDataParaVendedorLogado(current, data)
       const columns = ensureBoardColumns(current.columns)
       const now = new Date().toISOString()
+      const destinoTeste =
+        payload.pedidoTeste && prev && prev.columnId !== COLUNA_CANCELADOS_EXPIRADOS_ID
+          ? COLUNA_CANCELADOS_EXPIRADOS_ID
+          : null
       persist({
         ...current,
         columns,
         cards: current.cards.map((c) => {
           if (c.id !== cardId) return c
           const nextCard = { ...c, ...payload, pedidoTeste: Boolean(payload.pedidoTeste) }
-          if (!payload.pedidoTeste || nextCard.columnId === COLUNA_CANCELADOS_EXPIRADOS_ID) {
-            return nextCard
-          }
+          if (!destinoTeste) return nextCard
           return {
             ...nextCard,
-            columnId: COLUNA_CANCELADOS_EXPIRADOS_ID,
+            columnId: destinoTeste,
             etapaDesde: now,
             historicoEtapa: registrarMudancaEtapa(
               { ...nextCard, columnId: c.columnId },
               { ...current, columns },
-              COLUNA_CANCELADOS_EXPIRADOS_ID,
+              destinoTeste,
               now,
             ),
           }
         }),
       })
+      if (destinoTeste && isRemoteSyncEnabled()) {
+        movesEmAndamento.current.set(cardId, destinoTeste)
+        void postMoverPedido(cardId, destinoTeste).then((moved) => {
+          if (movesEmAndamento.current.get(cardId) === destinoTeste) {
+            movesEmAndamento.current.delete(cardId)
+          }
+          if (!moved.ok) void refreshBoardFromServer(true)
+        })
+      }
       recordAudit({
         action: 'pedido.editado',
         summary: `Editou pedido ${payload.numeroPedido || prev?.numeroPedido} — ${payload.cliente || prev?.cliente}`,
@@ -782,9 +795,10 @@ export function useBoard() {
 
   const moveCard = useCallback(
     (cardId: string, columnId: string, opts?: { silent?: boolean }) => {
-      const existing = board.cards.find((c) => c.id === cardId)
+      const current = boardRef.current
+      const existing = current.cards.find((c) => c.id === cardId)
       if (!existing || existing.columnId === columnId) return
-      if (!vendedorLogadoPodeCard(board, existing)) return
+      if (!vendedorLogadoPodeCard(current, existing)) return
 
       const fromColumnId = existing.columnId
       const now = new Date().toISOString()
@@ -792,25 +806,44 @@ export function useBoard() {
         ...existing,
         columnId,
         etapaDesde: now,
-        historicoEtapa: registrarMudancaEtapa(existing, board, columnId, now),
+        historicoEtapa: registrarMudancaEtapa(existing, current, columnId, now),
       }
       const nextBoard = {
-        ...board,
-        cards: board.cards.map((c) => (c.id === cardId ? updated : c)),
+        ...current,
+        cards: current.cards.map((c) => (c.id === cardId ? updated : c)),
       }
-      persist(nextBoard, { immediate: true, forceRemote: true })
+      boardRef.current = nextBoard
+      setBoard(nextBoard)
+      if (!isRemoteSyncEnabled()) {
+        persist(nextBoard, { immediate: true, skipRemote: true })
+      } else {
+        movesEmAndamento.current.set(cardId, columnId)
+        setSync((s) => ({ ...s, status: 'saving' }))
+        void postMoverPedido(cardId, columnId).then((moved) => {
+          if (movesEmAndamento.current.get(cardId) === columnId) {
+            movesEmAndamento.current.delete(cardId)
+          }
+          if (moved.ok) {
+            setSync({ remote: true, status: 'saved' })
+            void refreshBoardFromServer(true)
+          } else {
+            setSync({ remote: true, status: 'error', message: moved.error })
+            void refreshBoardFromServer(true)
+          }
+        })
+      }
       if (!opts?.silent) {
         notificarSePedidoMovido(updated, nextBoard, fromColumnId, columnId)
       }
       recordAudit({
         action: 'pedido.movido',
         summary: opts?.silent
-          ? `Desfez movimento do pedido ${existing.numeroPedido} de volta para ${tituloColuna(board, columnId)}`
-          : `Pedido ${existing.numeroPedido}: ${tituloColuna(board, fromColumnId)} → ${tituloColuna(board, columnId)}`,
+          ? `Desfez movimento do pedido ${existing.numeroPedido} de volta para ${tituloColuna(current, columnId)}`
+          : `Pedido ${existing.numeroPedido}: ${tituloColuna(current, fromColumnId)} → ${tituloColuna(current, columnId)}`,
         meta: { cardId, fromColumnId, columnId, undo: Boolean(opts?.silent) },
       })
     },
-    [board, persist],
+    [persist],
   )
 
   const restoreRicherLocalToServer = useCallback(() => {
@@ -906,9 +939,20 @@ export function useBoard() {
         const stamp = rev ? `${rev.updatedAt ?? ''}|${rev.cards}` : ''
         if (!force && stamp && stamp === serverRevisionRef.current) return
         const result = await loadBoard({ memoryBoard: boardRef.current, pullOnly: true })
-        const unified = relinkOrphanVendedorIdsConservative(
+        const linked = relinkOrphanVendedorIdsConservative(
           unifyVendedorRowsAndRelinkCards(result.board),
         )
+        const pending = movesEmAndamento.current
+        const unified =
+          pending.size === 0
+            ? linked
+            : {
+                ...linked,
+                cards: linked.cards.map((c) => {
+                  const coluna = pending.get(c.id)
+                  return coluna && coluna !== c.columnId ? { ...c, columnId: coluna } : c
+                }),
+              }
         boardRef.current = unified
         setBoard(unified)
         if (result.richerLocal) setLocalRestore(result.richerLocal)

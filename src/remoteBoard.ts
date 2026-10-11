@@ -81,6 +81,36 @@ async function postPedidoPatch(
   }
 }
 
+export async function postMoverPedido(
+  cardId: string,
+  columnId: string,
+): Promise<{ ok: true; columnId: string } | { ok: false; error: string }> {
+  const base = getApiBase()
+  if (!base) return { ok: false, error: 'API indisponível' }
+
+  const res = await fetch(boardPatchUrl(base), {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ action: 'vestfirma-card-move', cardId, columnId }),
+  })
+
+  if (res.status === 401) {
+    requestAuthFailureLogout('board-card-move')
+    return { ok: false, error: 'Sessão expirada' }
+  }
+
+  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; columnId?: string; error?: string }
+  if (!res.ok || !data.ok) {
+    return { ok: false, error: data.error || `Falha ao mudar a etapa (${res.status})` }
+  }
+  return { ok: true, columnId: data.columnId || columnId }
+}
+
 export async function postPedidoCampos(
   cardId: string,
   patch: PedidoMidiaPatch,

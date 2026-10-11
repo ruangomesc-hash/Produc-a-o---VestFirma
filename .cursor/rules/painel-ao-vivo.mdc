@@ -12,9 +12,11 @@ Qualquer gravação do quadro — etapa, pedido, comentário, logo, arquivo — 
 - Toda gravação de `board.json` passa por `writeBoardAtomic`, que avisa `/api/board/live`.
 - O navegador escuta esse aviso e recarrega o quadro imediatamente.
 - O servidor, ao gravar, relê o quadro mais novo e mescla. Uma tela atrasada não desfaz a etapa que outro usuário acabou de salvar.
+- A coluna que está no servidor é a que todos os painéis mostram. A cópia do navegador não troca a etapa de um pedido que já está no servidor.
+- Arrastar um pedido grava só aquele pedido (`vestfirma-card-move`) e atualiza o status de produção da Shopify. Um save do quadro inteiro não muda coluna.
 - A atualização automática não reenvia o quadro inteiro só porque o relógio disparou.
 
 ## Proibido
 
-- Tirar o aviso ao vivo, o relê-e-mescla do PUT, ou voltar a salvar o quadro completo a cada poucos segundos.
+- Tirar o aviso ao vivo, o relê-e-mescla do PUT, o bloqueio de coluna no save do quadro inteiro, ou voltar a salvar o quadro completo a cada poucos segundos.
 - Deixar um painel só com cópia local quando os outros já gravaram no servidor.

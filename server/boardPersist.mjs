@@ -142,6 +142,33 @@ export function countBoardCards(board) {
 }
 
 /** Só administrador pode arquivar ou desarquivar no servidor. */
+/**
+ * O quadro gravado é a coluna de todo mundo.
+ * Um PUT do quadro inteiro (comentário, edição, tela atrasada) não muda etapa.
+ * Etapa só muda no endpoint de arraste, ou quando a coluna antiga deixou de existir.
+ */
+export function preservarColunasDoQuadroGravado(latest, incoming) {
+  if (!latest?.cards?.length || !incoming?.cards) return incoming
+  const prevById = new Map(latest.cards.filter((c) => c?.id).map((c) => [c.id, c]))
+  const colunas = new Set((incoming.columns ?? []).map((c) => c?.id).filter(Boolean))
+  let changed = false
+  const cards = incoming.cards.map((c) => {
+    if (!c?.id) return c
+    const prev = prevById.get(c.id)
+    if (!prev?.columnId) return c
+    if (!colunas.has(prev.columnId)) return c
+    if (prev.columnId === c.columnId) return c
+    changed = true
+    return {
+      ...c,
+      columnId: prev.columnId,
+      etapaDesde: prev.etapaDesde ?? c.etapaDesde,
+      historicoEtapa: prev.historicoEtapa ?? c.historicoEtapa,
+    }
+  })
+  return changed ? { ...incoming, cards } : incoming
+}
+
 export function preserveArquivadoEmUnlessAdmin(existing, board, session) {
   if (!existing?.cards?.length || session?.role === 'admin') return board
   const prevById = new Map(

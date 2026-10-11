@@ -118,6 +118,72 @@ export async function applyBoardCardPatch(payload, session, ctx) {
   })
 }
 
+/** POST action vestfirma-card-move — muda só a coluna deste pedido e avisa a Shopify. */
+export async function applyBoardCardMove(payload, session, ctx) {
+  const {
+    boardFilePath,
+    backupBoardBeforeWrite,
+    readExistingBoard,
+    withBoardWriteLock,
+    writeBoardAtomic,
+  } = ctx
+
+  const cardId = typeof payload?.cardId === 'string' ? payload.cardId.trim() : ''
+  const columnId = typeof payload?.columnId === 'string' ? payload.columnId.trim() : ''
+  if (!cardId || !columnId) return { status: 400, body: { error: 'Informe o pedido e a etapa.' } }
+
+  return withBoardWriteLock(async () => {
+    const DATA_FILE = boardFilePath()
+    const existing = await readExistingBoard(DATA_FILE)
+    const card = existing?.cards?.find((c) => c?.id === cardId)
+    if (!card) return { status: 404, body: { error: 'Pedido não encontrado.' } }
+    const columns = existing.columns ?? []
+    const destino = columns.find((c) => c?.id === columnId)
+    if (!destino) return { status: 400, body: { error: 'Etapa não existe no quadro.' } }
+    if (card.columnId === columnId) {
+      return { status: 200, body: { ok: true, cardId, columnId, unchanged: true } }
+    }
+
+    const now = new Date().toISOString()
+    const fromIdx = columns.findIndex((c) => c?.id === card.columnId)
+    const toIdx = columns.findIndex((c) => c?.id === columnId)
+    const tipo = fromIdx < 0 || toIdx < 0 || fromIdx === toIdx ? 'movido' : toIdx > fromIdx ? 'avancou' : 'voltou'
+    const fromTitle = columns.find((c) => c?.id === card.columnId)?.title || card.columnId
+    const entry = {
+      id: crypto.randomUUID(),
+      tipo,
+      columnId,
+      columnTitle: destino.title || columnId,
+      at: now,
+      fromColumnId: card.columnId,
+      fromColumnTitle: fromTitle,
+      autorNome: session?.user || '',
+      autorEmail: session?.email || '',
+      autorRole: session?.role || '',
+    }
+    const next = {
+      ...card,
+      columnId,
+      etapaDesde: now,
+      historicoEtapa: [...(card.historicoEtapa ?? []), entry],
+    }
+    const board = {
+      ...existing,
+      cards: existing.cards.map((c) => (c.id === cardId ? next : c)),
+    }
+    await backupBoardBeforeWrite(DATA_FILE)
+    await writeBoardAtomic(DATA_FILE, board)
+    const { syncEtapasKanbanParaShopify } = await import('./shopifySync.mjs')
+    void syncEtapasKanbanParaShopify(existing, board).catch((err) => {
+      console.warn('[vestfirma] Shopify sync:', err)
+    })
+    return {
+      status: 200,
+      body: { ok: true, cardId, columnId, etapaDesde: now },
+    }
+  })
+}
+
 export async function tryHandleBoardCardPatch(req, res, body, session, corsHeaders, ctx) {
   if (req.method !== 'POST' && req.method !== 'PUT') return false
   let payload
@@ -125,6 +191,16 @@ export async function tryHandleBoardCardPatch(req, res, body, session, corsHeade
     payload = JSON.parse(body)
   } catch {
     return false
+  }
+  if (payload?.action === 'vestfirma-card-move') {
+    try {
+      const result = await applyBoardCardMove(payload, session, ctx)
+      json(res, corsHeaders, result.status, result.body)
+    } catch (err) {
+      console.error('[vestfirma] mover pedido:', err)
+      json(res, corsHeaders, 500, { error: 'Não foi possível mudar a etapa. Tente de novo.' })
+    }
+    return true
   }
   if (!payload || payload.action !== 'vestfirma-card-patch') return false
 

@@ -337,10 +337,13 @@ export async function loadBoard(options?: LoadBoardOptions): Promise<LoadBoardRe
       await saveBoardToIdb(board)
 
       const missingOnServer = boardTemPedidosAlemDoServidor(board, remote)
+      if (loggedIn) {
+        richerLocal = missingOnServer ? board : undefined
+      }
       const shouldPushMissingToServer =
         !protectedServer &&
         boardHasPedidos(board) &&
-        (options?.pullOnly
+        (loggedIn || options?.pullOnly
           ? missingOnServer
           : richerLocal != null ||
             missingOnServer ||
