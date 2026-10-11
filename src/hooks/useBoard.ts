@@ -100,6 +100,7 @@ export function useBoard() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const boardRef = useRef(board)
   const refreshInFlight = useRef<Promise<void> | null>(null)
+  const refreshAgain = useRef(false)
   const serverRevisionRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -893,13 +894,17 @@ export function useBoard() {
     }
   }, [])
 
-  const refreshBoardFromServer = useCallback(async () => {
-    if (refreshInFlight.current) return refreshInFlight.current
+  const refreshBoardFromServer = useCallback(async (force?: boolean) => {
+    if (refreshInFlight.current) {
+      if (force) refreshAgain.current = true
+      return refreshInFlight.current
+    }
     const run = (async () => {
       try {
+        if (force) serverRevisionRef.current = null
         const rev = await fetchBoardRevision().catch(() => null)
         const stamp = rev ? `${rev.updatedAt ?? ''}|${rev.cards}` : ''
-        if (stamp && stamp === serverRevisionRef.current) return
+        if (!force && stamp && stamp === serverRevisionRef.current) return
         const result = await loadBoard({ memoryBoard: boardRef.current, pullOnly: true })
         const unified = relinkOrphanVendedorIdsConservative(
           unifyVendedorRowsAndRelinkCards(result.board),
@@ -907,7 +912,9 @@ export function useBoard() {
         boardRef.current = unified
         setBoard(unified)
         if (result.richerLocal) setLocalRestore(result.richerLocal)
-        if (stamp) serverRevisionRef.current = stamp
+        const after = await fetchBoardRevision().catch(() => null)
+        const afterStamp = after ? `${after.updatedAt ?? ''}|${after.cards}` : stamp
+        if (afterStamp) serverRevisionRef.current = afterStamp
       } catch {
         /* mantém quadro atual */
       }
@@ -917,6 +924,10 @@ export function useBoard() {
       await run
     } finally {
       if (refreshInFlight.current === run) refreshInFlight.current = null
+      if (refreshAgain.current) {
+        refreshAgain.current = false
+        void refreshBoardFromServer(true)
+      }
     }
   }, [])
 

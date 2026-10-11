@@ -223,6 +223,14 @@ export async function writeBoardAtomic(DATA_FILE, board) {
     await fs.rm(tmp, { force: true }).catch(() => {})
     throw err
   }
+  if (path.basename(DATA_FILE) === 'board.json') {
+    try {
+      const { notifyBoardChanged } = await import('./boardLive.mjs')
+      notifyBoardChanged()
+    } catch (err) {
+      console.warn('[vestfirma] aviso ao vivo:', err)
+    }
+  }
   return out
 }
 

@@ -32,6 +32,27 @@ const baseBoard = () => ({
   ],
 })
 
+test('gravação do quadro avisa os painéis abertos na hora', async () => {
+  const { writeBoardAtomic } = await import('../server/boardPersist.mjs')
+  const { addBoardLiveClient } = await import('../server/boardLive.mjs')
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vf-live-'))
+  const file = path.join(dir, 'board.json')
+  const chunks = []
+  const remove = addBoardLiveClient({
+    write(line) {
+      chunks.push(line)
+    },
+  })
+  try {
+    await writeBoardAtomic(file, { columns: [], cards: [], vendedores: [] })
+    assert.equal(chunks.length, 1)
+    assert.match(chunks[0], /event: board/)
+  } finally {
+    remove()
+    await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('servidor: quadro atrasado não desfaz a etapa mais nova', () => {
   const latest = baseBoard()
   latest.cards[0] = {

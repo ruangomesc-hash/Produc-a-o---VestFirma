@@ -37,6 +37,7 @@ const {
   writeBoardAtomic,
 } = await import('./boardPersist.mjs')
 const { dedupeBoardCards } = await import('../shared/dedupeBoardCards.mjs')
+const { addBoardLiveClient } = await import('./boardLive.mjs')
 const { ensureBoardColumns } = await import('../shared/boardVendedoresMerge.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -403,6 +404,46 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/logout' || url.pathname === '/api/logout.php') {
       await handleLogoutApi(req, res)
+      return
+    }
+
+    if (url.pathname === '/api/board/live' || url.pathname === '/api/board/live.php') {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, corsHeaders())
+        res.end()
+        return
+      }
+      if (REQUIRE_LOGIN) {
+        const session = await requireSession(req, res)
+        if (!session) return
+      }
+      if (req.method !== 'GET') {
+        res.writeHead(405, corsHeaders())
+        res.end('Method Not Allowed')
+        return
+      }
+      res.writeHead(200, {
+        ...corsHeaders(),
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      })
+      res.write('event: ready\ndata: {}\n\n')
+      const remove = addBoardLiveClient(res)
+      const beat = setInterval(() => {
+        try {
+          res.write(': ping\n\n')
+        } catch {
+          clearInterval(beat)
+        }
+      }, 15000)
+      const close = () => {
+        clearInterval(beat)
+        remove()
+      }
+      req.on('close', close)
+      res.on('close', close)
       return
     }
 

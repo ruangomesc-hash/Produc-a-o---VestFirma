@@ -224,3 +224,72 @@ export async function saveRemoteBoard(
     throw new Error(msg || `Falha ao salvar (${res.status})`)
   }
 }
+
+/** Avisa na hora quando qualquer usuário grava o quadro. Reconecta se a ligação cair. */
+export function subscribeBoardLive(onBoard: () => void): () => void {
+  if (!isRemoteSyncEnabled()) return () => {}
+
+  const base = getApiBase()
+  if (!base) return () => {}
+
+  const ctrl = new AbortController()
+  let stopped = false
+
+  const wait = (ms: number) =>
+    new Promise((resolve) => {
+      const id = setTimeout(resolve, ms)
+      ctrl.signal.addEventListener('abort', () => {
+        clearTimeout(id)
+        resolve(undefined)
+      })
+    })
+
+  const run = async () => {
+    let delay = 1000
+    while (!stopped) {
+      try {
+        const res = await fetch(`${base}${boardEndpoint()}/live?t=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store',
+          signal: ctrl.signal,
+          headers: {
+            Accept: 'text/event-stream',
+            ...authHeaders(),
+          },
+        })
+        if (res.status === 401) {
+          requestAuthFailureLogout('board-live')
+          return
+        }
+        if (!res.ok || !res.body) throw new Error(`ao vivo ${res.status}`)
+        delay = 1000
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buf = ''
+        while (!stopped) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buf += decoder.decode(value, { stream: true })
+          let split = buf.indexOf('\n\n')
+          while (split >= 0) {
+            const chunk = buf.slice(0, split)
+            buf = buf.slice(split + 2)
+            if (chunk.includes('event: board')) onBoard()
+            split = buf.indexOf('\n\n')
+          }
+        }
+      } catch {
+        if (stopped || ctrl.signal.aborted) return
+      }
+      if (stopped) return
+      await wait(delay)
+      delay = Math.min(delay * 2, 8000)
+    }
+  }
+
+  void run()
+  return () => {
+    stopped = true
+    ctrl.abort()
+  }
+}

@@ -6,6 +6,7 @@ import {
   markLoginGrace,
 } from './authSession'
 import { requiresLogin } from './runtimeConfig'
+import { subscribeBoardLive } from './remoteBoard'
 import type { SessionProfile } from './authSession'
 import type { ManagedUser } from './userRoles'
 import { UsuariosModal } from './components/UsuariosModal'
@@ -372,6 +373,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
   useEffect(() => {
     if (!ready || !session) return
+    return subscribeBoardLive(() => {
+      void refreshBoardFromServer(true)
+    })
+  }, [ready, session, refreshBoardFromServer])
+
+  useEffect(() => {
+    if (!ready || !session) return
     const tick = () => {
       const hidden = document.visibilityState !== 'visible'
       if (hidden && !webNotifyActive()) return
@@ -381,18 +389,21 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         view === 'visao' ||
         view === 'vendedores'
       ) {
-        void refreshBoardFromServer()
+        void refreshBoardFromServer(document.visibilityState === 'visible' ? false : true)
       }
     }
+    const onWake = () => {
+      if (document.visibilityState === 'visible') void refreshBoardFromServer(true)
+    }
     const id = window.setInterval(tick, 2_000)
-    document.addEventListener('visibilitychange', tick)
-    window.addEventListener('focus', tick)
-    window.addEventListener('pageshow', tick)
+    document.addEventListener('visibilitychange', onWake)
+    window.addEventListener('focus', onWake)
+    window.addEventListener('pageshow', onWake)
     return () => {
       window.clearInterval(id)
-      document.removeEventListener('visibilitychange', tick)
-      window.removeEventListener('focus', tick)
-      window.removeEventListener('pageshow', tick)
+      document.removeEventListener('visibilitychange', onWake)
+      window.removeEventListener('focus', onWake)
+      window.removeEventListener('pageshow', onWake)
     }
   }, [ready, session, view, refreshBoardFromServer])
 
