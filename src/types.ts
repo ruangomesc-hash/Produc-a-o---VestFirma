@@ -81,6 +81,8 @@ export interface OrderCard {
   logoEnviadaCliente: string[]
   logoProntaImpressao: string[]
   previewAprovacaoCliente: string[]
+  /** Hora da última troca de logo feita por alguém. Remoção mais nova vale. */
+  midiaAtualizadaEm?: string
   localLogo: LogoLocal | null
   etapaDesde: string
   createdAt: string

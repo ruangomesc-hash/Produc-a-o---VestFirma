@@ -143,6 +143,22 @@ describe('merge — comentários, logos e observação não se apagam', () => {
     assert.equal(countBoardCards(merged), 1)
   })
 
+  it('remoção de logo mais nova permanece e uma cópia atrasada não devolve a imagem', () => {
+    const existing = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    existing.cards[0].logoEnviadaCliente = ['/api/images/antiga', '/api/images/nova']
+    existing.cards[0].midiaAtualizadaEm = '2026-10-13T15:00:00.000Z'
+    const incoming = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    incoming.cards[0].logoEnviadaCliente = ['/api/images/nova']
+    incoming.cards[0].midiaAtualizadaEm = '2026-10-13T15:05:00.000Z'
+    const merged = mergeBoardPreservingPedidos(existing, incoming)
+    assert.deepEqual(merged.cards[0].logoEnviadaCliente, ['/api/images/nova'])
+
+    const atrasada = boardComCards({ id: 'p1', numeroPedido: '1001' })
+    atrasada.cards[0].logoEnviadaCliente = ['/api/images/antiga', '/api/images/nova']
+    const deNovo = mergeBoardPreservingPedidos(merged, atrasada)
+    assert.deepEqual(deNovo.cards[0].logoEnviadaCliente, ['/api/images/nova'])
+  })
+
   it('não descarta logo de impressão quando a outra cópia veio sem imagem', () => {
     const existing = boardComCards({ id: 'p1', numeroPedido: '1001' })
     existing.cards[0].logoProntaImpressao = ['/api/images/abc', '/api/images/def']

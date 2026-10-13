@@ -495,7 +495,7 @@ export function useBoard() {
     (cardId: string, data: CardFormData) => {
       const current = boardRef.current
       const prev = current.cards.find((c) => c.id === cardId)
-      if (!vendedorLogadoPodeCard(current, prev)) return
+      if (!prev || !vendedorLogadoPodeCard(current, prev)) return
       const payload = cardFormDataParaVendedorLogado(current, data)
       const columns = ensureBoardColumns(current.columns)
       const now = new Date().toISOString()
@@ -509,6 +509,12 @@ export function useBoard() {
         cards: current.cards.map((c) => {
           if (c.id !== cardId) return c
           const nextCard = { ...c, ...payload, pedidoTeste: Boolean(payload.pedidoTeste) }
+          const lista = (value: string[] | undefined) => JSON.stringify(value ?? [])
+          const mudouMidia =
+            lista(prev.logoEnviadaCliente) !== lista(nextCard.logoEnviadaCliente) ||
+            lista(prev.logoProntaImpressao) !== lista(nextCard.logoProntaImpressao) ||
+            lista(prev.previewAprovacaoCliente) !== lista(nextCard.previewAprovacaoCliente)
+          if (mudouMidia) nextCard.midiaAtualizadaEm = now
           if (!destinoTeste) return nextCard
           return {
             ...nextCard,
@@ -612,14 +618,16 @@ export function useBoard() {
       const current = boardRef.current
       const alvo = current.cards.find((c) => c.id === cardId)
       if (!vendedorLogadoPodeCard(current, alvo) || !alvo) return
+      const agora = new Date().toISOString()
+      const patchComHora = { ...patch, midiaAtualizadaEm: agora }
       const next: BoardState = {
         ...current,
-        cards: current.cards.map((c) => (c.id === cardId ? { ...c, ...patch } : c)),
+        cards: current.cards.map((c) => (c.id === cardId ? { ...c, ...patchComHora } : c)),
       }
       boardRef.current = next
       setBoard(next)
       void (async () => {
-        const posted = await postPedidoMidia(cardId, patch)
+        const posted = await postPedidoMidia(cardId, patchComHora)
         if (posted.ok) {
           setBoard((prev) => {
             const updated = {

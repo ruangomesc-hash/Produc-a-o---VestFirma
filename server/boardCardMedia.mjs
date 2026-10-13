@@ -1,4 +1,4 @@
-import { mergePedidoImagens, mergeObservacaoPedido, pedidoRevisionMs } from '../shared/mergeOrderCard.mjs'
+import { mergePedidoImagens, mergeObservacaoPedido, pedidoRevisionMs, mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
 
 /**
  * Une logos/observação no pedido sem PUT do quadro inteiro.
@@ -62,24 +62,22 @@ export async function handleBoardCardMediaApi(req, res, ctx) {
       const card = existing?.cards?.find((c) => c?.id === cardId)
       if (!card) return { status: 404, body: { error: 'Pedido não encontrado.' } }
 
-      const patched = {
+      const listasLogo = {}
+      for (const key of ['logoEnviadaCliente', 'logoProntaImpressao', 'previewAprovacaoCliente']) {
+        if (Array.isArray(payload[key])) listasLogo[key] = mergePedidoImagens(payload[key], [])
+      }
+      const trocouLogo = Object.keys(listasLogo).length > 0
+      const patched = mergeOrderCardFields(card, {
         ...card,
-        logoEnviadaCliente: mergePedidoImagens(card.logoEnviadaCliente, payload.logoEnviadaCliente),
-        logoProntaImpressao: mergePedidoImagens(card.logoProntaImpressao, payload.logoProntaImpressao),
-        previewAprovacaoCliente: mergePedidoImagens(
-          card.previewAprovacaoCliente,
-          payload.previewAprovacaoCliente,
-        ),
+        ...listasLogo,
+        ...(trocouLogo
+          ? { midiaAtualizadaEm: payload.midiaAtualizadaEm || new Date().toISOString() }
+          : {}),
         observacao:
           payload.observacao !== undefined
-            ? mergeObservacaoPedido(
-                card.observacao,
-                payload.observacao,
-                pedidoRevisionMs(card),
-                Date.now(),
-              )
+            ? mergeObservacaoPedido(card.observacao, payload.observacao, pedidoRevisionMs(card), Date.now())
             : card.observacao,
-      }
+      })
 
       const incomingBoard = {
         ...existing,

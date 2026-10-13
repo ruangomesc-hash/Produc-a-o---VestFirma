@@ -295,7 +295,7 @@ describe('Shopify → kanban', () => {
     assert.equal(out.paraGravar.length, 0)
   })
 
-  it('status antigo da Shopify também move o card', () => {
+  it('status antigo da Shopify não puxa o card para outra coluna', () => {
     const board = {
       columns: [{ id: 'pedido-feito', title: 'Pedido feito' }],
       cards: [
@@ -311,8 +311,8 @@ describe('Shopify → kanban', () => {
     const out = aplicarStatusProducaoNoQuadro(board, [
       { orderId: '10', value: 'Pedido recebido', updatedAt: '2026-10-11T18:00:00.000Z' },
     ])
-    assert.equal(out.mudou, true)
-    assert.equal(out.board.cards[0].columnId, 'pedido-feito')
+    assert.equal(out.mudou, false)
+    assert.equal(out.board.cards[0].columnId, 'liberado-logistica')
     assert.equal(out.paraGravar.length, 0)
   })
 

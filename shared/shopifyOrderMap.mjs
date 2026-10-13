@@ -144,8 +144,8 @@ export function colunaParaStatusProducao(status, colunaAtual) {
 }
 
 /**
- * O status de produção da Shopify manda na coluna de cada pedido, novo ou antigo.
- * Se o texto da loja aponta para outra etapa, o card vai para lá.
+ * O status de produção da Shopify move o card quando a loja mudou depois da etapa atual.
+ * Status antigo da loja não puxa o pedido para outra coluna.
  * Entregue não tem coluna e não é apagado.
  * Metafield vazio recebe o status da coluna atual.
  */
@@ -172,6 +172,9 @@ export function aplicarStatusProducaoNoQuadro(board, leituras) {
     if (valor.toLowerCase() === 'entregue') return card
     const destino = colunaParaStatusProducao(valor, card.columnId)
     if (!destino || destino === card.columnId) return card
+    const metaMs = Date.parse(meta?.updatedAt || '')
+    const etapaMs = Date.parse(card.etapaDesde || card.createdAt || '') || 0
+    if (Number.isNaN(metaMs) || metaMs <= etapaMs) return card
     mudou = true
     const columnTitle = board.columns?.find((c) => c.id === destino)?.title || valor
     return {
@@ -366,7 +369,7 @@ export function mapShopifyOrderToCard(order, columnId = COLUNA_PEDIDO_FEITO_ID) 
 /**
  * Atualiza dados da loja sem apagar o pedido.
  * A tag vestfirma-etapa não devolve o card.
- * O status de produção da Shopify move a coluna, mesmo que a etapa do quadro seja mais recente.
+ * O status de produção da Shopify move a coluna só quando a loja mudou depois da etapa atual.
  * Cancelado ou expirado de verdade na Shopify ainda vai para Cancelados / expirados.
  */
 export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {

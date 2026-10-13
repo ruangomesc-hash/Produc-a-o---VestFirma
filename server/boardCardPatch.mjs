@@ -66,14 +66,17 @@ export async function applyBoardCardPatch(payload, session, ctx) {
       next = mergeOrderCardFields(next, { ...next, comentarios: payload.comentarios })
     }
 
+    const listasLogo = {}
+    for (const key of ['logoEnviadaCliente', 'logoProntaImpressao', 'previewAprovacaoCliente']) {
+      if (Array.isArray(payload[key])) listasLogo[key] = mergePedidoImagens(payload[key], [])
+    }
+    const trocouLogo = Object.keys(listasLogo).length > 0
     const incomingMidia = {
       ...next,
-      logoEnviadaCliente: mergePedidoImagens(next.logoEnviadaCliente, payload.logoEnviadaCliente),
-      logoProntaImpressao: mergePedidoImagens(next.logoProntaImpressao, payload.logoProntaImpressao),
-      previewAprovacaoCliente: mergePedidoImagens(
-        next.previewAprovacaoCliente,
-        payload.previewAprovacaoCliente,
-      ),
+      ...listasLogo,
+      ...(trocouLogo
+        ? { midiaAtualizadaEm: payload.midiaAtualizadaEm || new Date().toISOString() }
+        : {}),
       observacao:
         payload.observacao !== undefined
           ? mergeObservacaoPedido(next.observacao, payload.observacao, pedidoRevisionMs(next), Date.now())

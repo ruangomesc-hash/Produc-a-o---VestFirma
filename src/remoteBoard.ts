@@ -37,6 +37,7 @@ export type PedidoMidiaPatch = {
   previewAprovacaoCliente?: string[]
   observacao?: string
   comentarios?: PedidoComentario[]
+  midiaAtualizadaEm?: string
 }
 
 async function postPedidoPatch(

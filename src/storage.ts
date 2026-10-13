@@ -105,6 +105,10 @@ function normalizeCard(
     logoProntaImpressao,
     previewAprovacaoCliente,
     localLogo: normalizarLogoLocal(raw.localLogo),
+    midiaAtualizadaEm:
+      typeof raw.midiaAtualizadaEm === 'string' && raw.midiaAtualizadaEm
+        ? raw.midiaAtualizadaEm
+        : undefined,
     etapaDesde: raw.etapaDesde ?? raw.createdAt ?? new Date().toISOString(),
     createdAt: raw.createdAt ?? raw.etapaDesde ?? new Date().toISOString(),
     historicoEtapa: raw.historicoEtapa ?? [],

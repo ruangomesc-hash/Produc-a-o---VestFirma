@@ -94,6 +94,19 @@ function mergeItensProduto(existing, incoming, tExist, tIn) {
   return tIn >= tExist ? b : a
 }
 
+function revisaoMidiaMs(card) {
+  const t = Date.parse(card?.midiaAtualizadaEm || '')
+  return Number.isNaN(t) ? 0 : t
+}
+
+function mergeImagensCampo(existing, incoming, key) {
+  const tExist = revisaoMidiaMs(existing)
+  const tIn = revisaoMidiaMs(incoming)
+  if (tIn > tExist) return mergePedidoImagens(incoming[key], [])
+  if (tExist > tIn) return mergePedidoImagens(existing[key], [])
+  return mergePedidoImagens(existing[key], incoming[key])
+}
+
 /** Une comentários, logos e observação; não remove o pedido. */
 export function mergeOrderCardFields(existing, incoming) {
   const tExist = pedidoRevisionMs(existing)
@@ -103,23 +116,19 @@ export function mergeOrderCardFields(existing, incoming) {
   const etapaExist = etapaRevisionMs(existing)
   const etapaIn = etapaRevisionMs(incoming)
   const etapaWinner = etapaIn >= etapaExist ? incoming : existing
+  const midiaMs = Math.max(revisaoMidiaMs(existing), revisaoMidiaMs(incoming))
 
   return {
     ...older,
     ...newer,
+    ...(midiaMs > 0 ? { midiaAtualizadaEm: new Date(midiaMs).toISOString() } : {}),
     columnId: etapaWinner.columnId,
     etapaDesde: etapaWinner.etapaDesde || newer.etapaDesde,
     comentarios: sortByAt(mergeById(existing.comentarios, incoming.comentarios)),
     historicoEtapa: sortByAt(mergeById(existing.historicoEtapa, incoming.historicoEtapa)),
-    logoEnviadaCliente: mergePedidoImagens(existing.logoEnviadaCliente, incoming.logoEnviadaCliente),
-    logoProntaImpressao: mergePedidoImagens(
-      existing.logoProntaImpressao,
-      incoming.logoProntaImpressao,
-    ),
-    previewAprovacaoCliente: mergePedidoImagens(
-      existing.previewAprovacaoCliente,
-      incoming.previewAprovacaoCliente,
-    ),
+    logoEnviadaCliente: mergeImagensCampo(existing, incoming, 'logoEnviadaCliente'),
+    logoProntaImpressao: mergeImagensCampo(existing, incoming, 'logoProntaImpressao'),
+    previewAprovacaoCliente: mergeImagensCampo(existing, incoming, 'previewAprovacaoCliente'),
     observacao: mergeObservacaoPedido(existing.observacao, incoming.observacao, tExist, tIn),
     itensProduto: mergeItensProduto(existing, incoming, tExist, tIn),
     linhasPedido: mergeLinhasPedido(existing, incoming, tExist, tIn),
