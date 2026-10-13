@@ -2794,6 +2794,10 @@ body.vestfirma-tv .pwa-install-banner {
   background: var(--muted);
 }
 
+.card-historico-item.historico-logo::before {
+  background: var(--vestfirma-gold);
+}
+
 .card-historico-texto {
   display: block;
   color: var(--text);

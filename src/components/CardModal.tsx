@@ -139,6 +139,7 @@ export function CardModal({
   const [novoSegmentoNome, setNovoSegmentoNome] = useState('')
   const [alert, setAlert] = useState<{ title?: string; message: string } | null>(null)
   const initSession = useRef(-1)
+  const midiaVista = useRef('')
 
   const segmentoOptions = useMemo(() => mesclarSegmentos(segmentos), [segmentos])
 
@@ -159,6 +160,7 @@ export function CardModal({
   useEffect(() => {
     if (!open || initSession.current === session) return
     initSession.current = session
+    midiaVista.current = initial?.midiaAtualizadaEm || ''
     const next = buildForm(mode, initial, vendedores, preferredVendedorId)
     setForm(next)
     setLogoError(null)
@@ -167,6 +169,27 @@ export function CardModal({
     setNovoSegmentoNome('')
     setAlert(null)
   }, [open, session, mode, initial, vendedores, preferredVendedorId])
+
+  useEffect(() => {
+    if (!open || mode !== 'edit' || imagesUploading) return
+    const marca = initial?.midiaAtualizadaEm || ''
+    if (!marca || marca === midiaVista.current) return
+    midiaVista.current = marca
+    setForm((f) => ({
+      ...f,
+      logoEnviadaCliente: initial?.logoEnviadaCliente ?? [],
+      logoProntaImpressao: initial?.logoProntaImpressao ?? [],
+      previewAprovacaoCliente: initial?.previewAprovacaoCliente ?? [],
+    }))
+  }, [
+    open,
+    mode,
+    imagesUploading,
+    initial?.midiaAtualizadaEm,
+    initial?.logoEnviadaCliente,
+    initial?.logoProntaImpressao,
+    initial?.previewAprovacaoCliente,
+  ])
 
   useEffect(() => {
     if (!open || mode !== 'create') return

@@ -10,7 +10,7 @@ export type PedidoLinhaResumo = {
 
 export type SalesChannel = 'whatsapp' | 'ecommerce'
 
-export type HistoricoEtapaTipo = 'criado' | 'avancou' | 'voltou' | 'movido'
+export type HistoricoEtapaTipo = 'criado' | 'avancou' | 'voltou' | 'movido' | 'logo'
 
 export interface HistoricoEtapaEntry {
   id: string
@@ -18,6 +18,8 @@ export interface HistoricoEtapaEntry {
   columnId: string
   columnTitle: string
   at: string
+  /** Texto da troca de logo. A coluna do pedido não muda. */
+  detalhe?: string
   fromColumnId?: string
   fromColumnTitle?: string
   /** Quem moveu o pedido nesta etapa (a partir do login). */

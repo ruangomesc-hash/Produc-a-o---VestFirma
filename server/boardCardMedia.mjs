@@ -1,4 +1,5 @@
 import { mergePedidoImagens, mergeObservacaoPedido, pedidoRevisionMs, mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
+import { anexarHistoricoLogo } from '../shared/logoHistorico.mjs'
 
 /**
  * Une logos/observação no pedido sem PUT do quadro inteiro.
@@ -36,8 +37,9 @@ export async function handleBoardCardMediaApi(req, res, ctx) {
       return
     }
 
+    let session = null
     if (requireLogin) {
-      const session = await requireSession(req, res)
+      session = await requireSession(req, res)
       if (!session) return
     }
 
@@ -67,17 +69,25 @@ export async function handleBoardCardMediaApi(req, res, ctx) {
         if (Array.isArray(payload[key])) listasLogo[key] = mergePedidoImagens(payload[key], [])
       }
       const trocouLogo = Object.keys(listasLogo).length > 0
-      const patched = mergeOrderCardFields(card, {
-        ...card,
-        ...listasLogo,
-        ...(trocouLogo
-          ? { midiaAtualizadaEm: payload.midiaAtualizadaEm || new Date().toISOString() }
-          : {}),
-        observacao:
-          payload.observacao !== undefined
-            ? mergeObservacaoPedido(card.observacao, payload.observacao, pedidoRevisionMs(card), Date.now())
-            : card.observacao,
-      })
+      const patched = anexarHistoricoLogo(
+        card,
+        mergeOrderCardFields(card, {
+          ...card,
+          ...listasLogo,
+          ...(trocouLogo
+            ? { midiaAtualizadaEm: payload.midiaAtualizadaEm || new Date().toISOString() }
+            : {}),
+          observacao:
+            payload.observacao !== undefined
+              ? mergeObservacaoPedido(card.observacao, payload.observacao, pedidoRevisionMs(card), Date.now())
+              : card.observacao,
+        }),
+        {
+          autorNome: session?.user || '',
+          autorEmail: session?.email || '',
+          autorRole: session?.role || '',
+        },
+      )
 
       const incomingBoard = {
         ...existing,
@@ -102,6 +112,8 @@ export async function handleBoardCardMediaApi(req, res, ctx) {
           logoProntaImpressao: saved?.logoProntaImpressao ?? patched.logoProntaImpressao,
           previewAprovacaoCliente: saved?.previewAprovacaoCliente ?? patched.previewAprovacaoCliente,
           observacao: saved?.observacao ?? patched.observacao,
+          midiaAtualizadaEm: saved?.midiaAtualizadaEm ?? patched.midiaAtualizadaEm,
+          historicoEtapa: saved?.historicoEtapa ?? patched.historicoEtapa ?? [],
         },
       }
     })

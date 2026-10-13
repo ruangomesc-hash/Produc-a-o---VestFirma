@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_BOARD } from '../defaultBoard'
 import { criarComentarioPedido, autorComentarioFromSession, type ComentarioAutor } from '../pedidoComentarios'
 import { registrarCriacaoPedido, registrarMudancaEtapa, tituloColuna } from '../historicoEtapa'
+import { anexarHistoricoLogo } from '../logoHistorico'
 import {
   isRemoteSyncEnabled,
   fetchBoardRevision,
@@ -28,7 +29,7 @@ import {
   purgeSnapshotPedidosExcluidos,
 } from '../boardPedidosSnapshot'
 import { recordPedidoExcluidoPermanente, filterBoardRemovendoExcluidos } from '../pedidosExcluidosLocal'
-import type { BoardState, CardFormData, OrderCard } from '../types'
+import type { BoardState, CardFormData, HistoricoEtapaEntry, OrderCard } from '../types'
 import type { ManagedUser, SessionProfile } from '../userRoles'
 import { canPlaceOrders } from '../userRoles'
 import { fetchUsers } from '../usersApi'
@@ -74,6 +75,24 @@ export type BoardSyncState = {
 
 function newId() {
   return crypto.randomUUID()
+}
+
+function autorLogoAtual(): Pick<HistoricoEtapaEntry, 'autorNome' | 'autorEmail' | 'autorRole'> {
+  const actor = getAuditActor()
+  if (!actor) return {}
+  return { autorNome: actor.user, autorEmail: actor.email, autorRole: actor.role }
+}
+
+function unirHistorico(
+  atual: HistoricoEtapaEntry[] | undefined,
+  gravado: HistoricoEtapaEntry[] | undefined,
+): HistoricoEtapaEntry[] {
+  if (!Array.isArray(gravado)) return atual ?? []
+  const byId = new Map<string, HistoricoEtapaEntry>()
+  for (const item of [...(atual ?? []), ...gravado]) {
+    if (item?.id) byId.set(item.id, item)
+  }
+  return [...byId.values()]
 }
 
 function cardFormDataParaVendedorLogado(board: BoardState, data: CardFormData): CardFormData {
@@ -514,7 +533,11 @@ export function useBoard() {
             lista(prev.logoEnviadaCliente) !== lista(nextCard.logoEnviadaCliente) ||
             lista(prev.logoProntaImpressao) !== lista(nextCard.logoProntaImpressao) ||
             lista(prev.previewAprovacaoCliente) !== lista(nextCard.previewAprovacaoCliente)
-          if (mudouMidia) nextCard.midiaAtualizadaEm = now
+          if (mudouMidia) {
+            nextCard.midiaAtualizadaEm = now
+            const comHistorico = anexarHistoricoLogo(prev, nextCard, autorLogoAtual())
+            nextCard.historicoEtapa = comHistorico.historicoEtapa
+          }
           if (!destinoTeste) return nextCard
           return {
             ...nextCard,
@@ -620,9 +643,10 @@ export function useBoard() {
       if (!vendedorLogadoPodeCard(current, alvo) || !alvo) return
       const agora = new Date().toISOString()
       const patchComHora = { ...patch, midiaAtualizadaEm: agora }
+      const comHistorico = anexarHistoricoLogo(alvo, { ...alvo, ...patchComHora }, autorLogoAtual())
       const next: BoardState = {
         ...current,
-        cards: current.cards.map((c) => (c.id === cardId ? { ...c, ...patchComHora } : c)),
+        cards: current.cards.map((c) => (c.id === cardId ? comHistorico : c)),
       }
       boardRef.current = next
       setBoard(next)
@@ -641,6 +665,8 @@ export function useBoard() {
                       previewAprovacaoCliente:
                         posted.card.previewAprovacaoCliente ?? c.previewAprovacaoCliente,
                       observacao: posted.card.observacao ?? c.observacao,
+                      midiaAtualizadaEm: posted.card.midiaAtualizadaEm ?? c.midiaAtualizadaEm,
+                      historicoEtapa: unirHistorico(c.historicoEtapa, posted.card.historicoEtapa),
                     }
                   : c,
               ),

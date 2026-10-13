@@ -118,6 +118,7 @@ export function resolveCardColumnId(board: BoardState, card: OrderCard): string 
 function ultimaMudancaEtapaMs(card: OrderCard, columnId: string): number {
   let max = 0
   for (const entry of card.historicoEtapa ?? []) {
+    if (entry?.tipo === 'logo') continue
     if (entry?.columnId !== columnId || !entry.at) continue
     if (entry.tipo === 'criado' && columnId !== card.columnId) continue
     const t = Date.parse(entry.at)

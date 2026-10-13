@@ -1,7 +1,26 @@
-import type { BoardState } from './types'
+import type { BoardState, OrderCard } from './types'
 import { dedupeBoardCards } from './dedupeBoardCards'
 import { contagemPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
 import { loadPedidosExcluidosIds } from './pedidosExcluidosLocal'
+
+function midiaMs(card: { midiaAtualizadaEm?: string | null } | null | undefined): number {
+  const t = Date.parse(card?.midiaAtualizadaEm || '')
+  return Number.isNaN(t) ? 0 : t
+}
+
+/** A logo gravada no servidor vale para todo mundo quando ela é a mais nova. */
+function logosDoQuadroGravado(local: OrderCard, gravado: OrderCard): Partial<OrderCard> {
+  const servidor = midiaMs(gravado)
+  const copia = midiaMs(local)
+  if (!gravado.midiaAtualizadaEm && !local.midiaAtualizadaEm) return {}
+  if (copia > servidor) return {}
+  return {
+    logoEnviadaCliente: gravado.logoEnviadaCliente,
+    logoProntaImpressao: gravado.logoProntaImpressao,
+    previewAprovacaoCliente: gravado.previewAprovacaoCliente,
+    midiaAtualizadaEm: gravado.midiaAtualizadaEm,
+  }
+}
 
 /**
  * Servidor manda na coluna, no arquivamento e na lista de pedidos.
@@ -40,6 +59,7 @@ export function mergeBoardLoggedInFromServer(
         etapaDesde: gravado.etapaDesde,
         historicoEtapa: gravado.historicoEtapa,
         arquivadoEm: gravado.arquivadoEm ?? null,
+        ...logosDoQuadroGravado(c, gravado),
       }
     }),
   }

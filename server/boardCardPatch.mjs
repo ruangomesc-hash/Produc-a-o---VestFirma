@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { mergePedidoImagens, mergeObservacaoPedido, pedidoRevisionMs, mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
+import { anexarHistoricoLogo } from '../shared/logoHistorico.mjs'
 
 function json(res, corsHeaders, status, body) {
   if (res.headersSent) return
@@ -83,6 +84,11 @@ export async function applyBoardCardPatch(payload, session, ctx) {
           : next.observacao,
     }
     next = mergeOrderCardFields(next, incomingMidia)
+    next = anexarHistoricoLogo(card, next, {
+      autorNome: session?.user || '',
+      autorEmail: session?.email || '',
+      autorRole: session?.role || '',
+    })
 
     let board = mergeBoardPreservingPedidos(existing, {
       ...existing,
@@ -116,6 +122,8 @@ export async function applyBoardCardPatch(payload, session, ctx) {
         logoProntaImpressao: saved?.logoProntaImpressao ?? next.logoProntaImpressao,
         previewAprovacaoCliente: saved?.previewAprovacaoCliente ?? next.previewAprovacaoCliente,
         observacao: saved?.observacao ?? next.observacao,
+        midiaAtualizadaEm: saved?.midiaAtualizadaEm ?? next.midiaAtualizadaEm,
+        historicoEtapa: saved?.historicoEtapa ?? next.historicoEtapa ?? [],
       },
     }
   })

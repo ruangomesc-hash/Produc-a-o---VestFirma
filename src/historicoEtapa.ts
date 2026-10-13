@@ -31,6 +31,7 @@ export function inicioContagemEtapa(
   const historico = card.historicoEtapa ?? []
   for (let i = historico.length - 1; i >= 0; i--) {
     const entry = historico[i]
+    if (entry.tipo === 'logo') continue
     if (entry.columnId === card.columnId && entry.at) {
       return entry.at
     }
@@ -210,6 +211,8 @@ export function garantirHistoricoCard(card: OrderCard, board: BoardState): Order
 
 export function textoHistorico(entry: HistoricoEtapaEntry): string {
   switch (entry.tipo) {
+    case 'logo':
+      return entry.detalhe || 'Logo trocada'
     case 'criado':
       return 'Pedido criado'
     case 'avancou':

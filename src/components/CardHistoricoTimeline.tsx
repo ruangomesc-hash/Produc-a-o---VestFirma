@@ -15,7 +15,7 @@ export function CardHistoricoTimeline({ entries, defaultOpen = false }: Props) {
 
   return (
     <details className="card-historico" open={defaultOpen}>
-      <summary>Histórico de etapas ({ordered.length})</summary>
+      <summary>Histórico do pedido ({ordered.length})</summary>
       <ol className="card-historico-list">
         {ordered.map((entry) => {
           const autor = rotuloAutorHistorico(entry)
@@ -27,7 +27,7 @@ export function CardHistoricoTimeline({ entries, defaultOpen = false }: Props) {
             <span className="card-historico-texto">{textoHistorico(entry)}</span>
             {autor ? (
               <span className="card-historico-autor">{autor}</span>
-            ) : entry.tipo !== 'criado' ? (
+            ) : entry.tipo !== 'criado' && entry.tipo !== 'logo' ? (
               <span className="card-historico-autor card-historico-autor--legado">
                 (antes do registro de usuário)
               </span>

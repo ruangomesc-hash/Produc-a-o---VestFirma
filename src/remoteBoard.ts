@@ -1,4 +1,4 @@
-import type { BoardState, PedidoComentario } from './types'
+import type { BoardState, HistoricoEtapaEntry, PedidoComentario } from './types'
 import {
   blockLocalFallbackWhenProtected,
   getApiBase,
@@ -38,6 +38,7 @@ export type PedidoMidiaPatch = {
   observacao?: string
   comentarios?: PedidoComentario[]
   midiaAtualizadaEm?: string
+  historicoEtapa?: HistoricoEtapaEntry[]
 }
 
 async function postPedidoPatch(
@@ -78,6 +79,8 @@ async function postPedidoPatch(
       logoProntaImpressao: data.logoProntaImpressao,
       previewAprovacaoCliente: data.previewAprovacaoCliente,
       observacao: data.observacao,
+      midiaAtualizadaEm: data.midiaAtualizadaEm,
+      historicoEtapa: Array.isArray(data.historicoEtapa) ? data.historicoEtapa : undefined,
     },
   }
 }
