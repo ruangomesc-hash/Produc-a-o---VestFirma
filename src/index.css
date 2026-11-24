@@ -19,7 +19,7 @@
   --logistica: #22c55e;
   --logistica-light: #4ade80;
   --logistica-dark: #15803d;
-  --column-width: 300px;
+  --column-width: 180px;
   --board-height-offset: 6.75rem;
   --radius: 12px;
   font-family: 'DM Sans', system-ui, sans-serif;
@@ -1259,9 +1259,9 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll.board-scroll--fluxo {
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   width: max-content;
-  min-width: 100%;
+  min-width: 0;
   max-width: none;
   overflow-x: hidden;
   overflow-y: hidden;
@@ -1269,9 +1269,9 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-columns--fluxo {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   width: max-content;
-  min-width: 100%;
+  min-width: 0;
   max-width: none;
   height: 100%;
   min-height: 0;
@@ -1282,10 +1282,10 @@ body.vestfirma-tv .pwa-install-banner {
 .board-scroll--fluxo .kanban-column.column-logistica,
 .board-scroll--fluxo .kanban-column.column-pedido-feito,
 .board-scroll--fluxo .kanban-column.column-preview-andamento {
-  flex: 1 1 var(--column-width);
+  flex: 0 0 var(--column-width);
   min-width: var(--column-width);
-  width: auto;
-  max-width: none;
+  width: var(--column-width);
+  max-width: var(--column-width);
   height: 100%;
   max-height: none;
 }
@@ -1490,15 +1490,10 @@ body.vestfirma-tv .pwa-install-banner {
 .board-scroll--laterais .kanban-column,
 .board-scroll--concluidos .kanban-column,
 .board-scroll--cancelados .kanban-column {
-  flex: 0 0 max(
-    var(--column-width),
-    calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8))
-  );
-  width: max(
-    var(--column-width),
-    calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8))
-  );
+  flex: 0 0 var(--column-width);
+  width: var(--column-width);
   min-width: var(--column-width);
+  max-width: var(--column-width);
   height: 100%;
   max-height: none;
 }
@@ -1518,6 +1513,9 @@ body.vestfirma-tv .pwa-install-banner {
 .board-columns.board-columns--fluxo,
 .board-columns.board-columns--laterais {
   gap: calc(2px + 1mm);
+  width: max-content;
+  min-width: 0;
+  max-width: none;
 }
 
 @media (max-width: 1024px), (hover: none) and (max-width: 1366px) {
