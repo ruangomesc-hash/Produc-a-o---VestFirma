@@ -29,6 +29,7 @@ type Props = {
   onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
   onAprovarControle?: (cardId: string) => void
   onAbrirSeparacao?: () => void
+  onGerarPdfLogo?: (card: OrderCard) => void
   dragEnabled?: boolean
   highlightPedidoId?: string | null
 }
@@ -57,6 +58,7 @@ export function KanbanBoard({
   onMarcarControle,
   onAprovarControle,
   onAbrirSeparacao,
+  onGerarPdfLogo,
   dragEnabled = true,
   highlightPedidoId = null,
 }: Props) {
@@ -225,6 +227,7 @@ export function KanbanBoard({
       onMarcarControle={onMarcarControle}
       onAprovarControle={onAprovarControle}
       onAbrirSeparacao={onAbrirSeparacao}
+      onGerarPdfLogo={onGerarPdfLogo}
       highlightPedidoId={highlightPedidoId}
     />
   )

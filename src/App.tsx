@@ -28,6 +28,7 @@ import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
 import { PedidoSearchBar } from './components/PedidoSearchBar'
 import { SeparacaoModal } from './components/SeparacaoModal'
+import { LogosProducaoPdf } from './components/LogosProducaoPdf'
 import { WebNotifyButton } from './components/WebNotifyButton'
 import { LoginPage } from './components/LoginPage'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
@@ -207,6 +208,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [whatsappRedirectOpen, setWhatsappRedirectOpen] = useState(false)
   const [separacaoOpen, setSeparacaoOpen] = useState(false)
+  const [pdfLogoPedido, setPdfLogoPedido] = useState<OrderCard | null>(null)
   const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [pedidoSearchHighlightId, setPedidoSearchHighlightId] = useState<string | null>(null)
@@ -802,6 +804,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           onMarcarControle={marcarControleQualidade}
           onAprovarControle={(cardId) => moveCard(cardId, 'disponiveis-aplicacao')}
           onAbrirSeparacao={() => setSeparacaoOpen(true)}
+          onGerarPdfLogo={setPdfLogoPedido}
         />
         </div>
       ) : view === 'visao' ? (
@@ -931,6 +934,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onClose={() => setSeparacaoOpen(false)}
         onImpressa={marcarSeparacaoImpressa}
       />
+      {pdfLogoPedido ? (
+        <LogosProducaoPdf card={pdfLogoPedido} onClose={() => setPdfLogoPedido(null)} />
+      ) : null}
 
       <ConfirmModal
         open={!!archiveConfirm}

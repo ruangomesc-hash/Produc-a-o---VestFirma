@@ -83,6 +83,7 @@ type Props = {
   onArchive?: () => void
   onMarcarControle?: (marca: MarcaControleQualidade) => void
   onAprovarControle?: () => void
+  onGerarPdfLogo?: () => void
 }
 
 export function KanbanCard({
@@ -94,6 +95,7 @@ export function KanbanCard({
   onArchive,
   onMarcarControle,
   onAprovarControle,
+  onGerarPdfLogo,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
@@ -381,6 +383,19 @@ export function KanbanCard({
           </div>
         </>
       )}
+      {onGerarPdfLogo ? (
+        <button
+          type="button"
+          className="card-pdf-logo"
+          onPointerDown={pararArrasteCard}
+          onClick={(event) => {
+            event.stopPropagation()
+            onGerarPdfLogo()
+          }}
+        >
+          PDF do pedido
+        </button>
+      ) : null}
       {onMarcarControle || onAprovarControle ? (
         <div
           className="cq-acoes"

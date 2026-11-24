@@ -22,6 +22,7 @@ type Props = {
   onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
   onAprovarControle?: (cardId: string) => void
   onAbrirSeparacao?: () => void
+  onGerarPdfLogo?: (card: OrderCard) => void
   highlightPedidoId?: string | null
 }
 
@@ -38,6 +39,7 @@ export function KanbanColumn({
   onMarcarControle,
   onAprovarControle,
   onAbrirSeparacao,
+  onGerarPdfLogo,
   highlightPedidoId = null,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
@@ -99,6 +101,9 @@ export function KanbanColumn({
       }
       onAprovarControle={
         colunaQualidade && onAprovarControle ? () => onAprovarControle(card.id) : undefined
+      }
+      onGerarPdfLogo={
+        column.id === 'logos-producao' && onGerarPdfLogo ? () => onGerarPdfLogo(card) : undefined
       }
     />
   )

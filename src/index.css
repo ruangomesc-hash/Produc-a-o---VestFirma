@@ -19,7 +19,7 @@
   --logistica: #22c55e;
   --logistica-light: #4ade80;
   --logistica-dark: #15803d;
-  --column-width: 180px;
+  --column-width: 216px;
   --board-height-offset: 6.75rem;
   --radius: 12px;
   font-family: 'DM Sans', system-ui, sans-serif;
@@ -1241,6 +1241,7 @@ body.vestfirma-tv .pwa-install-banner {
   background: var(--vestfirma-gold);
   -webkit-overflow-scrolling: touch;
   padding: 1rem 0.25rem max(1.5rem, env(safe-area-inset-bottom, 0px)) 0.25rem;
+  gap: var(--coluna-gap);
   --coluna-gap: calc(2px + 1mm);
   --fluxo-colunas: 8;
   container-type: inline-size;
@@ -2237,6 +2238,36 @@ body.vestfirma-tv .pwa-install-banner {
     padding: 16mm 14mm 18mm;
   }
 
+  .logos-pdf-folha {
+    padding: 16mm 14mm 18mm;
+  }
+
+  .logos-pdf-folha h1 {
+    font-size: 22pt;
+    margin: 0 0 0.6rem;
+  }
+
+  .logos-pdf-folha p {
+    font-size: 14pt;
+    margin: 0.2rem 0;
+  }
+
+  .logos-pdf-item {
+    margin-top: 0.8rem;
+  }
+
+  .logos-pdf-item img {
+    display: block;
+    max-width: 140mm;
+    max-height: 90mm;
+    object-fit: contain;
+    margin-bottom: 0.35rem;
+  }
+
+  .logos-pdf-item a {
+    color: #111;
+  }
+
   .separacao-print-onda h1 {
     font-size: 18pt;
     line-height: 1.15;
@@ -2561,6 +2592,27 @@ body.vestfirma-tv .pwa-install-banner {
 
 .separacao-produto-card:hover,
 .separacao-produto-card:focus-visible {
+  background: #ffcc4d;
+}
+
+.card-pdf-logo {
+  flex-shrink: 0;
+  margin: 0.35rem 0.4rem 0.45rem;
+  padding: 0.38rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid #9a7b0a;
+  background: #e8b923;
+  color: #1a1404;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-pdf-logo:hover,
+.card-pdf-logo:focus-visible {
   background: #ffcc4d;
 }
 
