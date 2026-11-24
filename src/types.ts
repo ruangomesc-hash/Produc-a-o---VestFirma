@@ -1,4 +1,5 @@
 import type { MarcaControleQualidade } from './controleQualidade'
+import type { LogoLocal } from './logoLocal'
 import type { PedidoItemProduto, TipoProdutoId } from './tiposProduto'
 import type { UserRole } from './userRoles'
 
