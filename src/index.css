@@ -2202,6 +2202,7 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 @page {
+  size: A4;
   margin: 0;
 }
 
@@ -2236,36 +2237,6 @@ body.vestfirma-tv .pwa-install-banner {
   .separacao-print-pedido,
   .separacao-print-onda {
     padding: 16mm 14mm 18mm;
-  }
-
-  .logos-pdf-folha {
-    padding: 16mm 14mm 18mm;
-  }
-
-  .logos-pdf-folha h1 {
-    font-size: 22pt;
-    margin: 0 0 0.6rem;
-  }
-
-  .logos-pdf-folha p {
-    font-size: 14pt;
-    margin: 0.2rem 0;
-  }
-
-  .logos-pdf-item {
-    margin-top: 0.8rem;
-  }
-
-  .logos-pdf-item img {
-    display: block;
-    max-width: 140mm;
-    max-height: 90mm;
-    object-fit: contain;
-    margin-bottom: 0.35rem;
-  }
-
-  .logos-pdf-item a {
-    color: #111;
   }
 
   .separacao-print-onda h1 {
@@ -2340,6 +2311,353 @@ body.vestfirma-tv .pwa-install-banner {
     max-width: 180px;
     max-height: 140px;
     object-fit: contain;
+  }
+
+  .logos-pdf-print {
+    color: #141414;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    line-height: 1.4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .logos-pdf-folha {
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+  }
+}
+
+.logos-pdf-print {
+  color: #141414;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  line-height: 1.4;
+}
+
+.logos-pdf-folha {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #fff;
+}
+
+.logos-pdf-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5mm;
+  width: 100%;
+  padding: 11mm 13mm 10mm;
+  background: #141414;
+  color: #fff;
+  border-bottom: 1.5mm solid #f5c400;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.logos-pdf-marca,
+.logos-pdf-documento {
+  min-width: 0;
+}
+
+.logos-pdf-marca strong {
+  display: block;
+  font-size: 25pt;
+  line-height: 1.1;
+  letter-spacing: 0.3pt;
+}
+
+.logos-pdf-marca span {
+  display: block;
+  color: #f5c400;
+  font-size: 8pt;
+  font-weight: 700;
+  margin-top: 2mm;
+}
+
+.logos-pdf-documento {
+  text-align: right;
+  font-size: 8pt;
+}
+
+.logos-pdf-documento strong {
+  display: block;
+  color: #f5c400;
+  font-size: 14pt;
+}
+
+.logos-pdf-main {
+  padding: 8mm 13mm 0;
+}
+
+.logos-pdf-rotulo {
+  margin: 0 0 4mm;
+  color: #666;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.5pt;
+}
+
+.logos-pdf-dados {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  margin-bottom: 6mm;
+}
+
+.logos-pdf-dado {
+  display: table-cell;
+  vertical-align: top;
+  width: 50%;
+}
+
+.logos-pdf-dado + .logos-pdf-dado {
+  padding-left: 5mm;
+}
+
+.logos-pdf-dado label {
+  display: block;
+  color: #666;
+  font-size: 8pt;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 2mm;
+}
+
+.logos-pdf-valor {
+  display: block;
+  font-size: 19pt;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.logos-pdf-quantidades {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: 100%;
+  gap: 5mm;
+  margin: 0 0 7mm;
+}
+
+.logos-pdf-quantidade {
+  min-width: 0;
+  background: #f6f6f6;
+  border-radius: 3mm;
+  padding: 5mm 3mm 4mm;
+  text-align: center;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.logos-pdf-print .logos-pdf-quantidade h2 {
+  margin: 0;
+  font-size: 9pt;
+  font-weight: 700;
+  text-align: center;
+}
+
+.logos-pdf-numero {
+  display: block;
+  font-size: 30pt;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 1.5mm 0 0.5mm;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.logos-pdf-quantidade small {
+  display: block;
+  color: #666;
+  font-size: 8pt;
+  text-align: center;
+}
+
+.logos-pdf-secao {
+  margin-bottom: 6mm;
+  break-inside: avoid;
+}
+
+.logos-pdf-print .logos-pdf-secao h2 {
+  margin: 0 0 1.5mm;
+  font-size: 11pt;
+  line-height: 1.3;
+  color: #141414;
+}
+
+.logos-pdf-descricao {
+  margin: 0 0 3mm;
+  color: #666;
+  font-size: 8.5pt;
+}
+
+.logos-pdf-preview {
+  height: 65mm;
+  border: 0.35mm solid #e5e5e5;
+  border-radius: 3mm;
+  padding: 4mm;
+  text-align: center;
+  position: relative;
+}
+
+.logos-pdf-preview + .logos-pdf-preview,
+.logos-pdf-arquivo + .logos-pdf-arquivo {
+  margin-top: 3mm;
+}
+
+.logos-pdf-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.logos-pdf-arquivo {
+  display: table;
+  width: 100%;
+  border: 0.35mm solid #e5e5e5;
+  border-radius: 3mm;
+  padding: 4mm;
+}
+
+.logos-pdf-miniatura {
+  display: table-cell;
+  width: 31mm;
+  vertical-align: middle;
+}
+
+.logos-pdf-miniatura a,
+.logos-pdf-miniatura-vazia {
+  display: block;
+  width: 27mm;
+  height: 24mm;
+  border-radius: 2mm;
+  padding: 2mm;
+  background: #f6f6f6;
+  position: relative;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.logos-pdf-miniatura img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.logos-pdf-acao {
+  display: table-cell;
+  vertical-align: middle;
+  padding-left: 4mm;
+}
+
+.logos-pdf-acao strong {
+  display: block;
+  font-size: 9pt;
+  margin-bottom: 2mm;
+}
+
+.logos-pdf-botao {
+  display: inline-block;
+  padding: 2.5mm 5mm;
+  border-radius: 2mm;
+  background: #f5c400;
+  color: #141414;
+  font-size: 9pt;
+  font-weight: 700;
+  text-decoration: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.logos-pdf-botao--vazio {
+  background: #efefef;
+  color: #777;
+}
+
+.logos-pdf-acao small {
+  display: block;
+  color: #666;
+  font-size: 7.5pt;
+  margin-top: 1.5mm;
+}
+
+.logos-pdf-observacoes {
+  break-inside: auto;
+  margin-bottom: 6mm;
+}
+
+.logos-pdf-print .logos-pdf-observacoes h2 {
+  margin: 0 0 2.5mm;
+  font-size: 8pt;
+  color: #666;
+}
+
+.logos-pdf-observacoes p {
+  margin: 0;
+  min-height: 14mm;
+  padding: 3mm;
+  border: 0.35mm solid #e5e5e5;
+  border-radius: 2mm;
+  font-size: 9pt;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.logos-pdf-observacao-vazia {
+  color: #666;
+}
+
+.logos-pdf-rodape {
+  margin: 0 13mm;
+  padding: 3mm 0 6mm;
+  border-top: 0.35mm solid #e5e5e5;
+  color: #666;
+  font-size: 7pt;
+}
+
+.logos-pdf-rodape strong {
+  color: #141414;
+}
+
+.logos-pdf-vazio {
+  position: absolute;
+  inset: 3mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1mm;
+  color: #666;
+  font-size: 9pt;
+  text-align: center;
+  pointer-events: none;
+}
+
+.logos-pdf-vazio small {
+  font-size: 7.5pt;
+}
+
+.logos-pdf-miniatura .logos-pdf-vazio {
+  font-size: 8pt;
+}
+
+.logos-pdf-preview img + .logos-pdf-vazio,
+.logos-pdf-miniatura img + .logos-pdf-vazio {
+  display: none;
+}
+
+@media print {
+  .logos-pdf-print .logos-pdf-folha {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
   }
 }
 

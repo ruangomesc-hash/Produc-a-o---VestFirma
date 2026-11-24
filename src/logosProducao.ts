@@ -28,3 +28,19 @@ export function contarLogosDoPedido(
   }
   return { pequenas, grandes }
 }
+
+/** Nome do PDF: pedido #1205 - vestfirma. Sem data. */
+export function nomeArquivoPdfPedido(numero: string | undefined) {
+  const limpo = String(numero || '').trim().replace(/^#/, '')
+  return `pedido #${limpo || 's/n'} - vestfirma`
+}
+
+/** Data do pedido na ficha, no formato dd/mm/aaaa. */
+export function dataPedidoImpressao(value: string | undefined) {
+  const texto = String(value || '').trim()
+  if (!texto) return ''
+  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) return texto
+  return texto
+}
