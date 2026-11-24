@@ -21,6 +21,7 @@ type Props = {
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
   onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
   onAprovarControle?: (cardId: string) => void
+  onAbrirSeparacao?: () => void
   highlightPedidoId?: string | null
 }
 
@@ -36,6 +37,7 @@ export function KanbanColumn({
   onDeleteColumn,
   onMarcarControle,
   onAprovarControle,
+  onAbrirSeparacao,
   highlightPedidoId = null,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
@@ -159,6 +161,16 @@ export function KanbanColumn({
       </header>
 
       <div ref={setNodeRef} className="column-cards">
+        {column.id === 'logos-prontas' && onAbrirSeparacao ? (
+          <button
+            type="button"
+            className="separacao-produto-card"
+            onClick={onAbrirSeparacao}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            Separação de produto
+          </button>
+        ) : null}
         {gruposQualidade
           ? gruposQualidade.map((grupo) => (
               <section key={grupo.id} className="cq-grupo">

@@ -28,6 +28,7 @@ type Props = {
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
   onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
   onAprovarControle?: (cardId: string) => void
+  onAbrirSeparacao?: () => void
   dragEnabled?: boolean
   highlightPedidoId?: string | null
 }
@@ -55,6 +56,7 @@ export function KanbanBoard({
   onDeleteColumn,
   onMarcarControle,
   onAprovarControle,
+  onAbrirSeparacao,
   dragEnabled = true,
   highlightPedidoId = null,
 }: Props) {
@@ -222,6 +224,7 @@ export function KanbanBoard({
       onDeleteColumn={onDeleteColumn}
       onMarcarControle={onMarcarControle}
       onAprovarControle={onAprovarControle}
+      onAbrirSeparacao={onAbrirSeparacao}
       highlightPedidoId={highlightPedidoId}
     />
   )

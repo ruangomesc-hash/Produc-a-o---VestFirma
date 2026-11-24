@@ -2544,6 +2544,28 @@ body.vestfirma-tv .pwa-install-banner {
   gap: 0.32rem;
 }
 
+.separacao-produto-card {
+  flex-shrink: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0.7rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid #9a7b0a;
+  background: #e8b923;
+  color: #1a1404;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.separacao-produto-card:hover,
+.separacao-produto-card:focus-visible {
+  background: #ffcc4d;
+}
+
 .kanban-board-shell .column-delete-btn {
   font-size: 0.56rem;
   padding: 0.1rem 0.28rem;

@@ -699,15 +699,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               <span className="btn-text-full">Grupo WhatsApp</span>
               <span className="btn-text-short">Grupo</span>
             </button>
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => setSeparacaoOpen(true)}
-              title="Lista de separação: imprimir pedidos e copiar o resumo"
-            >
-              <span className="btn-text-full">Separação</span>
-              <span className="btn-text-short">Separar</span>
-            </button>
             <WebNotifyButton />
             {view === 'visao' && (
               <button type="button" className="btn secondary" onClick={entrarModoTv}>
@@ -810,6 +801,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           onDeleteColumn={removeColumn}
           onMarcarControle={marcarControleQualidade}
           onAprovarControle={(cardId) => moveCard(cardId, 'disponiveis-aplicacao')}
+          onAbrirSeparacao={() => setSeparacaoOpen(true)}
         />
         </div>
       ) : view === 'visao' ? (
