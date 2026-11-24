@@ -2,21 +2,21 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido } from '../shared/logosProducao.mjs'
 
-test('a contagem é do pedido, sem juntar outro pedido', () => {
-  const pedido = contarLogosDoPedido([
-    { titulo: 'Jaqueta — Estampa pequena na frente', quantidade: 2, detalhe: 'G' },
-    { titulo: 'Jaqueta — Estampa frente e trás', quantidade: 3, detalhe: 'M' },
-  ])
-  assert.deepEqual(pedido, { pequenas: 2, grandes: 3 })
+test('frente conta só logo pequena, vezes as peças', () => {
+  assert.deepEqual(contarLogosDoPedido('frente', 8), { pequenas: 8, grandes: 0 })
 })
 
-test('grande e frente e costas entram na quantidade grande', () => {
-  const pedido = contarLogosDoPedido([
-    { titulo: 'Camisa', detalhe: 'Estampa grande', quantidade: 4 },
-    { titulo: 'Camisa estampa pequena', quantidade: 1 },
-    { titulo: 'Camisa frente e costas', quantidade: 2 },
-  ])
-  assert.deepEqual(pedido, { pequenas: 1, grandes: 6 })
+test('costas conta só logo grande, vezes as peças', () => {
+  assert.deepEqual(contarLogosDoPedido('costas', 5), { pequenas: 0, grandes: 5 })
+})
+
+test('frente e costas soma uma de cada e multiplica pelas peças', () => {
+  assert.deepEqual(contarLogosDoPedido('frente-costas', 10), { pequenas: 10, grandes: 10 })
+})
+
+test('sem local da logo a ficha não inventa quantidade', () => {
+  assert.deepEqual(contarLogosDoPedido(null, 4), { pequenas: 0, grandes: 0 })
+  assert.deepEqual(contarLogosDoPedido('frente', 0), { pequenas: 0, grandes: 0 })
 })
 
 test('o PDF do pedido usa o nome pedido #número - vestfirma, sem data', () => {

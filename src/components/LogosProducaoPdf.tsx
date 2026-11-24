@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido } from '../logosProducao'
-import { linhasResumoDoPedido } from '../pedidoResumo'
+import { quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
 
 function urlAbsoluta(src: string, download = false) {
@@ -27,7 +27,7 @@ function QuadroImagem({ src, alt, vazio }: { src: string; alt: string; vazio: Re
 }
 
 export function LogosProducaoPdf({ card, onClose }: { card: OrderCard; onClose: () => void }) {
-  const contagem = contarLogosDoPedido(linhasResumoDoPedido(card))
+  const contagem = contarLogosDoPedido(card.localLogo, quantidadeExibidaComResumo(card))
   const previews = (card.previewAprovacaoCliente ?? []).map((src) => src.trim()).filter(Boolean)
   const artes = (card.logoProntaImpressao ?? []).map((src) => src.trim()).filter(Boolean)
   const observacao = card.observacao?.trim() ?? ''
