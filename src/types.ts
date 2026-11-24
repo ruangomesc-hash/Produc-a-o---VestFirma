@@ -96,6 +96,8 @@ export interface OrderCard {
   arquivadoEm?: string | null
   /** Marca dentro de Controle de qualidade. Aprovado sai da coluna e não fica gravado aqui. */
   controleQualidade?: MarcaControleQualidade | null
+  /** Quando a lista de separação deste pedido foi impressa. A folha no card usa só este campo. */
+  separacaoImpressaEm?: string | null
   /** Pedido criado pela loja Shopify (webhook). */
   origem?: 'shopify' | 'manual'
   shopifyOrderId?: string

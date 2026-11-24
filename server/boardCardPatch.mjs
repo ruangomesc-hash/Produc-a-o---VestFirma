@@ -236,6 +236,56 @@ export async function applyBoardCardMove(payload, session, ctx) {
   })
 }
 
+/** Marca a folha de lista de separação impressa. Não tira pedido nem muda a etapa. */
+export async function applySeparacaoImpressa(payload, ctx) {
+  const {
+    boardFilePath,
+    backupBoardBeforeWrite,
+    readExistingBoard,
+    countBoardCards,
+    withBoardWriteLock,
+    writeBoardAtomic,
+  } = ctx
+  const ids = [
+    ...new Set(
+      (Array.isArray(payload?.cardIds) ? payload.cardIds : [])
+        .filter((id) => typeof id === 'string' && id.trim())
+        .map((id) => id.trim()),
+    ),
+  ]
+  if (!ids.length) return { status: 400, body: { error: 'Selecione ao menos um pedido.' } }
+
+  return withBoardWriteLock(async () => {
+    const DATA_FILE = boardFilePath()
+    const existing = await readExistingBoard(DATA_FILE)
+    const antes = countBoardCards(existing)
+    if (!existing?.cards?.length) return { status: 404, body: { error: 'Pedido não encontrado.' } }
+    const wanted = new Set(ids)
+    const at = new Date().toISOString()
+    let marcados = 0
+    const cards = existing.cards.map((card) => {
+      if (!card?.id || !wanted.has(card.id)) return card
+      marcados += 1
+      return { ...card, separacaoImpressaEm: at }
+    })
+    if (!marcados) return { status: 404, body: { error: 'Pedido não encontrado.' } }
+    if (cards.length < antes) {
+      return { status: 409, body: { error: 'Recusado: esta marcação removeria pedidos.' } }
+    }
+    const board = { ...existing, cards }
+    await backupBoardBeforeWrite(DATA_FILE)
+    await writeBoardAtomic(DATA_FILE, board)
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        separacaoImpressaEm: at,
+        cardIds: cards.filter((card) => wanted.has(card.id)).map((card) => card.id),
+      },
+    }
+  })
+}
+
 export async function tryHandleBoardCardPatch(req, res, body, session, corsHeaders, ctx) {
   if (req.method !== 'POST' && req.method !== 'PUT') return false
   let payload
@@ -243,6 +293,16 @@ export async function tryHandleBoardCardPatch(req, res, body, session, corsHeade
     payload = JSON.parse(body)
   } catch {
     return false
+  }
+  if (payload?.action === 'vestfirma-separacao-impressa') {
+    try {
+      const result = await applySeparacaoImpressa(payload, ctx)
+      json(res, corsHeaders, result.status, result.body)
+    } catch (err) {
+      console.error('[vestfirma] lista de separação:', err)
+      json(res, corsHeaders, 500, { error: 'Não foi possível marcar a lista impressa. Tente de novo.' })
+    }
+    return true
   }
   if (payload?.action === 'vestfirma-card-move') {
     try {

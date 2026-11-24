@@ -446,6 +446,7 @@ export function mesclarCardShopify(existing, mapped, _shopifyUpdatedAt) {
     shopifyOrderName: mapped.shopifyOrderName || existing.shopifyOrderName,
     shopifyPedidoStatus: status || null,
     pedidoTeste: Boolean(existing.pedidoTeste),
+    separacaoImpressaEm: existing.separacaoImpressaEm || null,
     linhasPedido:
       Array.isArray(mapped.linhasPedido) && mapped.linhasPedido.length
         ? mapped.linhasPedido

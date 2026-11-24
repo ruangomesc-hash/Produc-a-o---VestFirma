@@ -3,6 +3,15 @@ import { dedupeBoardCards } from './dedupeBoardCards'
 import { contagemPedidos, mergeBoardAddingMissingPedidosOnly } from './pedidosPolicy'
 import { loadPedidosExcluidosIds } from './pedidosExcluidosLocal'
 
+function separacaoMaisNova(a: string | null | undefined, b: string | null | undefined): string | null {
+  const ta = Date.parse(a || '')
+  const tb = Date.parse(b || '')
+  const va = Number.isNaN(ta) ? 0 : ta
+  const vb = Number.isNaN(tb) ? 0 : tb
+  if (!va && !vb) return null
+  return va >= vb ? a || null : b || null
+}
+
 function midiaMs(card: { midiaAtualizadaEm?: string | null } | null | undefined): number {
   const t = Date.parse(card?.midiaAtualizadaEm || '')
   return Number.isNaN(t) ? 0 : t
@@ -60,6 +69,7 @@ export function mergeBoardLoggedInFromServer(
         historicoEtapa: gravado.historicoEtapa,
         arquivadoEm: gravado.arquivadoEm ?? null,
         controleQualidade: gravado.controleQualidade ?? null,
+        separacaoImpressaEm: separacaoMaisNova(c.separacaoImpressaEm, gravado.separacaoImpressaEm),
         ...logosDoQuadroGravado(c, gravado),
       }
     }),

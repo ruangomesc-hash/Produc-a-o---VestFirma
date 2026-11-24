@@ -8,6 +8,7 @@ import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
 import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
 import { MARCAS_CONTROLE_QUALIDADE, type MarcaControleQualidade } from '../controleQualidade'
+import { FolhaIcone } from './SeparacaoModal'
 import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
@@ -180,6 +181,15 @@ export function KanbanCard({
           {card.pedidoTeste ? (
             <span className="card-pedido-teste-tag" title="Pedido teste — logo não obrigatória">
               Pedido teste
+            </span>
+          ) : null}
+          {card.separacaoImpressaEm ? (
+            <span
+              className="card-separacao-folha"
+              title={`Lista de separação impressa em ${new Date(card.separacaoImpressaEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`}
+              aria-label="Lista de separação impressa"
+            >
+              <FolhaIcone />
             </span>
           ) : null}
           {card.origem === 'shopify' ? (

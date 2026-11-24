@@ -132,7 +132,17 @@ export function mergeOrderCardFields(existing, incoming) {
     observacao: mergeObservacaoPedido(existing.observacao, incoming.observacao, tExist, tIn),
     itensProduto: mergeItensProduto(existing, incoming, tExist, tIn),
     linhasPedido: mergeLinhasPedido(existing, incoming, tExist, tIn),
+    separacaoImpressaEm: separacaoMaisNova(existing.separacaoImpressaEm, incoming.separacaoImpressaEm),
   }
+}
+
+function separacaoMaisNova(a, b) {
+  const ta = Date.parse(a || '')
+  const tb = Date.parse(b || '')
+  const va = Number.isNaN(ta) ? 0 : ta
+  const vb = Number.isNaN(tb) ? 0 : tb
+  if (!va && !vb) return null
+  return va >= vb ? a || null : b || null
 }
 
 function qtdImagens(value) {

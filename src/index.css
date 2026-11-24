@@ -2075,6 +2075,200 @@ body.vestfirma-tv .pwa-install-banner {
   color: #fff;
 }
 
+.card-separacao-folha,
+.separacao-folha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.35rem;
+  background: #ecfdf5;
+  color: #047857;
+  flex: 0 0 auto;
+}
+
+.separacao-folha-icone {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.separacao-modal {
+  width: min(720px, 100%);
+  max-height: min(90vh, 820px);
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.separacao-modal-topo,
+.separacao-modal-corpo,
+.separacao-modal-acoes {
+  padding: 0.9rem 1rem;
+}
+
+.separacao-modal-topo h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.separacao-modal-topo p,
+.separacao-copia p,
+.separacao-vazio {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.86rem;
+}
+
+.separacao-modal-corpo {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.separacao-etapa,
+.separacao-copia {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.separacao-etapa select,
+.separacao-copia textarea {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #020617;
+  color: #f8fafc;
+  font: inherit;
+  font-weight: 500;
+  padding: 0.45rem 0.55rem;
+}
+
+.separacao-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 42vh;
+  overflow: auto;
+}
+
+.separacao-linha {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.55rem;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.separacao-linha span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.separacao-linha small {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.separacao-modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.separacao-print {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body > *:not(.separacao-print) {
+    display: none !important;
+  }
+
+  .separacao-print {
+    display: block !important;
+    position: static;
+    width: 100%;
+    color: #111;
+    background: #fff;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .separacao-print-capa,
+  .separacao-print-pedido {
+    break-after: page;
+    page-break-after: always;
+    padding: 0 8mm 8mm;
+  }
+
+  .separacao-print-pedido:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .separacao-print h1,
+  .separacao-print h2,
+  .separacao-print h3 {
+    margin: 0 0 0.35rem;
+  }
+
+  .separacao-print pre {
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 12pt;
+  }
+
+  .separacao-print dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 1rem;
+    margin: 0.6rem 0;
+  }
+
+  .separacao-print dt {
+    font-size: 9pt;
+    color: #444;
+  }
+
+  .separacao-print dd {
+    margin: 0;
+  }
+
+  .separacao-print-logos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .separacao-print-logos img {
+    max-width: 180px;
+    max-height: 140px;
+    object-fit: contain;
+  }
+}
+
 .card-wpp-tag {
   display: inline-flex;
   align-items: center;

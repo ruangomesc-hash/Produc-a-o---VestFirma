@@ -27,6 +27,7 @@ import { ConfirmModal } from './components/ConfirmModal'
 import { CardModal } from './components/CardModal'
 import { KanbanBoard } from './components/KanbanBoard'
 import { PedidoSearchBar } from './components/PedidoSearchBar'
+import { SeparacaoModal } from './components/SeparacaoModal'
 import { WebNotifyButton } from './components/WebNotifyButton'
 import { LoginPage } from './components/LoginPage'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
@@ -183,6 +184,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     removeColumn,
     moveCard,
     marcarControleQualidade,
+    marcarSeparacaoImpressa,
     updateVendedorContato,
     upsertVendedorFromManagedUser,
     upsertVendedorFromSession,
@@ -204,6 +206,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [usuariosOpen, setUsuariosOpen] = useState(false)
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [whatsappRedirectOpen, setWhatsappRedirectOpen] = useState(false)
+  const [separacaoOpen, setSeparacaoOpen] = useState(false)
   const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [pedidoSearchHighlightId, setPedidoSearchHighlightId] = useState<string | null>(null)
@@ -696,6 +699,15 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               <span className="btn-text-full">Grupo WhatsApp</span>
               <span className="btn-text-short">Grupo</span>
             </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => setSeparacaoOpen(true)}
+              title="Lista de separação: imprimir pedidos e copiar o resumo"
+            >
+              <span className="btn-text-full">Separação</span>
+              <span className="btn-text-short">Separar</span>
+            </button>
             <WebNotifyButton />
             {view === 'visao' && (
               <button type="button" className="btn secondary" onClick={entrarModoTv}>
@@ -788,7 +800,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         <KanbanBoard
           board={boardKanban}
           highlightPedidoId={pedidoSearchHighlightId}
-          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen}
+          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen && !separacaoOpen}
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
@@ -919,6 +931,13 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       <WhatsAppRedirectModal
         open={whatsappRedirectOpen}
         onClose={() => setWhatsappRedirectOpen(false)}
+      />
+
+      <SeparacaoModal
+        open={separacaoOpen}
+        board={boardKanban}
+        onClose={() => setSeparacaoOpen(false)}
+        onImpressa={marcarSeparacaoImpressa}
       />
 
       <ConfirmModal

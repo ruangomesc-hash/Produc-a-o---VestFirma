@@ -23,6 +23,12 @@ import type { BoardState, OrderCard, SegmentoEmpresa } from './types'
 
 export type { SaveBoardResult } from './remoteBoard'
 
+function dataSeparacaoImpressa(value: unknown): string | null {
+  if (typeof value !== 'string' || !value) return null
+  const tempo = Date.parse(value)
+  return Number.isNaN(tempo) ? null : value
+}
+
 const DB_NAME = 'vestfirma-kanban'
 const DB_VERSION = 1
 const STORE = 'board'
@@ -116,6 +122,7 @@ function normalizeCard(
     comentarios: Array.isArray(raw.comentarios) ? raw.comentarios : [],
     arquivadoEm: raw.arquivadoEm ?? null,
     controleQualidade: marcaControleQualidade(raw.controleQualidade),
+    separacaoImpressaEm: dataSeparacaoImpressa(raw.separacaoImpressaEm),
     origem: raw.origem === 'shopify' || raw.shopifyOrderId ? 'shopify' : raw.origem,
     shopifyOrderId: raw.shopifyOrderId ? String(raw.shopifyOrderId) : undefined,
     shopifyOrderName: raw.shopifyOrderName ? String(raw.shopifyOrderName) : undefined,
