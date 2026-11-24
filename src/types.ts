@@ -98,6 +98,8 @@ export interface OrderCard {
   controleQualidade?: MarcaControleQualidade | null
   /** Quando a lista de separação deste pedido foi impressa. A folha no card usa só este campo. */
   separacaoImpressaEm?: string | null
+  /** Quando o PDF da ficha foi gerado para a produção. A marca no card usa só este campo. */
+  pdfProducaoImpressoEm?: string | null
   /** Pedido criado pela loja Shopify (webhook). */
   origem?: 'shopify' | 'manual'
   shopifyOrderId?: string

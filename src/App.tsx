@@ -29,6 +29,7 @@ import { KanbanBoard } from './components/KanbanBoard'
 import { PedidoSearchBar } from './components/PedidoSearchBar'
 import { SeparacaoModal } from './components/SeparacaoModal'
 import { LogosProducaoPdf } from './components/LogosProducaoPdf'
+import { LogosPdfLoteModal } from './components/LogosPdfLoteModal'
 import { WebNotifyButton } from './components/WebNotifyButton'
 import { LoginPage } from './components/LoginPage'
 import { PwaInstallBanner } from './components/PwaInstallBanner'
@@ -186,6 +187,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     moveCard,
     marcarControleQualidade,
     marcarSeparacaoImpressa,
+    marcarPdfProducaoImpresso,
     updateVendedorContato,
     upsertVendedorFromManagedUser,
     upsertVendedorFromSession,
@@ -208,7 +210,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [whatsappNotifyOpen, setWhatsappNotifyOpen] = useState(false)
   const [whatsappRedirectOpen, setWhatsappRedirectOpen] = useState(false)
   const [separacaoOpen, setSeparacaoOpen] = useState(false)
-  const [pdfLogoPedido, setPdfLogoPedido] = useState<OrderCard | null>(null)
+  const [pdfLogoPedidos, setPdfLogoPedidos] = useState<OrderCard[] | null>(null)
+  const [pdfLoteAberto, setPdfLoteAberto] = useState(false)
   const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [pedidoSearchHighlightId, setPedidoSearchHighlightId] = useState<string | null>(null)
@@ -793,7 +796,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         <KanbanBoard
           board={boardKanban}
           highlightPedidoId={pedidoSearchHighlightId}
-          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen && !separacaoOpen}
+          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen && !separacaoOpen && !pdfLoteAberto}
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
@@ -804,7 +807,11 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           onMarcarControle={marcarControleQualidade}
           onAprovarControle={(cardId) => moveCard(cardId, 'disponiveis-aplicacao')}
           onAbrirSeparacao={() => setSeparacaoOpen(true)}
-          onGerarPdfLogo={setPdfLogoPedido}
+          onAbrirPdfLote={() => setPdfLoteAberto(true)}
+          onGerarPdfLogo={(card) => {
+            marcarPdfProducaoImpresso([card.id])
+            setPdfLogoPedidos([card])
+          }}
         />
         </div>
       ) : view === 'visao' ? (
@@ -934,8 +941,18 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onClose={() => setSeparacaoOpen(false)}
         onImpressa={marcarSeparacaoImpressa}
       />
-      {pdfLogoPedido ? (
-        <LogosProducaoPdf card={pdfLogoPedido} onClose={() => setPdfLogoPedido(null)} />
+      <LogosPdfLoteModal
+        open={pdfLoteAberto}
+        board={boardKanban}
+        onClose={() => setPdfLoteAberto(false)}
+        onBaixar={(lista) => {
+          marcarPdfProducaoImpresso(lista.map((card) => card.id))
+          setPdfLoteAberto(false)
+          setPdfLogoPedidos(lista)
+        }}
+      />
+      {pdfLogoPedidos?.length ? (
+        <LogosProducaoPdf cards={pdfLogoPedidos} onClose={() => setPdfLogoPedidos(null)} />
       ) : null}
 
       <ConfirmModal

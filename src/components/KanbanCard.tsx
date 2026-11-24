@@ -9,6 +9,7 @@ import { primeiraImagemPedido } from '../pedidoImagens'
 import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
 import { MARCAS_CONTROLE_QUALIDADE, type MarcaControleQualidade } from '../controleQualidade'
 import { FolhaIcone } from './SeparacaoModal'
+import { PdfProducaoMarca } from './PdfProducaoMarca'
 import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
@@ -194,6 +195,7 @@ export function KanbanCard({
               <FolhaIcone />
             </span>
           ) : null}
+          <PdfProducaoMarca em={card.pdfProducaoImpressoEm} />
           {card.origem === 'shopify' ? (
             <span
               className={`card-shopify-tag${seloShopifyCancelado ? ' card-shopify-tag--cancelado' : ''}`}

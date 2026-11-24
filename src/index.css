@@ -2082,7 +2082,8 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .card-separacao-folha,
-.separacao-folha {
+.separacao-folha,
+.card-pdf-producao {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2094,7 +2095,13 @@ body.vestfirma-tv .pwa-install-banner {
   flex: 0 0 auto;
 }
 
-.separacao-folha-icone {
+.card-pdf-producao {
+  background: #f5c400;
+  color: #141414;
+}
+
+.separacao-folha-icone,
+.card-pdf-producao-icone {
   width: 0.95rem;
   height: 0.95rem;
 }
@@ -2667,6 +2674,13 @@ body.vestfirma-tv .pwa-install-banner {
     max-width: none;
     min-height: 0;
     margin: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .logos-pdf-print .logos-pdf-folha:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }
 
@@ -2900,7 +2914,8 @@ body.vestfirma-tv .pwa-install-banner {
   gap: 0.32rem;
 }
 
-.separacao-produto-card {
+.separacao-produto-card,
+.logos-pdf-lote-card {
   flex-shrink: 0;
   width: 100%;
   margin: 0;
@@ -2918,7 +2933,9 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .separacao-produto-card:hover,
-.separacao-produto-card:focus-visible {
+.separacao-produto-card:focus-visible,
+.logos-pdf-lote-card:hover,
+.logos-pdf-lote-card:focus-visible {
   background: #ffcc4d;
 }
 

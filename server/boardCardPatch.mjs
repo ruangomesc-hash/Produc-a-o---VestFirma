@@ -237,7 +237,7 @@ export async function applyBoardCardMove(payload, session, ctx) {
 }
 
 /** Marca a folha de lista de separação impressa. Não tira pedido nem muda a etapa. */
-export async function applySeparacaoImpressa(payload, ctx) {
+async function applyMarcaImpressao(payload, ctx, campo) {
   const {
     boardFilePath,
     backupBoardBeforeWrite,
@@ -266,7 +266,7 @@ export async function applySeparacaoImpressa(payload, ctx) {
     const cards = existing.cards.map((card) => {
       if (!card?.id || !wanted.has(card.id)) return card
       marcados += 1
-      return { ...card, separacaoImpressaEm: at }
+      return { ...card, [campo]: at }
     })
     if (!marcados) return { status: 404, body: { error: 'Pedido não encontrado.' } }
     if (cards.length < antes) {
@@ -279,11 +279,19 @@ export async function applySeparacaoImpressa(payload, ctx) {
       status: 200,
       body: {
         ok: true,
-        separacaoImpressaEm: at,
+        [campo]: at,
         cardIds: cards.filter((card) => wanted.has(card.id)).map((card) => card.id),
       },
     }
   })
+}
+
+export async function applySeparacaoImpressa(payload, ctx) {
+  return applyMarcaImpressao(payload, ctx, 'separacaoImpressaEm')
+}
+
+export async function applyPdfProducaoImpresso(payload, ctx) {
+  return applyMarcaImpressao(payload, ctx, 'pdfProducaoImpressoEm')
 }
 
 export async function tryHandleBoardCardPatch(req, res, body, session, corsHeaders, ctx) {
@@ -294,13 +302,20 @@ export async function tryHandleBoardCardPatch(req, res, body, session, corsHeade
   } catch {
     return false
   }
-  if (payload?.action === 'vestfirma-separacao-impressa') {
+  if (payload?.action === 'vestfirma-separacao-impressa' || payload?.action === 'vestfirma-pdf-producao-impresso') {
+    const pdfProducao = payload.action === 'vestfirma-pdf-producao-impresso'
     try {
-      const result = await applySeparacaoImpressa(payload, ctx)
+      const result = pdfProducao
+        ? await applyPdfProducaoImpresso(payload, ctx)
+        : await applySeparacaoImpressa(payload, ctx)
       json(res, corsHeaders, result.status, result.body)
     } catch (err) {
-      console.error('[vestfirma] lista de separação:', err)
-      json(res, corsHeaders, 500, { error: 'Não foi possível marcar a lista impressa. Tente de novo.' })
+      console.error(pdfProducao ? '[vestfirma] PDF de produção:' : '[vestfirma] lista de separação:', err)
+      json(res, corsHeaders, 500, {
+        error: pdfProducao
+          ? 'Não foi possível marcar o PDF enviado para produção. Tente de novo.'
+          : 'Não foi possível marcar a lista impressa. Tente de novo.',
+      })
     }
     return true
   }

@@ -70,6 +70,7 @@ export function mergeBoardLoggedInFromServer(
         arquivadoEm: gravado.arquivadoEm ?? null,
         controleQualidade: gravado.controleQualidade ?? null,
         separacaoImpressaEm: separacaoMaisNova(c.separacaoImpressaEm, gravado.separacaoImpressaEm),
+        pdfProducaoImpressoEm: separacaoMaisNova(c.pdfProducaoImpressoEm, gravado.pdfProducaoImpressoEm),
         ...logosDoQuadroGravado(c, gravado),
       }
     }),

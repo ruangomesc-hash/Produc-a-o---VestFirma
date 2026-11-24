@@ -22,6 +22,7 @@ type Props = {
   onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
   onAprovarControle?: (cardId: string) => void
   onAbrirSeparacao?: () => void
+  onAbrirPdfLote?: () => void
   onGerarPdfLogo?: (card: OrderCard) => void
   highlightPedidoId?: string | null
 }
@@ -39,6 +40,7 @@ export function KanbanColumn({
   onMarcarControle,
   onAprovarControle,
   onAbrirSeparacao,
+  onAbrirPdfLote,
   onGerarPdfLogo,
   highlightPedidoId = null,
 }: Props) {
@@ -174,6 +176,16 @@ export function KanbanColumn({
             onPointerDown={(event) => event.stopPropagation()}
           >
             Separação de produto
+          </button>
+        ) : null}
+        {column.id === COLUNA_NOVO_PEDIDO_ID && onAbrirPdfLote ? (
+          <button
+            type="button"
+            className="logos-pdf-lote-card"
+            onClick={onAbrirPdfLote}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            Baixar PDFs
           </button>
         ) : null}
         {gruposQualidade

@@ -33,6 +33,14 @@ test('a folha impressa mais nova permanece e a antiga não apaga a marca', () =>
 
   const semData = mergeOrderCardFields(card({ separacaoImpressaEm: antiga }), card())
   assert.equal(semData.separacaoImpressaEm, antiga)
+
+  const pdf = mergeOrderCardFields(card({ pdfProducaoImpressoEm: antiga }), card())
+  assert.equal(pdf.pdfProducaoImpressoEm, antiga)
+  const pdfNovo = mergeOrderCardFields(
+    card({ pdfProducaoImpressoEm: antiga }),
+    card({ pdfProducaoImpressoEm: nova }),
+  )
+  assert.equal(pdfNovo.pdfProducaoImpressoEm, nova)
 })
 
 test('o resumo junta peças iguais para o WhatsApp', () => {

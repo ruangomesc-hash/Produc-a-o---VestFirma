@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido } from '../shared/logosProducao.mjs'
+import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, nomeArquivoPdfPedidos } from '../shared/logosProducao.mjs'
 
 test('frente conta só logo pequena, vezes as peças', () => {
   assert.deepEqual(contarLogosDoPedido('frente', 8), { pequenas: 8, grandes: 0 })
@@ -25,4 +25,6 @@ test('o PDF do pedido usa o nome pedido #número - vestfirma, sem data', () => {
   assert.equal(nomeArquivoPdfPedido(''), 'pedido #s/n - vestfirma')
   assert.equal(dataPedidoImpressao('2026-11-24'), '24/11/2026')
   assert.equal(dataPedidoImpressao(''), '')
+  assert.equal(nomeArquivoPdfPedidos(['1205', '1206']), 'pedidos - vestfirma')
+  assert.equal(nomeArquivoPdfPedidos(['#1205']), 'pedido #1205 - vestfirma')
 })

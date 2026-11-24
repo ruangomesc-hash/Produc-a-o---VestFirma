@@ -158,6 +158,7 @@ export function mergeOrderCardFields(existing: OrderCard, incoming: OrderCard): 
     itensProduto: mergeItensProduto(existing, incoming, tExist, tIn),
     linhasPedido: mergeLinhasPedido(existing, incoming, tExist, tIn),
     separacaoImpressaEm: separacaoMaisNova(existing.separacaoImpressaEm, incoming.separacaoImpressaEm),
+    pdfProducaoImpressoEm: separacaoMaisNova(existing.pdfProducaoImpressoEm, incoming.pdfProducaoImpressoEm),
   }
 }
 

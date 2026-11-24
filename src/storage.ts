@@ -123,6 +123,7 @@ function normalizeCard(
     arquivadoEm: raw.arquivadoEm ?? null,
     controleQualidade: marcaControleQualidade(raw.controleQualidade),
     separacaoImpressaEm: dataSeparacaoImpressa(raw.separacaoImpressaEm),
+    pdfProducaoImpressoEm: dataSeparacaoImpressa(raw.pdfProducaoImpressoEm),
     origem: raw.origem === 'shopify' || raw.shopifyOrderId ? 'shopify' : raw.origem,
     shopifyOrderId: raw.shopifyOrderId ? String(raw.shopifyOrderId) : undefined,
     shopifyOrderName: raw.shopifyOrderName ? String(raw.shopifyOrderName) : undefined,

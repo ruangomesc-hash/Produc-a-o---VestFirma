@@ -14,6 +14,13 @@ export function nomeArquivoPdfPedido(numero) {
   return `pedido #${limpo || 's/n'} - vestfirma`
 }
 
+/** Vários pedidos saem num arquivo só: pedidos - vestfirma. */
+export function nomeArquivoPdfPedidos(numeros) {
+  const limpos = (numeros || []).map((numero) => String(numero || '').trim().replace(/^#/, '')).filter(Boolean)
+  if (limpos.length <= 1) return nomeArquivoPdfPedido(limpos[0])
+  return 'pedidos - vestfirma'
+}
+
 /** Data do pedido na ficha, no formato dd/mm/aaaa. */
 export function dataPedidoImpressao(value) {
   const texto = String(value || '').trim()

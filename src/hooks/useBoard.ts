@@ -13,6 +13,7 @@ import {
   postPedidoCampos,
   postControleQualidade,
   postSeparacaoImpressa,
+  postPdfProducaoImpresso,
 } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
@@ -1000,6 +1001,56 @@ export function useBoard() {
     })
   }, [persist])
 
+  const marcarPdfProducaoImpresso = useCallback((cardIds: string[]) => {
+    const ids = [...new Set(cardIds.filter(Boolean))]
+    if (!ids.length) return
+    const current = boardRef.current
+    const permitidos = new Set(
+      current.cards
+        .filter((card) => ids.includes(card.id) && vendedorLogadoPodeCard(current, card))
+        .map((card) => card.id),
+    )
+    if (!permitidos.size) return
+    const at = new Date().toISOString()
+    const nextBoard = {
+      ...current,
+      cards: current.cards.map((card) =>
+        permitidos.has(card.id) ? { ...card, pdfProducaoImpressoEm: at } : card,
+      ),
+    }
+    boardRef.current = nextBoard
+    setBoard(nextBoard)
+    void (async () => {
+      if (!isRemoteSyncEnabled()) {
+        persist(nextBoard, { immediate: true, skipRemote: true })
+        return
+      }
+      const posted = await postPdfProducaoImpresso([...permitidos])
+      if (!posted.ok) {
+        setSync({ remote: true, status: 'error', message: posted.error })
+        persist(boardRef.current, { immediate: true })
+        return
+      }
+      const quando = posted.pdfProducaoImpressoEm
+      setBoard((prev) => {
+        const next = {
+          ...prev,
+          cards: prev.cards.map((card) =>
+            permitidos.has(card.id) ? { ...card, pdfProducaoImpressoEm: quando } : card,
+          ),
+        }
+        boardRef.current = next
+        return next
+      })
+      setSync({ remote: true, status: 'saved' })
+    })()
+    recordAudit({
+      action: 'pedido.pdf-producao-impresso',
+      summary: `Enviou o PDF de produção de ${permitidos.size} pedido${permitidos.size === 1 ? '' : 's'}`,
+      meta: { cardIds: [...permitidos] },
+    })
+  }, [persist])
+
   const restoreRicherLocalToServer = useCallback(() => {
     if (!localRestore?.cards.length) return
     const merged = normalizeBoard({
@@ -1160,5 +1211,6 @@ export function useBoard() {
     moveCard,
     marcarControleQualidade,
     marcarSeparacaoImpressa,
+    marcarPdfProducaoImpresso,
   }
 }

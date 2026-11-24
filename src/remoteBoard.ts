@@ -99,6 +99,41 @@ export async function postControleQualidade(
   return postPedidoCampos(cardId, { controleQualidade: marca })
 }
 
+export async function postPdfProducaoImpresso(
+  cardIds: string[],
+): Promise<{ ok: true; pdfProducaoImpressoEm: string; cardIds: string[] } | { ok: false; error: string }> {
+  const base = getApiBase()
+  if (!base) return { ok: false, error: 'API indisponível' }
+  const res = await fetch(boardPatchUrl(base), {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ action: 'vestfirma-pdf-producao-impresso', cardIds }),
+  })
+  if (res.status === 401) {
+    requestAuthFailureLogout('board-pdf-producao')
+    return { ok: false, error: 'Sessão expirada' }
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean
+    error?: string
+    pdfProducaoImpressoEm?: string
+    cardIds?: string[]
+  }
+  if (!res.ok || !data.ok || !data.pdfProducaoImpressoEm) {
+    return { ok: false, error: data.error || `Falha ao marcar o PDF de produção (${res.status})` }
+  }
+  return {
+    ok: true,
+    pdfProducaoImpressoEm: data.pdfProducaoImpressoEm,
+    cardIds: Array.isArray(data.cardIds) ? data.cardIds : cardIds,
+  }
+}
+
 export async function postSeparacaoImpressa(
   cardIds: string[],
 ): Promise<{ ok: true; separacaoImpressaEm: string; cardIds: string[] } | { ok: false; error: string }> {

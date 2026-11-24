@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido } from '../logosProducao'
+import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedidos } from '../logosProducao'
 import { quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
 
@@ -26,7 +26,7 @@ function QuadroImagem({ src, alt, vazio }: { src: string; alt: string; vazio: Re
   )
 }
 
-export function LogosProducaoPdf({ card, onClose }: { card: OrderCard; onClose: () => void }) {
+function FichaPedido({ card }: { card: OrderCard }) {
   const pecas = quantidadeExibidaComResumo(card)
   const contagem = contarLogosDoPedido(card.localLogo, pecas)
   const previews = (card.previewAprovacaoCliente ?? []).map((src) => src.trim()).filter(Boolean)
@@ -35,12 +35,108 @@ export function LogosProducaoPdf({ card, onClose }: { card: OrderCard; onClose: 
   const data = dataPedidoImpressao(card.dataPedido)
   const numero = card.numeroPedido?.trim().replace(/^#/, '') || 's/n'
 
+  return (
+    <div className="logos-pdf-folha">
+      <header className="logos-pdf-cabecalho">
+        <div className="logos-pdf-marca">
+          <strong>VESTFIRMA</strong>
+          <span>UNIFORMES PERSONALIZADOS</span>
+        </div>
+        <div className="logos-pdf-documento">
+          FICHA DE<strong>IMPRESSÃO</strong>
+        </div>
+      </header>
+      <main className="logos-pdf-main">
+        <p className="logos-pdf-rotulo">RESUMO DO PEDIDO</p>
+        <div className="logos-pdf-dados">
+          <div className="logos-pdf-dado">
+            <label>PEDIDO</label>
+            <span className="logos-pdf-valor">#{numero}</span>
+            <span className="logos-pdf-pecas">Quantidade de peças: {pecas}</span>
+          </div>
+          <div className="logos-pdf-dado">
+            <label>DATA DO PEDIDO</label>
+            <span className="logos-pdf-valor">{data || '—'}</span>
+          </div>
+        </div>
+        <div className="logos-pdf-quantidades">
+          <div className="logos-pdf-quantidade">
+            <h2>LOGOS PEQUENAS</h2>
+            <span className="logos-pdf-numero">{contagem.pequenas}</span>
+            <small>unidades para impressão</small>
+          </div>
+          <div className="logos-pdf-quantidade">
+            <h2>LOGOS GRANDES</h2>
+            <span className="logos-pdf-numero">{contagem.grandes}</span>
+            <small>unidades para impressão</small>
+          </div>
+        </div>
+        <section className="logos-pdf-secao">
+          <h2>PREVIEW APROVADO</h2>
+          <p className="logos-pdf-descricao">Referência visual aprovada pelo cliente.</p>
+          {(previews.length ? previews : ['']).map((src, index) => (
+            <div className="logos-pdf-preview" key={`preview-${index}`}>
+              <QuadroImagem
+                src={urlAbsoluta(src)}
+                alt="Preview aprovado pelo cliente"
+                vazio={<><strong>PREVIEW APROVADO</strong><small>Imagem ainda não vinculada</small></>}
+              />
+            </div>
+          ))}
+        </section>
+        <section className="logos-pdf-secao">
+          <h2>ARTE PARA IMPRESSÃO</h2>
+          {(artes.length ? artes : ['']).map((src, index) => {
+            const download = src ? urlAbsoluta(src, true) : ''
+            const miniatura = (
+              <QuadroImagem
+                src={urlAbsoluta(src)}
+                alt="Arte do pedido"
+                vazio={<>ARTE<br />DO PEDIDO</>}
+              />
+            )
+            return (
+              <div className="logos-pdf-arquivo" key={`arte-${index}`}>
+                <div className="logos-pdf-miniatura">
+                  {download ? (
+                    <a href={download} download aria-label="Baixar arte para impressão">{miniatura}</a>
+                  ) : (
+                    <div className="logos-pdf-miniatura-vazia">{miniatura}</div>
+                  )}
+                </div>
+                <div className="logos-pdf-acao">
+                  <strong>Arquivo de impressão</strong>
+                  {download ? (
+                    <a className="logos-pdf-botao" href={download} download>CLIQUE AQUI PARA BAIXAR</a>
+                  ) : (
+                    <span className="logos-pdf-botao logos-pdf-botao--vazio">ARQUIVO NÃO VINCULADO</span>
+                  )}
+                  <small>Clique no botão ou na imagem da arte.</small>
+                </div>
+              </div>
+            )
+          })}
+        </section>
+        <section className="logos-pdf-observacoes">
+          <h2>OBSERVAÇÕES DE PRODUÇÃO</h2>
+          <p className={observacao ? undefined : 'logos-pdf-observacao-vazia'}>
+            {observacao || 'Sem observações informadas.'}
+          </p>
+        </section>
+      </main>
+      <footer className="logos-pdf-rodape"><strong>VESTFIRMA / PRODUÇÃO</strong></footer>
+    </div>
+  )
+}
+
+export function LogosProducaoPdf({ cards, onClose }: { cards: OrderCard[]; onClose: () => void }) {
+  const chave = cards.map((card) => card.id).join(',')
   const fechar = useRef(onClose)
   fechar.current = onClose
 
   useEffect(() => {
     const tituloAntes = document.title
-    document.title = nomeArquivoPdfPedido(card.numeroPedido)
+    document.title = nomeArquivoPdfPedidos(cards.map((card) => card.numeroPedido))
     let cancelado = false
     let jaImprimiu = false
     const imprimir = () => {
@@ -73,104 +169,14 @@ export function LogosProducaoPdf({ card, onClose }: { card: OrderCard; onClose: 
       window.removeEventListener('afterprint', fim)
       document.title = tituloAntes
     }
-  }, [card.id, card.numeroPedido])
+  }, [chave, cards])
 
-  const folha = (
+  return createPortal(
     <div className="separacao-print logos-pdf-print" id="logos-pdf-print" aria-hidden="true">
-      <div className="logos-pdf-folha">
-        <header className="logos-pdf-cabecalho">
-          <div className="logos-pdf-marca">
-            <strong>VESTFIRMA</strong>
-            <span>UNIFORMES PERSONALIZADOS</span>
-          </div>
-          <div className="logos-pdf-documento">
-            FICHA DE<strong>IMPRESSÃO</strong>
-          </div>
-        </header>
-        <main className="logos-pdf-main">
-          <p className="logos-pdf-rotulo">RESUMO DO PEDIDO</p>
-          <div className="logos-pdf-dados">
-            <div className="logos-pdf-dado">
-              <label>PEDIDO</label>
-              <span className="logos-pdf-valor">#{numero}</span>
-              <span className="logos-pdf-pecas">
-                Quantidade de peças: {pecas}
-              </span>
-            </div>
-            <div className="logos-pdf-dado">
-              <label>DATA DO PEDIDO</label>
-              <span className="logos-pdf-valor">{data || '—'}</span>
-            </div>
-          </div>
-          <div className="logos-pdf-quantidades">
-            <div className="logos-pdf-quantidade">
-              <h2>LOGOS PEQUENAS</h2>
-              <span className="logos-pdf-numero">{contagem.pequenas}</span>
-              <small>unidades para impressão</small>
-            </div>
-            <div className="logos-pdf-quantidade">
-              <h2>LOGOS GRANDES</h2>
-              <span className="logos-pdf-numero">{contagem.grandes}</span>
-              <small>unidades para impressão</small>
-            </div>
-          </div>
-          <section className="logos-pdf-secao">
-            <h2>PREVIEW APROVADO</h2>
-            <p className="logos-pdf-descricao">Referência visual aprovada pelo cliente.</p>
-            {(previews.length ? previews : ['']).map((src, index) => (
-              <div className="logos-pdf-preview" key={`preview-${index}`}>
-                <QuadroImagem
-                  src={urlAbsoluta(src)}
-                  alt="Preview aprovado pelo cliente"
-                  vazio={<><strong>PREVIEW APROVADO</strong><small>Imagem ainda não vinculada</small></>}
-                />
-              </div>
-            ))}
-          </section>
-          <section className="logos-pdf-secao">
-            <h2>ARTE PARA IMPRESSÃO</h2>
-            {(artes.length ? artes : ['']).map((src, index) => {
-              const download = src ? urlAbsoluta(src, true) : ''
-              const miniatura = (
-                <QuadroImagem
-                  src={urlAbsoluta(src)}
-                  alt="Arte do pedido"
-                  vazio={<>ARTE<br />DO PEDIDO</>}
-                />
-              )
-              return (
-                <div className="logos-pdf-arquivo" key={`arte-${index}`}>
-                  <div className="logos-pdf-miniatura">
-                    {download ? (
-                      <a href={download} download aria-label="Baixar arte para impressão">{miniatura}</a>
-                    ) : (
-                      <div className="logos-pdf-miniatura-vazia">{miniatura}</div>
-                    )}
-                  </div>
-                  <div className="logos-pdf-acao">
-                    <strong>Arquivo de impressão</strong>
-                    {download ? (
-                      <a className="logos-pdf-botao" href={download} download>CLIQUE AQUI PARA BAIXAR</a>
-                    ) : (
-                      <span className="logos-pdf-botao logos-pdf-botao--vazio">ARQUIVO NÃO VINCULADO</span>
-                    )}
-                    <small>Clique no botão ou na imagem da arte.</small>
-                  </div>
-                </div>
-              )
-            })}
-          </section>
-          <section className="logos-pdf-observacoes">
-            <h2>OBSERVAÇÕES DE PRODUÇÃO</h2>
-            <p className={observacao ? undefined : 'logos-pdf-observacao-vazia'}>
-              {observacao || 'Sem observações informadas.'}
-            </p>
-          </section>
-        </main>
-        <footer className="logos-pdf-rodape"><strong>VESTFIRMA / PRODUÇÃO</strong></footer>
-      </div>
-    </div>
+      {cards.map((card) => (
+        <FichaPedido key={card.id} card={card} />
+      ))}
+    </div>,
+    document.body,
   )
-
-  return createPortal(folha, document.body)
 }
