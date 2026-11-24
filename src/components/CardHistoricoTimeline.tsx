@@ -27,7 +27,7 @@ export function CardHistoricoTimeline({ entries, defaultOpen = false }: Props) {
             <span className="card-historico-texto">{textoHistorico(entry)}</span>
             {autor ? (
               <span className="card-historico-autor">{autor}</span>
-            ) : entry.tipo !== 'criado' && entry.tipo !== 'logo' ? (
+            ) : entry.tipo !== 'criado' && entry.tipo !== 'logo' && entry.tipo !== 'qualidade' && !String(entry.id || '').startsWith('cq-migracao-') ? (
               <span className="card-historico-autor card-historico-autor--legado">
                 (antes do registro de usuário)
               </span>

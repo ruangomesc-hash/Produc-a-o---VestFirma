@@ -1,3 +1,5 @@
+import { ordenarColunasComControleQualidade } from './controleQualidade.mjs'
+
 /** @param {import('../src/types').Vendedor[]} a */
 /** @param {import('../src/types').Vendedor[]} b */
 export function mergeVendedoresUnion(a, b) {
@@ -48,6 +50,7 @@ const DEFAULT_COLUMNS = [
   { id: 'logos-recebidas', title: 'Logos liberadas para produção' },
   { id: 'logos-producao', title: 'Logos em produção' },
   { id: 'logos-prontas', title: 'Logos prontas' },
+  { id: 'controle-qualidade', title: 'Controle de qualidade' },
   { id: 'disponiveis-aplicacao', title: 'Disponíveis para aplicação' },
   { id: 'em-aplicacao', title: 'Em aplicação' },
   { id: 'liberado-logistica', title: 'Liberado para logística' },
@@ -64,7 +67,9 @@ export function ensureBoardColumns(columns) {
       byId.set(def.id, def)
     }
   }
-  return posicionarCanceladosDepoisDeEnviado(posicionarFluxoInicial(aplicarTitulosPadraoColunas(list)))
+  return posicionarCanceladosDepoisDeEnviado(
+    ordenarColunasComControleQualidade(posicionarFluxoInicial(aplicarTitulosPadraoColunas(list))),
+  )
 }
 
 function aplicarTitulosPadraoColunas(columns) {

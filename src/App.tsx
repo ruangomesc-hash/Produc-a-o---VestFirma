@@ -180,8 +180,9 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     dismissLocalRestore,
     refreshBoardFromServer,
     pedidosSnapshotCount,
-    addColumn,
     removeColumn,
+    moveCard,
+    marcarControleQualidade,
     updateVendedorContato,
     upsertVendedorFromManagedUser,
     upsertVendedorFromSession,
@@ -196,7 +197,6 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
     archiveCard,
     restoreArchivedCard,
     permanentlyDeleteArchivedCard,
-    moveCard,
   } = useBoard()
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -796,7 +796,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           canArchivePedidos={isAdmin(session)}
           canManageColumns={isAdmin(session)}
           onDeleteColumn={removeColumn}
-          onAddColumn={addColumn}
+          onMarcarControle={marcarControleQualidade}
+          onAprovarControle={(cardId) => moveCard(cardId, 'disponiveis-aplicacao')}
         />
         </div>
       ) : view === 'visao' ? (

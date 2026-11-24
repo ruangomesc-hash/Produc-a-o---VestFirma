@@ -11,6 +11,7 @@ import {
   postPedidoComentario,
   postPedidoMidia,
   postPedidoCampos,
+  postControleQualidade,
 } from '../remoteBoard'
 import { notificarSePedidoCriado, notificarSePedidoMovido } from '../whatsappNotify'
 import { mesclarSegmentos } from '../segmentosEmpresa'
@@ -18,7 +19,8 @@ import { isAuthSessionError, requestAuthFailureLogout } from '../authSession'
 import { getAuditActor } from '../auditContext'
 import { recordAudit } from '../auditLog'
 import { loadBoard, normalizeBoard, saveBoard, type SaveBoardResult } from '../storage'
-import { COLUNA_CANCELADOS_EXPIRADOS_ID, ensureBoardColumns, inserirColunaAntesDePedidoEnviado } from '../boardColumns'
+import { COLUNA_CANCELADOS_EXPIRADOS_ID, ensureBoardColumns } from '../boardColumns'
+import { COLUNA_CONTROLE_QUALIDADE_ID, textoMarcaControleQualidade, type MarcaControleQualidade } from '../controleQualidade'
 import { mergeBoardPreservingPedidos, contagemPedidos } from '../pedidosPolicy'
 import { boardTemPedidosAlemDoServidor, mergeBoardLoggedInFromServer } from '../boardLoadMerge'
 import {
@@ -245,23 +247,6 @@ export function useBoard() {
       }, delay)
     },
     [],
-  )
-
-  const addColumn = useCallback(
-    (title: string) => {
-      if (getAuditActor()?.role !== 'admin') return
-      const trimmed = title.trim()
-      if (!trimmed) return
-      persist({
-        ...board,
-        columns: inserirColunaAntesDePedidoEnviado(board.columns, { id: newId(), title: trimmed }),
-      })
-      recordAudit({
-        action: 'coluna.criada',
-        summary: `Criou a etapa “${trimmed}”`,
-      })
-    },
-    [board, persist],
   )
 
   const removeColumn = useCallback(
@@ -840,7 +825,23 @@ export function useBoard() {
         ...existing,
         columnId,
         etapaDesde: now,
-        historicoEtapa: registrarMudancaEtapa(existing, current, columnId, now),
+        controleQualidade:
+          fromColumnId === COLUNA_CONTROLE_QUALIDADE_ID ? null : existing.controleQualidade,
+        historicoEtapa: (() => {
+          const historico = registrarMudancaEtapa(existing, current, columnId, now)
+          if (
+            fromColumnId === COLUNA_CONTROLE_QUALIDADE_ID &&
+            columnId === 'disponiveis-aplicacao' &&
+            historico.length > 0
+          ) {
+            const ultimo = historico.length - 1
+            historico[ultimo] = {
+              ...historico[ultimo],
+              detalhe: 'Aprovado no controle de qualidade. Disponível para aplicação.',
+            }
+          }
+          return historico
+        })(),
       }
       const nextBoard = {
         ...current,
@@ -879,6 +880,74 @@ export function useBoard() {
     },
     [persist],
   )
+
+  const marcarControleQualidade = useCallback((cardId: string, marca: MarcaControleQualidade) => {
+    const current = boardRef.current
+    const alvo = current.cards.find((c) => c.id === cardId)
+    if (!alvo || !vendedorLogadoPodeCard(current, alvo)) return
+    if (alvo.columnId !== COLUNA_CONTROLE_QUALIDADE_ID) return
+    if (alvo.controleQualidade === marca) return
+    const now = new Date().toISOString()
+    const autor = getAuditActor()
+    const updated: OrderCard = {
+      ...alvo,
+      controleQualidade: marca,
+      historicoEtapa: [
+        ...(alvo.historicoEtapa ?? []),
+        {
+          id: `cq-${cardId}-${marca}-${now}`,
+          tipo: 'qualidade',
+          columnId: alvo.columnId,
+          columnTitle: tituloColuna(current, alvo.columnId),
+          at: now,
+          detalhe: textoMarcaControleQualidade(marca),
+          autorNome: autor?.user,
+          autorEmail: autor?.email,
+          autorRole: autor?.role,
+        },
+      ],
+    }
+    const nextBoard = {
+      ...current,
+      cards: current.cards.map((c) => (c.id === cardId ? updated : c)),
+    }
+    boardRef.current = nextBoard
+    setBoard(nextBoard)
+    void (async () => {
+      if (!isRemoteSyncEnabled()) {
+        persist(nextBoard, { immediate: true, skipRemote: true })
+        return
+      }
+      const posted = await postControleQualidade(cardId, marca)
+      if (!posted.ok) {
+        setSync({ remote: true, status: 'error', message: posted.error })
+        persist(boardRef.current, { immediate: true })
+        return
+      }
+      setBoard((prev) => {
+        const next = {
+          ...prev,
+          cards: prev.cards.map((c) =>
+            c.id === cardId
+              ? {
+                  ...c,
+                  controleQualidade: posted.card.controleQualidade ?? marca,
+                  historicoEtapa: posted.card.historicoEtapa ?? c.historicoEtapa,
+                }
+              : c,
+          ),
+        }
+        boardRef.current = next
+        return next
+      })
+      setSync({ remote: true, status: 'saved' })
+    })()
+    recordAudit({
+      action: 'pedido.qualidade',
+      summary: `Pedido ${alvo.numeroPedido}: ${textoMarcaControleQualidade(marca)}`,
+      meta: { cardId, marca },
+    })
+  }, [persist])
 
   const restoreRicherLocalToServer = useCallback(() => {
     if (!localRestore?.cards.length) return
@@ -1020,7 +1089,6 @@ export function useBoard() {
     syncPendingPedidosToServer,
     refreshBoardFromServer,
     pedidosSnapshotCount: contagemPedidosNoSnapshot(),
-    addColumn,
     removeColumn,
     addVendedor,
     updateVendedorContato,
@@ -1039,5 +1107,6 @@ export function useBoard() {
     restoreArchivedCard,
     permanentlyDeleteArchivedCard,
     moveCard,
+    marcarControleQualidade,
   }
 }

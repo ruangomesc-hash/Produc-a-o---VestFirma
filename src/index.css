@@ -1724,6 +1724,75 @@ body.vestfirma-tv .pwa-install-banner {
   -webkit-overflow-scrolling: touch;
 }
 
+.column-controle-qualidade {
+  min-width: 280px;
+}
+
+.cq-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.45rem;
+  border-radius: 0.7rem;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.cq-grupo-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #e2e8f0;
+}
+
+.cq-grupo-titulo span {
+  min-width: 1.3rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.cq-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+
+.cq-acao {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.45rem;
+  background: rgba(15, 23, 42, 0.55);
+  color: #f8fafc;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.35rem 0.4rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cq-acao--reprovado.is-on {
+  background: #9f1239;
+  border-color: #fb7185;
+}
+
+.cq-acao--retrabalho.is-on {
+  background: #9a3412;
+  border-color: #fdba74;
+}
+
+.cq-acao--aprovado {
+  background: #14532d;
+  border-color: #4ade80;
+}
+
 .column-cards::-webkit-scrollbar {
   width: 7px;
 }
@@ -6513,6 +6582,10 @@ html.visao-tv-active body {
 
 .visao-card--prontas {
   background: linear-gradient(145deg, #0369a1, #0284c7);
+}
+
+.visao-card--qualidade {
+  background: linear-gradient(145deg, #9f1239, #e11d48);
 }
 
 .visao-card--disponiveis {

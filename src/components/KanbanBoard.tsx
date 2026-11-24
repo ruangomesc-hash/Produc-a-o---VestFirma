@@ -14,6 +14,7 @@ import { etapaCanceladosExpirados, etapaPedidoEnviado } from '../etapas'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
 import { ordenarCardsPorNumeroPedido } from '../ordenarCardsKanban'
 import type { BoardState, OrderCard } from '../types'
+import type { MarcaControleQualidade } from '../controleQualidade'
 import { KanbanColumn } from './KanbanColumn'
 
 type Props = {
@@ -25,7 +26,8 @@ type Props = {
   canArchivePedidos?: boolean
   canManageColumns?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
-  onAddColumn: (title: string) => void
+  onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
+  onAprovarControle?: (cardId: string) => void
   dragEnabled?: boolean
   highlightPedidoId?: string | null
 }
@@ -51,20 +53,15 @@ export function KanbanBoard({
   canArchivePedidos = false,
   canManageColumns = false,
   onDeleteColumn,
-  onAddColumn,
+  onMarcarControle,
+  onAprovarControle,
   dragEnabled = true,
   highlightPedidoId = null,
 }: Props) {
   const [activeCard, setActiveCard] = useState<OrderCard | null>(null)
-  const [newColumnTitle, setNewColumnTitle] = useState('')
-  const [showAddColumn, setShowAddColumn] = useState(false)
   const [moveToast, setMoveToast] = useState<MoveToast | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shellRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    if (!canManageColumns) setShowAddColumn(false)
-  }, [canManageColumns])
 
   useEffect(() => {
     return () => {
@@ -185,15 +182,6 @@ export function KanbanBoard({
     setMoveToast(null)
   }
 
-  const submitColumn = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!canManageColumns) return
-    if (!newColumnTitle.trim()) return
-    onAddColumn(newColumnTitle)
-    setNewColumnTitle('')
-    setShowAddColumn(false)
-  }
-
   const colunasFluxo = useMemo(
     () =>
       columns.filter(
@@ -232,6 +220,8 @@ export function KanbanBoard({
       onRequestArchiveCard={onRequestArchiveCard}
       canArchivePedidos={canArchivePedidos}
       onDeleteColumn={onDeleteColumn}
+      onMarcarControle={onMarcarControle}
+      onAprovarControle={onAprovarControle}
       highlightPedidoId={highlightPedidoId}
     />
   )
@@ -257,39 +247,6 @@ export function KanbanBoard({
               {colunasConcluidos.map(renderColumn)}
               {colunasCancelados.map(renderColumn)}
             </div>
-          </div>
-        ) : null}
-        {canManageColumns ? (
-          <div className="add-column add-column--depois-concluidos">
-            {showAddColumn ? (
-              <form onSubmit={submitColumn} className="add-column-form">
-                <input
-                  autoFocus
-                  placeholder="Nome da nova etapa"
-                  value={newColumnTitle}
-                  onChange={(e) => setNewColumnTitle(e.target.value)}
-                />
-                <div className="add-column-actions">
-                  <button type="submit" className="btn primary small">
-                    Adicionar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost small"
-                    onClick={() => {
-                      setShowAddColumn(false)
-                      setNewColumnTitle('')
-                    }}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <button type="button" className="add-column-btn" onClick={() => setShowAddColumn(true)}>
-                + Nova coluna
-              </button>
-            )}
           </div>
         ) : null}
       </div>

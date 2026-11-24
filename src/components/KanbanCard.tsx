@@ -7,6 +7,7 @@ import { abrirWhatsAppSeloWpp, buildWhatsAppRedirectUrl, linkWhatsAppSeloLogo } 
 import { rotuloLocalLogo } from '../logoLocal'
 import { primeiraImagemPedido } from '../pedidoImagens'
 import { quantidadeExibidaComResumo, textoResumoPedido } from '../pedidoResumo'
+import { MARCAS_CONTROLE_QUALIDADE, type MarcaControleQualidade } from '../controleQualidade'
 import type { BoardState, OrderCard } from '../types'
 import { nomeSegmento, nomeVendedor } from '../types'
 import { EtapaPrazoBadge } from './EtapaPrazoBadge'
@@ -79,9 +80,20 @@ type Props = {
   highlighted?: boolean
   onEdit: () => void
   onArchive?: () => void
+  onMarcarControle?: (marca: MarcaControleQualidade) => void
+  onAprovarControle?: () => void
 }
 
-export function KanbanCard({ card, board, columnTitle, highlighted = false, onEdit, onArchive }: Props) {
+export function KanbanCard({
+  card,
+  board,
+  columnTitle,
+  highlighted = false,
+  onEdit,
+  onArchive,
+  onMarcarControle,
+  onAprovarControle,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
     data: { type: 'card', columnId: card.columnId },
@@ -359,6 +371,31 @@ export function KanbanCard({ card, board, columnTitle, highlighted = false, onEd
           </div>
         </>
       )}
+      {onMarcarControle || onAprovarControle ? (
+        <div
+          className="cq-acoes"
+          onPointerDown={pararArrasteCard}
+          onClick={pararArrasteCard}
+        >
+          <button
+            type="button"
+            className={`cq-acao cq-acao--reprovado${card.controleQualidade === 'reprovado' ? ' is-on' : ''}`}
+            onClick={() => onMarcarControle?.('reprovado')}
+          >
+            {MARCAS_CONTROLE_QUALIDADE.reprovado}
+          </button>
+          <button
+            type="button"
+            className={`cq-acao cq-acao--retrabalho${card.controleQualidade === 'retrabalho' ? ' is-on' : ''}`}
+            onClick={() => onMarcarControle?.('retrabalho')}
+          >
+            {MARCAS_CONTROLE_QUALIDADE.retrabalho}
+          </button>
+          <button type="button" className="cq-acao cq-acao--aprovado" onClick={() => onAprovarControle?.()}>
+            Aprovado
+          </button>
+        </div>
+      ) : null}
     </article>
   )
 }

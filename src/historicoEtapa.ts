@@ -31,7 +31,7 @@ export function inicioContagemEtapa(
   const historico = card.historicoEtapa ?? []
   for (let i = historico.length - 1; i >= 0; i--) {
     const entry = historico[i]
-    if (entry.tipo === 'logo') continue
+    if (entry.tipo === 'logo' || entry.tipo === 'qualidade') continue
     if (entry.columnId === card.columnId && entry.at) {
       return entry.at
     }
@@ -213,18 +213,22 @@ export function textoHistorico(entry: HistoricoEtapaEntry): string {
   switch (entry.tipo) {
     case 'logo':
       return entry.detalhe || 'Logo trocada'
+    case 'qualidade':
+      return entry.detalhe || 'Controle de qualidade atualizado'
     case 'criado':
       return 'Pedido criado'
     case 'avancou':
-      return `Avançou para ${entry.columnTitle}`
+      return entry.detalhe || `Avançou para ${entry.columnTitle}`
     case 'voltou':
       return entry.fromColumnTitle
         ? `Retornou de ${entry.fromColumnTitle} para ${entry.columnTitle}`
         : `Retornou para ${entry.columnTitle}`
     default:
-      return entry.fromColumnTitle
-        ? `Movido de ${entry.fromColumnTitle} para ${entry.columnTitle}`
-        : `Movido para ${entry.columnTitle}`
+      return entry.detalhe
+        ? entry.detalhe
+        : entry.fromColumnTitle
+          ? `Movido de ${entry.fromColumnTitle} para ${entry.columnTitle}`
+          : `Movido para ${entry.columnTitle}`
   }
 }
 

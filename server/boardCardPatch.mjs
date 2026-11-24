@@ -1,6 +1,12 @@
 import crypto from 'node:crypto'
 import { mergePedidoImagens, mergeObservacaoPedido, pedidoRevisionMs, mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
 import { anexarHistoricoLogo } from '../shared/logoHistorico.mjs'
+import {
+  COLUNA_CONTROLE_QUALIDADE_ID,
+  COLUNA_DISPONIVEIS_APLICACAO_ID,
+  marcaControleQualidade,
+  textoMarcaControleQualidade,
+} from '../shared/controleQualidade.mjs'
 
 function json(res, corsHeaders, status, body) {
   if (res.headersSent) return
@@ -90,6 +96,36 @@ export async function applyBoardCardPatch(payload, session, ctx) {
       autorRole: session?.role || '',
     })
 
+    const marca = Object.prototype.hasOwnProperty.call(payload, 'controleQualidade')
+      ? marcaControleQualidade(payload.controleQualidade)
+      : undefined
+    if (marca !== undefined) {
+      if (next.columnId !== COLUNA_CONTROLE_QUALIDADE_ID) {
+        return { status: 400, body: { error: 'Essa marca só vale dentro de Controle de qualidade.' } }
+      }
+      if (next.controleQualidade !== marca) {
+        const at = new Date().toISOString()
+        next = {
+          ...next,
+          controleQualidade: marca,
+          historicoEtapa: [
+            ...(next.historicoEtapa ?? []),
+            {
+              id: `cq-${cardId}-${marca}-${at}`,
+              tipo: 'qualidade',
+              columnId: next.columnId,
+              columnTitle: 'Controle de qualidade',
+              at,
+              detalhe: textoMarcaControleQualidade(marca),
+              autorNome: session?.user || '',
+              autorEmail: session?.email || '',
+              autorRole: session?.role || '',
+            },
+          ],
+        }
+      }
+    }
+
     let board = mergeBoardPreservingPedidos(existing, {
       ...existing,
       cards: existing.cards.map((c) => (c.id === cardId ? next : c)),
@@ -124,6 +160,7 @@ export async function applyBoardCardPatch(payload, session, ctx) {
         observacao: saved?.observacao ?? next.observacao,
         midiaAtualizadaEm: saved?.midiaAtualizadaEm ?? next.midiaAtualizadaEm,
         historicoEtapa: saved?.historicoEtapa ?? next.historicoEtapa ?? [],
+        controleQualidade: saved?.controleQualidade ?? next.controleQualidade ?? null,
       },
     }
   })
@@ -160,6 +197,8 @@ export async function applyBoardCardMove(payload, session, ctx) {
     const toIdx = columns.findIndex((c) => c?.id === columnId)
     const tipo = fromIdx < 0 || toIdx < 0 || fromIdx === toIdx ? 'movido' : toIdx > fromIdx ? 'avancou' : 'voltou'
     const fromTitle = columns.find((c) => c?.id === card.columnId)?.title || card.columnId
+    const aprovado =
+      card.columnId === COLUNA_CONTROLE_QUALIDADE_ID && columnId === COLUNA_DISPONIVEIS_APLICACAO_ID
     const entry = {
       id: crypto.randomUUID(),
       tipo,
@@ -168,6 +207,7 @@ export async function applyBoardCardMove(payload, session, ctx) {
       at: now,
       fromColumnId: card.columnId,
       fromColumnTitle: fromTitle,
+      ...(aprovado ? { detalhe: 'Aprovado no controle de qualidade. Disponível para aplicação.' } : {}),
       autorNome: session?.user || '',
       autorEmail: session?.email || '',
       autorRole: session?.role || '',
@@ -176,6 +216,7 @@ export async function applyBoardCardMove(payload, session, ctx) {
       ...card,
       columnId,
       etapaDesde: now,
+      controleQualidade: card.columnId === COLUNA_CONTROLE_QUALIDADE_ID ? null : card.controleQualidade ?? null,
       historicoEtapa: [...(card.historicoEtapa ?? []), entry],
     }
     const board = {

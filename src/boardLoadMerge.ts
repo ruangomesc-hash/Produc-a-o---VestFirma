@@ -59,6 +59,7 @@ export function mergeBoardLoggedInFromServer(
         etapaDesde: gravado.etapaDesde,
         historicoEtapa: gravado.historicoEtapa,
         arquivadoEm: gravado.arquivadoEm ?? null,
+        controleQualidade: gravado.controleQualidade ?? null,
         ...logosDoQuadroGravado(c, gravado),
       }
     }),

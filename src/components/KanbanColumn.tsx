@@ -2,6 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useState } from 'react'
 import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID, COLUNA_PREVIEW_EM_ANDAMENTO_ID } from '../defaultBoard'
 import { COLUNA_CANCELADOS_EXPIRADOS_ID, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
+import { COLUNA_CONTROLE_QUALIDADE_ID, textoMarcaControleQualidade, type MarcaControleQualidade } from '../controleQualidade'
 import { etapaCanceladosExpirados, etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import type { BoardState, Column as ColumnType, OrderCard } from '../types'
@@ -18,6 +19,8 @@ type Props = {
   onRequestArchiveCard: (card: OrderCard) => void
   canArchivePedidos?: boolean
   onDeleteColumn: (columnId: string, deleteCards: boolean) => void
+  onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
+  onAprovarControle?: (cardId: string) => void
   highlightPedidoId?: string | null
 }
 
@@ -31,6 +34,8 @@ export function KanbanColumn({
   onRequestArchiveCard,
   canArchivePedidos = false,
   onDeleteColumn,
+  onMarcarControle,
+  onAprovarControle,
   highlightPedidoId = null,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
@@ -49,15 +54,56 @@ export function KanbanColumn({
     column.id === COLUNA_CANCELADOS_EXPIRADOS_ID || etapaCanceladosExpirados(column.id, column.title)
   const resumoPrazos = resumirPrazosColuna(column.id, column.title, cards, agora)
 
+  const colunaQualidade = column.id === COLUNA_CONTROLE_QUALIDADE_ID
+  const gruposQualidade = colunaQualidade
+    ? [
+        {
+          id: 'analise',
+          titulo: 'Em análise',
+          lista: cards.filter((card) => !card.controleQualidade),
+        },
+        {
+          id: 'reprovado',
+          titulo: textoMarcaControleQualidade('reprovado'),
+          lista: cards.filter((card) => card.controleQualidade === 'reprovado'),
+        },
+        {
+          id: 'retrabalho',
+          titulo: textoMarcaControleQualidade('retrabalho'),
+          lista: cards.filter((card) => card.controleQualidade === 'retrabalho'),
+        },
+      ]
+    : null
+
   const destinoTitulo = board.columns.find((c) => c.id !== column.id)?.title ?? 'a primeira etapa'
   const deleteMessage =
     cards.length > 0
       ? `A etapa “${column.title}” será removida. ${cards.length} pedido${cards.length === 1 ? '' : 's'} será${cards.length === 1 ? '' : 'ão'} movido${cards.length === 1 ? '' : 's'} para “${destinoTitulo}”.`
       : `A etapa “${column.title}” será removida do quadro.`
 
+  const renderCard = (card: OrderCard) => (
+    <KanbanCard
+      key={card.id}
+      card={card}
+      board={board}
+      columnTitle={column.title}
+      highlighted={highlightPedidoId === card.id}
+      onEdit={() => onEditCard(card)}
+      onArchive={canArchivePedidos ? () => onRequestArchiveCard(card) : undefined}
+      onMarcarControle={
+        colunaQualidade && onMarcarControle
+          ? (marca) => onMarcarControle(card.id, marca)
+          : undefined
+      }
+      onAprovarControle={
+        colunaQualidade && onAprovarControle ? () => onAprovarControle(card.id) : undefined
+      }
+    />
+  )
+
   return (
     <section
-      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${colunaCancelados ? 'column-cancelados-expirados' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''} ${column.id === COLUNA_PREVIEW_EM_ANDAMENTO_ID ? 'column-preview-andamento' : ''}`}
+      className={`kanban-column ${isOver ? 'over' : ''} ${colunaLogistica ? 'column-logistica' : ''} ${colunaEnviado ? 'column-pedido-enviado' : ''} ${colunaCancelados ? 'column-cancelados-expirados' : ''} ${colunaQualidade ? 'column-controle-qualidade' : ''} ${column.id === COLUNA_PEDIDO_FEITO_ID ? 'column-pedido-feito' : ''} ${column.id === COLUNA_PREVIEW_EM_ANDAMENTO_ID ? 'column-preview-andamento' : ''}`}
     >
       <ConfirmModal
         open={confirmDeleteOpen}
@@ -75,7 +121,9 @@ export function KanbanColumn({
           {colunaEnviado && <span className="column-enviado-badge">Concluídos</span>}
           {colunaCancelados && <span className="column-cancelados-badge">Cancelados / expirados</span>}
           <h2>{column.title}</h2>
-          {colunaLogistica ? (
+          {colunaQualidade ? (
+            <span className="column-count">Aprovado segue para Disponíveis para aplicação</span>
+          ) : colunaLogistica ? (
             <span className="column-count">{cards.length} pedidos aguardando</span>
           ) : colunaEnviado ? (
             <span className="column-count">{cards.length} enviado{cards.length === 1 ? '' : 's'}</span>
@@ -111,19 +159,17 @@ export function KanbanColumn({
       </header>
 
       <div ref={setNodeRef} className="column-cards">
-        {cards.map((card) => (
-          <KanbanCard
-            key={card.id}
-            card={card}
-            board={board}
-            columnTitle={column.title}
-            highlighted={highlightPedidoId === card.id}
-            onEdit={() => onEditCard(card)}
-            onArchive={
-              canArchivePedidos ? () => onRequestArchiveCard(card) : undefined
-            }
-          />
-        ))}
+        {gruposQualidade
+          ? gruposQualidade.map((grupo) => (
+              <section key={grupo.id} className="cq-grupo">
+                <h3 className="cq-grupo-titulo">
+                  {grupo.titulo}
+                  <span>{grupo.lista.length}</span>
+                </h3>
+                {grupo.lista.map(renderCard)}
+              </section>
+            ))
+          : cards.map(renderCard)}
       </div>
 
       {column.id === COLUNA_NOVO_PEDIDO_ID && (

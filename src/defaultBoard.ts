@@ -1,5 +1,9 @@
 import type { BoardState } from './types'
 import { mesclarSegmentos } from './segmentosEmpresa'
+import {
+  COLUNA_CONTROLE_QUALIDADE_ID,
+  COLUNA_CONTROLE_QUALIDADE_TITLE,
+} from './controleQualidade'
 
 const col = (id: string, title: string) => ({ id, title })
 
@@ -26,6 +30,7 @@ export const DEFAULT_BOARD: BoardState = {
     col(COLUNA_NOVO_PEDIDO_ID, 'Logos liberadas para produção'),
     col('logos-producao', 'Logos em produção'),
     col('logos-prontas', 'Logos prontas'),
+    col(COLUNA_CONTROLE_QUALIDADE_ID, COLUNA_CONTROLE_QUALIDADE_TITLE),
     col('disponiveis-aplicacao', 'Disponíveis para aplicação'),
     col('em-aplicacao', 'Em aplicação'),
     col('liberado-logistica', 'Liberado para logística'),

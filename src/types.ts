@@ -1,4 +1,4 @@
-import type { LogoLocal } from './logoLocal'
+import type { MarcaControleQualidade } from './controleQualidade'
 import type { PedidoItemProduto, TipoProdutoId } from './tiposProduto'
 import type { UserRole } from './userRoles'
 
@@ -10,7 +10,7 @@ export type PedidoLinhaResumo = {
 
 export type SalesChannel = 'whatsapp' | 'ecommerce'
 
-export type HistoricoEtapaTipo = 'criado' | 'avancou' | 'voltou' | 'movido' | 'logo'
+export type HistoricoEtapaTipo = 'criado' | 'avancou' | 'voltou' | 'movido' | 'logo' | 'qualidade'
 
 export interface HistoricoEtapaEntry {
   id: string
@@ -93,6 +93,8 @@ export interface OrderCard {
   comentarios: PedidoComentario[]
   /** Preenchido ao “arquivar” — pedido some do kanban mas permanece no JSON. */
   arquivadoEm?: string | null
+  /** Marca dentro de Controle de qualidade. Aprovado sai da coluna e não fica gravado aqui. */
+  controleQualidade?: MarcaControleQualidade | null
   /** Pedido criado pela loja Shopify (webhook). */
   origem?: 'shopify' | 'manual'
   shopifyOrderId?: string

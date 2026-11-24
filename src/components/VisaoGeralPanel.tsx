@@ -36,6 +36,7 @@ const TEMA_POR_COLUNA: Record<string, string> = {
   'logos-recebidas': 'visao-card--recebidas',
   'logos-producao': 'visao-card--producao',
   'logos-prontas': 'visao-card--prontas',
+  'controle-qualidade': 'visao-card--qualidade',
   'disponiveis-aplicacao': 'visao-card--disponiveis',
   'em-aplicacao': 'visao-card--aplicacao',
   'liberado-logistica': 'visao-card--logistica visao-card--wide',

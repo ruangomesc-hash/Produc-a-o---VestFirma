@@ -3,6 +3,7 @@ import path from 'node:path'
 import { mergeBoardShell } from '../shared/boardVendedoresMerge.mjs'
 import { dedupeBoardCards } from '../shared/dedupeBoardCards.mjs'
 import { mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
+import { aplicarControleQualidade } from '../shared/controleQualidade.mjs'
 
 const MAX_BACKUPS = 48
 
@@ -28,6 +29,7 @@ function indiceColuna(columns, columnId) {
 function ultimaMudancaEtapaMs(card, columnId) {
   let max = 0
   for (const entry of card?.historicoEtapa ?? []) {
+    if (entry?.tipo === 'logo' || entry?.tipo === 'qualidade') continue
     if (entry?.columnId !== columnId || !entry.at) continue
     if (entry.tipo === 'criado' && columnId !== card.columnId) continue
     const t = Date.parse(entry.at)
@@ -240,7 +242,8 @@ export function withBoardWriteLock(fn) {
 
 /** Grava board.json com arquivo temporário único — evita corromper no comentário + save juntos. */
 export async function writeBoardAtomic(DATA_FILE, board) {
-  const out = typeof board === 'string' ? board : JSON.stringify(board)
+  const payload = quadroComControleQualidade(board)
+  const out = typeof payload === 'string' ? payload : JSON.stringify(payload)
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
   const tmp = `${DATA_FILE}.${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`
   try {
@@ -259,5 +262,22 @@ export async function writeBoardAtomic(DATA_FILE, board) {
     }
   }
   return out
+}
+
+/** Toda gravação do quadro tira logo solicitada e leva esses pedidos para Controle de qualidade. */
+function quadroComControleQualidade(board) {
+  if (typeof board === 'string') {
+    try {
+      return JSON.stringify(quadroComControleQualidade(JSON.parse(board)))
+    } catch {
+      return board
+    }
+  }
+  if (!board || typeof board !== 'object' || !Array.isArray(board.cards) || !Array.isArray(board.columns)) {
+    return board
+  }
+  const aplicado = aplicarControleQualidade(board)
+  if (aplicado.board.cards.length < board.cards.length) return board
+  return aplicado.board
 }
 

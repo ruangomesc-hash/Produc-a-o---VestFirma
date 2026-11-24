@@ -3,6 +3,7 @@ import { DEFAULT_BOARD } from './defaultBoard'
 import { normalizarLogoLocal } from './logoLocal'
 import { garantirHistoricoCard } from './historicoEtapa'
 import { encontrarOuCriarSegmento, mesclarSegmentos } from './segmentosEmpresa'
+import { aplicarControleQualidade, marcaControleQualidade } from './controleQualidade'
 import {
   fetchRemoteBoard,
   isRemoteSyncEnabled,
@@ -114,6 +115,7 @@ function normalizeCard(
     historicoEtapa: raw.historicoEtapa ?? [],
     comentarios: Array.isArray(raw.comentarios) ? raw.comentarios : [],
     arquivadoEm: raw.arquivadoEm ?? null,
+    controleQualidade: marcaControleQualidade(raw.controleQualidade),
     origem: raw.origem === 'shopify' || raw.shopifyOrderId ? 'shopify' : raw.origem,
     shopifyOrderId: raw.shopifyOrderId ? String(raw.shopifyOrderId) : undefined,
     shopifyOrderName: raw.shopifyOrderName ? String(raw.shopifyOrderName) : undefined,
@@ -142,14 +144,14 @@ export function normalizeBoard(raw: BoardState | LegacyBoardRaw | undefined | nu
     normalizeCard(card as LegacyCard, vendedores, segmentos),
   )
 
-  const base: BoardState = {
+  const base: BoardState = aplicarControleQualidade({
     columns: ensureBoardColumns(raw.columns),
     cards,
     vendedores,
     segmentos,
-  }
+  }).board
 
-  cards = cards.map((c) => garantirHistoricoCard(c, base))
+  cards = base.cards.map((c) => garantirHistoricoCard(c, base))
   cards = cards.map((c) => {
     const columnId = resolveCardColumnId({ ...base, cards }, c)
     return columnId === c.columnId ? c : { ...c, columnId }

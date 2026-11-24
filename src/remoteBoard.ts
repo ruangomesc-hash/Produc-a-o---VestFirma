@@ -39,6 +39,7 @@ export type PedidoMidiaPatch = {
   comentarios?: PedidoComentario[]
   midiaAtualizadaEm?: string
   historicoEtapa?: HistoricoEtapaEntry[]
+  controleQualidade?: 'reprovado' | 'retrabalho' | null
 }
 
 async function postPedidoPatch(
@@ -81,8 +82,21 @@ async function postPedidoPatch(
       observacao: data.observacao,
       midiaAtualizadaEm: data.midiaAtualizadaEm,
       historicoEtapa: Array.isArray(data.historicoEtapa) ? data.historicoEtapa : undefined,
+      controleQualidade:
+        data.controleQualidade === 'reprovado' || data.controleQualidade === 'retrabalho'
+          ? data.controleQualidade
+          : data.controleQualidade === null
+            ? null
+            : undefined,
     },
   }
+}
+
+export async function postControleQualidade(
+  cardId: string,
+  marca: 'reprovado' | 'retrabalho',
+) {
+  return postPedidoCampos(cardId, { controleQualidade: marca })
 }
 
 export async function postMoverPedido(

@@ -40,6 +40,7 @@ const {
 const { dedupeBoardCards } = await import('../shared/dedupeBoardCards.mjs')
 const { addBoardLiveClient } = await import('./boardLive.mjs')
 const { ensureBoardColumns } = await import('../shared/boardVendedoresMerge.mjs')
+const { aplicarControleQualidade } = await import('../shared/controleQualidade.mjs')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
@@ -92,10 +93,29 @@ async function handleBoardApi(req, res) {
     const DATA_FILE = boardFilePath()
     try {
       const data = await readBoardWithRecovery(DATA_FILE)
-      const withCols = data
-        ? { ...data, columns: ensureBoardColumns(data.columns) }
-        : data
-      const board = withCols ? dedupeBoardCards(withCols) : withCols
+      const preparado = data
+        ? aplicarControleQualidade(
+            dedupeBoardCards({ ...data, columns: ensureBoardColumns(data.columns) }),
+          )
+        : null
+      if (preparado?.changed && preparado.board.cards.length >= (data?.cards?.length || 0)) {
+        await withBoardWriteLock(async () => {
+          const latest = (await readExistingBoard(DATA_FILE)) ?? data
+          const deNovo = aplicarControleQualidade(
+            dedupeBoardCards({ ...latest, columns: ensureBoardColumns(latest.columns) }),
+          )
+          if (!deNovo.changed) return
+          if (deNovo.board.cards.length < (latest?.cards?.length || 0)) return
+          await backupBoardBeforeWrite(DATA_FILE)
+          await writeBoardAtomic(DATA_FILE, deNovo.board)
+        })
+      }
+      const gravado = preparado?.changed ? await readExistingBoard(DATA_FILE) : data
+      const board = gravado
+        ? aplicarControleQualidade(
+            dedupeBoardCards({ ...gravado, columns: ensureBoardColumns(gravado.columns) }),
+          ).board
+        : gravado
       const raw = board ? JSON.stringify(board) : 'null'
       res.writeHead(200, {
         ...corsHeaders(),
