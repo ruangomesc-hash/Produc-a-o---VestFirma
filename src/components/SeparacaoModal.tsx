@@ -73,6 +73,7 @@ export function SeparacaoModal({ open, board, onClose, onImpressa }: Props) {
   const [copiado, setCopiado] = useState(false)
   const [pacote, setPacote] = useState<OrderCard[] | null>(null)
   const [modo, setModo] = useState<ModoImpressao>('pedidos')
+  const [quando, setQuando] = useState('')
   const [imprimirAoMontar, setImprimirAoMontar] = useState(false)
   const jaAbriu = useRef(false)
 
@@ -98,6 +99,7 @@ export function SeparacaoModal({ open, board, onClose, onImpressa }: Props) {
     setCopiado(false)
     setPacote(null)
     setModo('pedidos')
+    setQuando('')
   }, [open, board.columns])
 
   useEffect(() => {
@@ -111,7 +113,7 @@ export function SeparacaoModal({ open, board, onClose, onImpressa }: Props) {
 
   if (!open) {
     return pacote?.length && coluna ? (
-      <FolhasImpressas board={board} etapa={coluna.title} pedidos={pacote} resumo={texto} modo={modo} />
+      <FolhasImpressas board={board} etapa={coluna.title} pedidos={pacote} resumo={texto} modo={modo} quando={quando} />
     ) : null
   }
   if (!coluna) return null
@@ -124,12 +126,13 @@ export function SeparacaoModal({ open, board, onClose, onImpressa }: Props) {
 
   const gerar = (lista: OrderCard[], proximoModo: ModoImpressao) => {
     if (!lista.length) return
-    const quando = quandoAgora()
+    const agora = quandoAgora()
     const pedidosTexto = lista.map((card) => pedidoParaTexto(card))
     const corpo =
       proximoModo === 'onda'
-        ? textoOndaSeparacao({ quando, etapa: coluna.title, pedidos: pedidosTexto })
-        : textoListaSeparacao({ quando, etapa: coluna.title, pedidos: pedidosTexto })
+        ? textoOndaSeparacao({ quando: agora, etapa: coluna.title, pedidos: pedidosTexto })
+        : textoListaSeparacao({ quando: agora, etapa: coluna.title, pedidos: pedidosTexto })
+    setQuando(agora)
     setTexto(corpo)
     setCopiado(false)
     setModo(proximoModo)
@@ -266,7 +269,7 @@ export function SeparacaoModal({ open, board, onClose, onImpressa }: Props) {
         </div>
       </div>
       {pacote?.length ? (
-        <FolhasImpressas board={board} etapa={coluna.title} pedidos={pacote} resumo={texto} modo={modo} />
+        <FolhasImpressas board={board} etapa={coluna.title} pedidos={pacote} resumo={texto} modo={modo} quando={quando} />
       ) : null}
     </>
   )
@@ -278,25 +281,29 @@ function FolhasImpressas({
   pedidos,
   resumo,
   modo,
+  quando,
 }: {
   board: BoardState
   etapa: string
   pedidos: OrderCard[]
   resumo: string
   modo: ModoImpressao
+  quando: string
 }) {
   const pecas = resumirPecasSeparacao(pedidos.map((card) => pedidoParaTexto(card)))
   const folha = (
     <div className="separacao-print" id="separacao-print" aria-hidden="true">
       {modo === 'onda' ? (
         <section className="separacao-print-onda">
-          <h1>Separação em ondas</h1>
+          <h1>
+            Separação em ondas, <span className="separacao-print-quando">{quando}</span>
+          </h1>
           <p>{etapa}</p>
           <p>
             {pedidos.length} pedido{pedidos.length === 1 ? '' : 's'} · {pecas.reduce((soma, item) => soma + item.quantidade, 0)} peças
           </p>
           {pecas.length ? (
-            <table>
+            <table className="separacao-print-onda-lista">
               <thead>
                 <tr>
                   <th>Produto</th>

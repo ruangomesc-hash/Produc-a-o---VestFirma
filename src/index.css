@@ -1259,10 +1259,10 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .board-scroll.board-scroll--fluxo {
-  flex: 1 0 100%;
-  width: 100%;
+  flex: 1 0 auto;
+  width: max-content;
   min-width: 100%;
-  max-width: 100%;
+  max-width: none;
   overflow-x: hidden;
   overflow-y: hidden;
   padding: 0;
@@ -1270,9 +1270,9 @@ body.vestfirma-tv .pwa-install-banner {
 
 .board-columns--fluxo {
   flex: 1 1 auto;
-  width: 100%;
+  width: max-content;
   min-width: 100%;
-  max-width: 100%;
+  max-width: none;
   height: 100%;
   min-height: 0;
   gap: calc(2px + 1mm);
@@ -1282,9 +1282,10 @@ body.vestfirma-tv .pwa-install-banner {
 .board-scroll--fluxo .kanban-column.column-logistica,
 .board-scroll--fluxo .kanban-column.column-pedido-feito,
 .board-scroll--fluxo .kanban-column.column-preview-andamento {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 1 var(--column-width);
+  min-width: var(--column-width);
   width: auto;
+  max-width: none;
   height: 100%;
   max-height: none;
 }
@@ -1489,9 +1490,15 @@ body.vestfirma-tv .pwa-install-banner {
 .board-scroll--laterais .kanban-column,
 .board-scroll--concluidos .kanban-column,
 .board-scroll--cancelados .kanban-column {
-  flex: 0 0 calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8));
-  width: calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8));
-  min-width: 0;
+  flex: 0 0 max(
+    var(--column-width),
+    calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8))
+  );
+  width: max(
+    var(--column-width),
+    calc((100cqi - (var(--fluxo-colunas, 8) - 1) * var(--coluna-gap, 6px)) / var(--fluxo-colunas, 8))
+  );
+  min-width: var(--column-width);
   height: 100%;
   max-height: none;
 }
@@ -2195,6 +2202,10 @@ body.vestfirma-tv .pwa-install-banner {
   display: none;
 }
 
+@page {
+  margin: 0;
+}
+
 @media print {
   html,
   body {
@@ -2220,7 +2231,22 @@ body.vestfirma-tv .pwa-install-banner {
   .separacao-print-pedido {
     break-after: page;
     page-break-after: always;
-    padding: 0 8mm 8mm;
+  }
+
+  .separacao-print-capa,
+  .separacao-print-pedido,
+  .separacao-print-onda {
+    padding: 16mm 14mm 18mm;
+  }
+
+  .separacao-print-onda h1 {
+    font-size: 18pt;
+    line-height: 1.15;
+  }
+
+  .separacao-print-quando {
+    font-size: 28pt;
+    font-weight: 700;
   }
 
   .separacao-print-pedido:last-child {
@@ -2256,21 +2282,21 @@ body.vestfirma-tv .pwa-install-banner {
     margin: 0;
   }
 
-  .separacao-print-onda table {
+  .separacao-print-onda-lista {
     width: 100%;
     border-collapse: collapse;
     font-size: 14pt;
   }
 
-  .separacao-print-onda th,
-  .separacao-print-onda td {
+  .separacao-print-onda-lista th,
+  .separacao-print-onda-lista td {
     border-bottom: 1px solid #ccc;
     padding: 0.4rem 0.2rem;
     text-align: left;
   }
 
-  .separacao-print-onda td:last-child,
-  .separacao-print-onda th:last-child {
+  .separacao-print-onda-lista td:last-child,
+  .separacao-print-onda-lista th:last-child {
     text-align: right;
     width: 8rem;
   }
