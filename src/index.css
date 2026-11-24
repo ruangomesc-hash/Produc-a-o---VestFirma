@@ -2256,6 +2256,25 @@ body.vestfirma-tv .pwa-install-banner {
     margin: 0;
   }
 
+  .separacao-print-onda table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14pt;
+  }
+
+  .separacao-print-onda th,
+  .separacao-print-onda td {
+    border-bottom: 1px solid #ccc;
+    padding: 0.4rem 0.2rem;
+    text-align: left;
+  }
+
+  .separacao-print-onda td:last-child,
+  .separacao-print-onda th:last-child {
+    text-align: right;
+    width: 8rem;
+  }
+
   .separacao-print-logos {
     display: flex;
     flex-wrap: wrap;

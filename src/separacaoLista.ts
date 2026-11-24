@@ -21,13 +21,32 @@ export function resumirPecasSeparacao(pedidos: PedidoSeparacaoTexto[]): PecaSepa
       const titulo = String(item.titulo || '').trim()
       if (!titulo || quantidade <= 0) continue
       const detalhe = String(item.detalhe || '').trim()
-      const chave = `${titulo}\n${detalhe}`
+      const chave = `${titulo.toLocaleLowerCase('pt-BR')}\n${detalhe.toLocaleLowerCase('pt-BR')}`
       const atual = mapa.get(chave) || { titulo, detalhe, quantidade: 0 }
       atual.quantidade += quantidade
       mapa.set(chave, atual)
     }
   }
-  return [...mapa.values()].sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'))
+  return [...mapa.values()].sort((a, b) => {
+    const nome = a.titulo.localeCompare(b.titulo, 'pt-BR')
+    if (nome !== 0) return nome
+    return (a.detalhe || '').localeCompare(b.detalhe || '', 'pt-BR')
+  })
+}
+
+export function textoOndaSeparacao(input: {
+  quando: string
+  etapa?: string
+  pedidos: PedidoSeparacaoTexto[]
+}): string {
+  const pecas = resumirPecasSeparacao(input.pedidos)
+  const linhas = ['*Separação em ondas — VestFirma*', input.quando]
+  if (input.etapa) linhas.push(`Etapa: ${input.etapa}`)
+  linhas.push(`${input.pedidos.length} pedido${input.pedidos.length === 1 ? '' : 's'}`)
+  linhas.push('')
+  if (!pecas.length) linhas.push('• Sem peças informadas nos pedidos')
+  else linhas.push(...pecas.map((item) => `• ${linhaTexto(item)}`))
+  return linhas.join('\n')
 }
 
 export function textoListaSeparacao(input: {

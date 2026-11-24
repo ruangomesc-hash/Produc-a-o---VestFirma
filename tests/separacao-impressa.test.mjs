@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { mergeOrderCardFields } from '../shared/mergeOrderCard.mjs'
-import { resumirPecasSeparacao, textoListaSeparacao } from '../shared/separacaoLista.mjs'
+import { resumirPecasSeparacao, textoListaSeparacao, textoOndaSeparacao } from '../shared/separacaoLista.mjs'
 
 function card(extra = {}) {
   return {
@@ -65,4 +65,20 @@ test('o resumo junta peças iguais para o WhatsApp', () => {
   assert.match(texto, /\*#10\* — Escola A/)
   assert.match(texto, /Obs: Sem manga/)
   assert.match(texto, /Disponíveis para aplicação/)
+})
+
+test('separação em ondas soma o mesmo produto e não repete o pedido', () => {
+  const texto = textoOndaSeparacao({
+    quando: '24/11/2026 17:10',
+    etapa: 'Logos prontas',
+    pedidos: [
+      { numero: '10', cliente: 'A', linhas: [{ titulo: 'Corta-vento', quantidade: 2, detalhe: 'G' }] },
+      { numero: '11', cliente: 'B', linhas: [{ titulo: 'Corta-vento', quantidade: 2, detalhe: 'G' }] },
+      { numero: '12', cliente: 'C', linhas: [{ titulo: 'corta-vento', quantidade: 16, detalhe: 'g' }] },
+    ],
+  })
+  assert.match(texto, /Separação em ondas/)
+  assert.match(texto, /20× Corta-vento \(G\)/)
+  assert.doesNotMatch(texto, /#10/)
+  assert.match(texto, /Logos prontas/)
 })
