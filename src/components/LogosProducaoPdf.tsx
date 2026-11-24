@@ -27,7 +27,8 @@ function QuadroImagem({ src, alt, vazio }: { src: string; alt: string; vazio: Re
 }
 
 export function LogosProducaoPdf({ card, onClose }: { card: OrderCard; onClose: () => void }) {
-  const contagem = contarLogosDoPedido(card.localLogo, quantidadeExibidaComResumo(card))
+  const pecas = quantidadeExibidaComResumo(card)
+  const contagem = contarLogosDoPedido(card.localLogo, pecas)
   const previews = (card.previewAprovacaoCliente ?? []).map((src) => src.trim()).filter(Boolean)
   const artes = (card.logoProntaImpressao ?? []).map((src) => src.trim()).filter(Boolean)
   const observacao = card.observacao?.trim() ?? ''
@@ -92,6 +93,9 @@ export function LogosProducaoPdf({ card, onClose }: { card: OrderCard; onClose: 
             <div className="logos-pdf-dado">
               <label>PEDIDO</label>
               <span className="logos-pdf-valor">#{numero}</span>
+              <span className="logos-pdf-pecas">
+                Quantidade de peças: {pecas}
+              </span>
             </div>
             <div className="logos-pdf-dado">
               <label>DATA DO PEDIDO</label>

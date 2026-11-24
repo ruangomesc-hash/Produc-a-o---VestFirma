@@ -2435,6 +2435,15 @@ body.vestfirma-tv .pwa-install-banner {
   overflow-wrap: anywhere;
 }
 
+.logos-pdf-pecas {
+  display: block;
+  margin-top: 2.5mm;
+  color: #141414;
+  font-size: 11pt;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .logos-pdf-quantidades {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

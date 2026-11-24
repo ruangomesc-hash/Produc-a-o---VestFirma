@@ -103,7 +103,7 @@ export function KanbanColumn({
         colunaQualidade && onAprovarControle ? () => onAprovarControle(card.id) : undefined
       }
       onGerarPdfLogo={
-        column.id === 'logos-producao' && onGerarPdfLogo ? () => onGerarPdfLogo(card) : undefined
+        column.id === COLUNA_NOVO_PEDIDO_ID && onGerarPdfLogo ? () => onGerarPdfLogo(card) : undefined
       }
     />
   )
