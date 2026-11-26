@@ -14,42 +14,40 @@ function dataBr(iso: string) {
   return `${dia}/${mes}/${ano}`
 }
 
+const CORES = ['#f5c400', '#38bdf8', '#fb7185', '#4ade80', '#c084fc', '#fb923c', '#f9a8d4', '#a3e635']
+
 function pecas(n: number) {
   return `${n} ${n === 1 ? 'peça' : 'peças'}`
 }
 
-function TabelaProduto({ produto }: { produto: ProdutoFinanceiro }) {
+function CartaoProduto({ produto }: { produto: ProdutoFinanceiro }) {
   return (
     <article className="financeiro-produto">
       <header className="financeiro-produto-topo">
         <h2>{produto.nome}</h2>
-        <p>
-          <strong>{pecas(produto.total)}</strong>
-          <span>
-            {produto.pedidos} {produto.pedidos === 1 ? 'pedido' : 'pedidos'}
-          </span>
-        </p>
+        <p className="financeiro-numero">{produto.total}</p>
       </header>
-      <table className="financeiro-tamanhos">
-        <thead>
-          <tr>
-            <th>Tamanho</th>
-            <th>Quantidade</th>
-          </tr>
-        </thead>
-        <tbody>
-          {produto.tamanhos.map((item) => (
-            <tr key={item.tamanho}>
-              <td>{item.tamanho}</td>
-              <td>{item.quantidade}</td>
-            </tr>
+      <p className="financeiro-meta">
+        {pecas(produto.total)} · {produto.pedidos} {produto.pedidos === 1 ? 'pedido' : 'pedidos'}
+      </p>
+      {produto.tamanhos.length > 1 ? (
+        <div className="financeiro-barra" aria-hidden="true">
+          {produto.tamanhos.map((item, index) => (
+            <span
+              key={item.tamanho}
+              style={{ width: `${(item.quantidade / produto.total) * 100}%`, background: CORES[index % CORES.length] }}
+            />
           ))}
-          <tr className="financeiro-geral">
-            <th>Geral</th>
-            <td>{produto.total}</td>
-          </tr>
-        </tbody>
-      </table>
+        </div>
+      ) : null}
+      <ul className="financeiro-pills">
+        {produto.tamanhos.map((item, index) => (
+          <li key={item.tamanho} style={{ borderColor: CORES[index % CORES.length] }}>
+            <strong>{item.tamanho}</strong>
+            <span>{item.quantidade}</span>
+          </li>
+        ))}
+      </ul>
     </article>
   )
 }
@@ -76,7 +74,7 @@ export function FinanceiroPanel({ board }: { board: BoardState }) {
         <div>
           <h1>Financeiro</h1>
           <p>
-            Peças usadas de {dataBr(de)} até {dataBr(ate)}. O mesmo nome entra junto: corta-vento é um produto, com cada tamanho e o geral.
+            Peças usadas de {dataBr(de)} até {dataBr(ate)}. Links de venda diferentes entram no mesmo produto. Corta-vento é um só, com os tamanhos e o total.
           </p>
         </div>
         <div className="financeiro-totais">
@@ -123,7 +121,7 @@ export function FinanceiroPanel({ board }: { board: BoardState }) {
       ) : (
         <div className="financeiro-lista">
           {resumo.usados.map((produto) => (
-            <TabelaProduto key={produto.nome} produto={produto} />
+            <CartaoProduto key={produto.nome} produto={produto} />
           ))}
         </div>
       )}
@@ -138,7 +136,7 @@ export function FinanceiroPanel({ board }: { board: BoardState }) {
         {resumo.fora.length > 0 ? (
           <div className="financeiro-lista">
             {resumo.fora.map((produto) => (
-              <TabelaProduto key={`fora-${produto.nome}`} produto={produto} />
+              <CartaoProduto key={`fora-${produto.nome}`} produto={produto} />
             ))}
           </div>
         ) : null}

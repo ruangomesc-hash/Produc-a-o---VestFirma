@@ -22,15 +22,15 @@ test('corta-vento é um produto só, com tamanho e o geral', () => {
     [
       card({
         id: 'a',
-        linhasPedido: [{ titulo: 'Corta-vento', quantidade: 2, detalhe: 'G' }],
+        linhasPedido: [{ titulo: 'Corta-vento Personalizado Time Azul', quantidade: 2, detalhe: 'G' }],
       }),
       card({
         id: 'b',
-        linhasPedido: [{ titulo: 'corta vento', quantidade: 16, detalhe: 'g' }],
+        linhasPedido: [{ titulo: 'Link corta venda feminino', quantidade: 16, detalhe: 'g' }],
       }),
       card({
         id: 'c',
-        linhasPedido: [{ titulo: 'Corta-vento', quantidade: 4, detalhe: 'M' }],
+        linhasPedido: [{ titulo: 'Corta Vento Masculino', quantidade: 4, detalhe: 'M' }],
       }),
     ],
     '2026-11-01',
@@ -56,8 +56,9 @@ test('camiseta não se mistura com corta-vento e o tamanho pode vir no nome', ()
     [
       card({
         linhasPedido: [
-          { titulo: 'Camiseta G', quantidade: 3 },
-          { titulo: 'Corta-vento', quantidade: 1, detalhe: 'Estampa frente / GG' },
+          { titulo: 'Camiseta Personalizada Escola Municipal G', quantidade: 3 },
+          { titulo: 'Camisa Polo Time do Bairro', quantidade: 2, detalhe: 'M' },
+          { titulo: 'Corta-vento Empresa Norte', quantidade: 1, detalhe: 'Estampa frente / GG' },
         ],
       }),
     ],
@@ -65,9 +66,10 @@ test('camiseta não se mistura com corta-vento e o tamanho pode vir no nome', ()
     '2026-11-30',
   )
   assert.deepEqual(
-    resumo.usados.map((item) => [item.nome, item.total, item.tamanhos[0].tamanho]),
+    resumo.usados.map((item) => [item.nome, item.total, item.tamanhos.map((tamanho) => tamanho.tamanho).join(',')]),
     [
       ['Camiseta', 3, 'G'],
+      ['Camisa polo', 2, 'M'],
       ['Corta-vento', 1, 'GG'],
     ],
   )

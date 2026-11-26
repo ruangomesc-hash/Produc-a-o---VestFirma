@@ -73,6 +73,31 @@ function chaveProduto(nome: string) {
   return semAcento(nome).replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+const FAMILIAS = [
+  { nome: 'Corta-vento', termos: ['corta vento', 'corta venda', 'cortavento', 'cortavenda'] },
+  { nome: 'Baby look', termos: ['baby look', 'babylook'] },
+  { nome: 'Camisa plus size', termos: ['plus size', 'plussize'] },
+  { nome: 'Camisa manga longa', termos: ['manga longa'] },
+  { nome: 'Camisa dry fit', termos: ['dry fit', 'dryfit'] },
+  { nome: 'Camisa oversize', termos: ['oversize', 'oversized'] },
+  { nome: 'Camisa polo', termos: ['polo'] },
+  { nome: 'Camisa algodão 100%', termos: ['algodao'] },
+  { nome: 'Infantil', termos: ['infantil'] },
+  { nome: 'Camiseta', termos: ['camiseta', 'camisa'] },
+]
+
+/** O link de venda muda o nome. O produto é a família que aparece nele, como corta-vento. */
+export function familiaDoNome(nome: string) {
+  const chave = ` ${chaveProduto(nome)} `
+  for (const familia of FAMILIAS) {
+    for (const termo of familia.termos) {
+      const alvo = ` ${chaveProduto(termo)} `
+      if (alvo.trim() && chave.includes(alvo)) return familia.nome
+    }
+  }
+  return null
+}
+
 function tokenTamanho(token: string) {
   const texto = semAcento(token).replace(/[.\s]+/g, '').trim()
   if (!texto) return null
@@ -206,13 +231,14 @@ function somarLinha(
   linha: { titulo: string; quantidade: number; detalhe: string },
 ) {
   const separado = separarProdutoTamanho(linha.titulo, linha.detalhe)
-  const chave = chaveProduto(separado.nome) || 'sem produto informado'
+  const nome = familiaDoNome(separado.nome) || separado.nome
+  const chave = chaveProduto(nome) || 'sem produto informado'
   let produto = grupo.get(chave)
   if (!produto) {
     produto = { nomes: new Map(), tamanhos: new Map(), pedidos: new Set(), total: 0 }
     grupo.set(chave, produto)
   }
-  produto.nomes.set(separado.nome, (produto.nomes.get(separado.nome) || 0) + linha.quantidade)
+  produto.nomes.set(nome, (produto.nomes.get(nome) || 0) + linha.quantidade)
   produto.tamanhos.set(separado.tamanho, (produto.tamanhos.get(separado.tamanho) || 0) + linha.quantidade)
   produto.total += linha.quantidade
   if (card.id) produto.pedidos.add(card.id)

@@ -483,10 +483,16 @@ body.vestfirma-tv .pwa-install-banner {
 
 .financeiro-topo {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
   align-items: flex-end;
   margin-bottom: 0.85rem;
+}
+
+.financeiro-topo > div:first-child {
+  flex: 1 1 16rem;
+  min-width: 0;
 }
 
 .financeiro-topo h1 {
@@ -502,10 +508,12 @@ body.vestfirma-tv .pwa-install-banner {
 
 .financeiro-totais {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.15rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .financeiro-filtros {
@@ -575,41 +583,56 @@ body.vestfirma-tv .pwa-install-banner {
   font-size: 1.05rem;
 }
 
-.financeiro-produto-topo p {
+.financeiro-numero {
   margin: 0;
-  text-align: right;
+  font-size: 2.4rem;
+  line-height: 0.9;
+  font-weight: 800;
+  color: #f5c400;
 }
 
-.financeiro-produto-topo span {
-  display: block;
+.financeiro-meta {
+  margin: 0 0 0.7rem;
   color: #94a3b8;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.82rem;
 }
 
-.financeiro-tamanhos {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
+.financeiro-barra {
+  display: flex;
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #0f172a;
+  margin-bottom: 0.7rem;
 }
 
-.financeiro-tamanhos th,
-.financeiro-tamanhos td {
-  padding: 0.28rem 0;
-  text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+.financeiro-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.financeiro-tamanhos th:last-child,
-.financeiro-tamanhos td:last-child {
-  text-align: right;
+.financeiro-pills li {
+  display: flex;
+  flex-direction: column;
+  min-width: 3.1rem;
+  padding: 0.35rem 0.45rem 0.3rem;
+  border: 2px solid #f5c400;
+  border-radius: 10px;
+  background: #111827;
 }
 
-.financeiro-geral th,
-.financeiro-geral td {
-  border-bottom: 0;
-  font-size: 1rem;
-  padding-top: 0.45rem;
+.financeiro-pills strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.financeiro-pills span {
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 .financeiro-vazio,
