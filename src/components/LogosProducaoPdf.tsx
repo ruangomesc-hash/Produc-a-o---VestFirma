@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { baixarBlobs, nomesArquivoUnicos, pdfDaFolha } from '../baixarFichasPdf'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, resumoPecasPdf } from '../logosProducao'
+import { baixarZip, nomesArquivoUnicos, pdfDaFolha } from '../baixarFichasPdf'
+import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, nomeArquivoPdfPedidos, resumoPecasPdf } from '../logosProducao'
 import { linhasResumoDoPedido, quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
 
@@ -225,7 +225,7 @@ export function LogosProducaoPdf({
     if (!varios) return
     let cancelado = false
     const baixar = async () => {
-      setStatus(`Preparando ${cards.length} PDFs…`)
+      setStatus(`Preparando ${cards.length} PDFs para o arquivo…`)
       const root = document.getElementById('logos-pdf-print')
       const imgs = [...(root?.querySelectorAll('img') ?? [])]
       await Promise.race([
@@ -264,8 +264,12 @@ export function LogosProducaoPdf({
         return
       }
       const nomes = nomesArquivoUnicos(prontos.map((item) => item.nome))
-      baixarBlobs(prontos.map((item, index) => ({ nome: nomes[index], blob: item.blob })))
-      fechar.current()
+      setStatus('Baixando o arquivo com os PDFs…')
+      await baixarZip(
+        `${nomeArquivoPdfPedidos(cards.map((card) => card.numeroPedido))}.zip`,
+        prontos.map((item, index) => ({ nome: nomes[index], blob: item.blob })),
+      )
+      if (!cancelado) fechar.current()
     }
     void baixar()
     return () => {
@@ -277,7 +281,7 @@ export function LogosProducaoPdf({
     <>
       {varios ? (
         <p className="logos-pdf-fila" role="status">
-          {status || `Preparando ${cards.length} PDFs…`}
+          {status || `Preparando ${cards.length} PDFs para o arquivo…`}
         </p>
       ) : null}
       <div

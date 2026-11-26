@@ -1,4 +1,6 @@
-/** Gera um PDF A4 a partir da ficha já desenhada e dispara o download de todos os arquivos juntos. */
+/** Gera um PDF A4 a partir da ficha já desenhada. O lote sai num ZIP, um PDF por pedido. */
+
+import { zipArquivos } from '../shared/zipArquivos.mjs'
 
 export function nomesArquivoUnicos(nomes: string[]) {
   const usados = new Set<string>()
@@ -42,7 +44,13 @@ export async function pdfDaFolha(folha: HTMLElement) {
   return pdf.output('blob')
 }
 
-export function baixarBlobs(arquivos: { nome: string; blob: Blob }[]) {
+export async function baixarZip(nome: string, arquivos: { nome: string; blob: Blob }[]) {
+  const blob = await zipArquivos(arquivos)
+  const arquivo = nome.toLowerCase().endsWith('.zip') ? nome : `${nome}.zip`
+  baixarBlobs([{ nome: arquivo, blob }])
+}
+
+function baixarBlobs(arquivos: { nome: string; blob: Blob }[]) {
   const links = arquivos.map((arquivo) => {
     const url = URL.createObjectURL(arquivo.blob)
     const link = document.createElement('a')

@@ -58,8 +58,8 @@ export function LogosPdfLoteModal({ open, colunaId, board, onClose, onBaixar }: 
           <h2 id="pdf-lote-titulo">Baixar PDFs</h2>
           <p>
             {aplicacao
-              ? 'Disponíveis para aplicação. Marque os pedidos ou baixe todos. Cada pedido vira um PDF e todos caem juntos na pasta de downloads. A ficha traz peça, tamanho, quantidade e a observação.'
-              : 'Logos liberadas para produção. Marque os pedidos ou baixe todos. Cada pedido vira um PDF e todos caem juntos na pasta de downloads. O card ganha a marca de enviado para produção.'}
+              ? 'Disponíveis para aplicação. Marque os pedidos ou baixe todos. Vários pedidos saem num arquivo .zip: descompacte e cada pedido está no próprio PDF. A ficha traz peça, tamanho, quantidade e a observação.'
+              : 'Logos liberadas para produção. Marque os pedidos ou baixe todos. Vários pedidos saem num arquivo .zip: descompacte e cada pedido está no próprio PDF. O card ganha a marca de enviado para produção.'}
           </p>
         </header>
         <div className="separacao-modal-corpo">

@@ -29,7 +29,7 @@ export function nomeArquivoPdfPedido(numero: string | undefined) {
   return `pedido #${limpo || 's/n'} - vestfirma`
 }
 
-/** Vários pedidos saem num arquivo só: pedidos - vestfirma. */
+/** Vários pedidos saem no ZIP pedidos - vestfirma. Cada PDF de dentro continua com o número do pedido. */
 export function nomeArquivoPdfPedidos(numeros: Array<string | undefined>) {
   const limpos = numeros.map((numero) => String(numero || '').trim().replace(/^#/, '')).filter(Boolean)
   if (limpos.length <= 1) return nomeArquivoPdfPedido(limpos[0])
