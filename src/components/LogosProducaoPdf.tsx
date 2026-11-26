@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { baixarBlobs, nomesArquivoUnicos, pdfDaFolha } from '../baixarFichasPdf'
 import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, resumoPecasPdf } from '../logosProducao'
 import { linhasResumoDoPedido, quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
@@ -37,7 +38,7 @@ function FichaPedido({ card, comResumo = false }: { card: OrderCard; comResumo?:
   const numero = card.numeroPedido?.trim().replace(/^#/, '') || 's/n'
 
   return (
-    <div className="logos-pdf-folha">
+    <div className="logos-pdf-folha" data-arquivo={`${nomeArquivoPdfPedido(card.numeroPedido)}.pdf`}>
       <header className="logos-pdf-cabecalho">
         <div className="logos-pdf-marca">
           <strong>VESTFIRMA</strong>
@@ -177,19 +178,17 @@ export function LogosProducaoPdf({
   onClose: () => void
 }) {
   const varios = cards.length > 1
-  const [indice, setIndice] = useState(0)
-  const atual = varios ? cards[Math.min(indice, cards.length - 1)] : null
-  const visiveis = atual ? [atual] : cards
-  const chave = visiveis.map((card) => card.id).join(',')
+  const [status, setStatus] = useState('')
+  const chave = cards.map((card) => card.id).join(',')
   const fechar = useRef(onClose)
   fechar.current = onClose
 
   useEffect(() => {
+    if (varios) return
     const tituloAntes = document.title
-    document.title = nomeArquivoPdfPedido(visiveis[0]?.numeroPedido)
+    document.title = nomeArquivoPdfPedido(cards[0]?.numeroPedido)
     let cancelado = false
     let jaImprimiu = false
-    let seguiu = false
     const imprimir = () => {
       if (cancelado || jaImprimiu) return
       jaImprimiu = true
@@ -207,15 +206,7 @@ export function LogosProducaoPdf({
     })
     const quadro = pendentes.length === 0 ? requestAnimationFrame(imprimir) : 0
     const limite = window.setTimeout(imprimir, 2500)
-    const fim = () => {
-      if (cancelado || seguiu) return
-      seguiu = true
-      if (varios && indice < cards.length - 1) {
-        setIndice((valor) => valor + 1)
-        return
-      }
-      fechar.current()
-    }
+    const fim = () => fechar.current()
     window.addEventListener('afterprint', fim)
     return () => {
       cancelado = true
@@ -228,17 +219,73 @@ export function LogosProducaoPdf({
       window.removeEventListener('afterprint', fim)
       document.title = tituloAntes
     }
-  }, [chave, cards.length, indice, varios])
+  }, [cards, chave, varios])
+
+  useEffect(() => {
+    if (!varios) return
+    let cancelado = false
+    const baixar = async () => {
+      setStatus(`Preparando ${cards.length} PDFs…`)
+      const root = document.getElementById('logos-pdf-print')
+      const imgs = [...(root?.querySelectorAll('img') ?? [])]
+      await Promise.race([
+        Promise.all(
+          imgs.map(
+            (img) =>
+              img.complete
+                ? Promise.resolve()
+                : new Promise<void>((resolve) => {
+                    img.addEventListener('load', () => resolve(), { once: true })
+                    img.addEventListener('error', () => resolve(), { once: true })
+                  }),
+          ),
+        ),
+        new Promise((resolve) => window.setTimeout(resolve, 2500)),
+      ])
+      if (cancelado || !root) return
+      const folhas = [...root.querySelectorAll<HTMLElement>('.logos-pdf-folha')]
+      const prontos: { nome: string; blob: Blob }[] = []
+      for (let i = 0; i < folhas.length; i += 1) {
+        if (cancelado) return
+        setStatus(`Preparando PDF ${i + 1} de ${folhas.length}…`)
+        const folha = folhas[i]
+        try {
+          const blob = await pdfDaFolha(folha)
+          prontos.push({
+            nome: folha.dataset.arquivo || `pedido ${i + 1} - vestfirma.pdf`,
+            blob,
+          })
+        } catch {
+          /* uma ficha que falhar não segura as outras */
+        }
+      }
+      if (cancelado || prontos.length === 0) {
+        fechar.current()
+        return
+      }
+      const nomes = nomesArquivoUnicos(prontos.map((item) => item.nome))
+      baixarBlobs(prontos.map((item, index) => ({ nome: nomes[index], blob: item.blob })))
+      fechar.current()
+    }
+    void baixar()
+    return () => {
+      cancelado = true
+    }
+  }, [cards.length, chave, varios])
 
   return createPortal(
     <>
       {varios ? (
         <p className="logos-pdf-fila" role="status">
-          PDF {indice + 1} de {cards.length}. Salve este arquivo. O próximo abre em seguida.
+          {status || `Preparando ${cards.length} PDFs…`}
         </p>
       ) : null}
-      <div className="separacao-print logos-pdf-print" id="logos-pdf-print" aria-hidden="true">
-        {visiveis.map((card) => (
+      <div
+        className={`separacao-print logos-pdf-print${varios ? ' logos-pdf-print--baixar' : ''}`}
+        id="logos-pdf-print"
+        aria-hidden="true"
+      >
+        {cards.map((card) => (
           <FichaPedido key={card.id} card={card} comResumo={comResumo} />
         ))}
       </div>

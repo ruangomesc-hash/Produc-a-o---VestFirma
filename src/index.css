@@ -2604,6 +2604,20 @@ body.vestfirma-tv .pwa-install-banner {
   display: none;
 }
 
+.separacao-print.logos-pdf-print--baixar {
+  display: block;
+  position: fixed;
+  left: -12000px;
+  top: 0;
+  width: 794px;
+  background: #fff;
+}
+
+.logos-pdf-print--baixar .logos-pdf-folha {
+  width: 794px;
+  max-width: none;
+}
+
 @page {
   size: A4;
   margin: 0;
