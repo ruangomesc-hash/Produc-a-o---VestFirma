@@ -144,10 +144,12 @@ test('a timeline segue o período e junta os pedidos do dia', () => {
     '2026-11-03',
   )
   assert.equal(linha.periodoCortado, false)
-  assert.deepEqual(
-    linha.dias.map((dia) => dia.data),
-    ['2026-11-01', '2026-11-02', '2026-11-03'],
-  )
+  assert.equal(linha.dias.length, 30)
+  assert.equal(linha.dias[0].data, '2026-11-01')
+  assert.equal(linha.dias[0].dentro, true)
+  assert.equal(linha.dias[29].data, '2026-11-30')
+  assert.equal(linha.dias[29].dentro, false)
+  assert.equal(linha.dias[3].dentro, false)
   assert.equal(linha.dias[0].pedidos.length, 0)
   assert.equal(linha.dias[1].pecas, 6)
   assert.equal(linha.dias[1].pecasFora, 1)

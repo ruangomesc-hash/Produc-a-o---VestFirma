@@ -558,37 +558,83 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .financeiro-timeline {
-  margin-bottom: 1.15rem;
+  margin: 0 auto 1.15rem;
+  max-width: 1120px;
+  background: #141414;
+  color: #eef2f7;
+  border-radius: 16px;
+  padding: 0.95rem 0.85rem 0.85rem;
+}
+
+.financeiro-timeline h2,
+.financeiro-timeline-nota,
+.financeiro-dia-detalhe > p {
+  text-align: center;
 }
 
 .financeiro-timeline h2 {
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.35rem;
   font-size: 1.05rem;
+  color: #f5c400;
 }
 
 .financeiro-timeline-nota {
   margin: 0.35rem 0 0;
-  color: #3a2e10;
+  color: #cbd5e1;
   font-size: 0.82rem;
 }
 
 .financeiro-dias {
   display: flex;
-  gap: 0.28rem;
+  justify-content: safe center;
   overflow-x: auto;
-  align-items: flex-end;
-  padding: 0.15rem 0 0.35rem;
+  padding: 0.15rem 0 0.2rem;
+}
+
+.financeiro-dias-miolo {
+  flex: 0 0 auto;
+}
+
+.financeiro-linha {
+  display: block;
+}
+
+.financeiro-linha line {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1;
+}
+
+.financeiro-linha-area {
+  fill: rgba(245, 196, 0, 0.22);
+}
+
+.financeiro-linha-traco {
+  fill: none;
+  stroke: #f5c400;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.financeiro-linha circle {
+  fill: #f5c400;
+}
+
+.financeiro-dias-botoes {
+  display: flex;
+  gap: 3px;
 }
 
 .financeiro-dia {
-  flex: 0 0 2.7rem;
+  flex: 0 0 32px;
+  width: 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.08rem;
   border: 0;
   background: transparent;
-  color: #1a1404;
+  color: #eef2f7;
   font: inherit;
   cursor: pointer;
   padding: 0.15rem 0 0.2rem;
@@ -596,28 +642,32 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .financeiro-dia.is-on {
-  background: rgba(26, 20, 4, 0.12);
+  background: rgba(245, 196, 0, 0.14);
+}
+
+.financeiro-dia.is-espera {
+  opacity: 0.38;
 }
 
 .financeiro-dia-trilho {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  height: 4.6rem;
+  height: 4.2rem;
   width: 100%;
 }
 
 .financeiro-dia-barra {
   display: flex;
   flex-direction: column-reverse;
-  width: 0.85rem;
+  width: 0.7rem;
   border-radius: 6px 6px 2px 2px;
   overflow: hidden;
   background: transparent;
 }
 
 .financeiro-dia-barra.is-vazio {
-  background: rgba(26, 20, 4, 0.28);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .financeiro-dia-barra i {
@@ -626,11 +676,11 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .financeiro-dia-barra i.usados {
-  background: #1a1404;
+  background: #f5c400;
 }
 
 .financeiro-dia-barra i.fora {
-  background: #9a3412;
+  background: #fb7185;
 }
 
 .financeiro-dia-mes {
@@ -638,6 +688,7 @@ body.vestfirma-tv .pwa-install-banner {
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: lowercase;
+  color: #f5c400;
 }
 
 .financeiro-dia-num {
@@ -647,8 +698,8 @@ body.vestfirma-tv .pwa-install-banner {
 }
 
 .financeiro-dia.is-on .financeiro-dia-num {
-  background: #1a1404;
-  color: #f5c400;
+  background: #f5c400;
+  color: #141414;
   border-radius: 999px;
   min-width: 1.45rem;
   padding: 0.12rem 0.2rem;
@@ -656,7 +707,7 @@ body.vestfirma-tv .pwa-install-banner {
 
 .financeiro-dia-sem {
   font-size: 0.62rem;
-  color: #3a2e10;
+  color: #94a3b8;
 }
 
 .financeiro-dia-detalhe {
@@ -671,6 +722,7 @@ body.vestfirma-tv .pwa-install-banner {
 .financeiro-dia-lista {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.4rem;
   margin: 0;
   padding: 0;
@@ -683,14 +735,15 @@ body.vestfirma-tv .pwa-install-banner {
   min-width: 7.5rem;
   padding: 0.4rem 0.55rem 0.45rem;
   border-radius: 10px;
-  background: #1a222d;
+  background: #1f2937;
   color: #eef2f7;
+  border: 1px solid rgba(245, 196, 0, 0.35);
 }
 
 .financeiro-dia-lista li.is-fora {
   background: transparent;
-  color: #1a1404;
-  border: 1px dashed #9a3412;
+  color: #fecdd3;
+  border: 1px dashed #fb7185;
 }
 
 .financeiro-dia-lista strong {
@@ -706,7 +759,7 @@ body.vestfirma-tv .pwa-install-banner {
 
 .financeiro-dia-lista li.is-fora span,
 .financeiro-dia-lista li.is-fora em {
-  color: #7c2d12;
+  color: #fda4af;
 }
 
 .financeiro-lista {

@@ -33,16 +33,46 @@ function partesDia(iso: string) {
   return { dia: String(dia || '').padStart(2, '0'), semana: SEMANA[data.getUTCDay()] || '', mes: mesCurto }
 }
 
+const COLUNA_DIA = 32
+const ESPACO_DIA = 3
+const ALTURA_LINHA = 78
+
+function linhaDoMes(dias: DiaFinanceiro[], hoje: string) {
+  let acumulado = 0
+  const pontos: { x: number; valor: number; pecas: number; data: string }[] = []
+  dias.forEach((dia, index) => {
+    if (!dia.dentro || dia.data > hoje) return
+    acumulado += dia.pecas
+    pontos.push({
+      x: index * (COLUNA_DIA + ESPACO_DIA) + COLUNA_DIA / 2,
+      valor: acumulado,
+      pecas: dia.pecas,
+      data: dia.data,
+    })
+  })
+  const pico = Math.max(1, ...pontos.map((ponto) => ponto.valor))
+  const y = (valor: number) => ALTURA_LINHA - 10 - (valor / pico) * (ALTURA_LINHA - 18)
+  const largura = Math.max(COLUNA_DIA, dias.length * COLUNA_DIA + Math.max(0, dias.length - 1) * ESPACO_DIA)
+  const linha = pontos.map((ponto, index) => `${index === 0 ? 'M' : 'L'} ${ponto.x} ${y(ponto.valor)}`).join(' ')
+  const area =
+    pontos.length > 1
+      ? `${linha} L ${pontos[pontos.length - 1].x} ${ALTURA_LINHA - 2} L ${pontos[0].x} ${ALTURA_LINHA - 2} Z`
+      : ''
+  return { pontos, largura, linha, area, y }
+}
+
 function TimelinePedidos({
   dias,
   cortado,
   de,
   ate,
+  hoje,
 }: {
   dias: DiaFinanceiro[]
   cortado: boolean
   de: string
   ate: string
+  hoje: string
 }) {
   const [escolhido, setEscolhido] = useState<string | null>(null)
   const trilho = useRef<HTMLDivElement>(null)
@@ -51,12 +81,14 @@ function TimelinePedidos({
   const diaAtivo = dias.find((dia) => dia.data === ativo) ?? null
   const pico = Math.max(1, ...dias.map((dia) => dia.pecas + dia.pecasFora))
   const temFora = dias.some((dia) => dia.pecasFora > 0)
+  const grafico = linhaDoMes(dias, hoje)
 
   useEffect(() => {
     const pai = trilho.current
     const marcado = pai?.querySelector<HTMLElement>('.is-on')
     if (!pai || !marcado) return
-    pai.scrollLeft = marcado.offsetLeft - pai.clientWidth / 2 + marcado.clientWidth / 2
+    const esquerda = marcado.getBoundingClientRect().left - pai.getBoundingClientRect().left + pai.scrollLeft
+    pai.scrollLeft = esquerda - pai.clientWidth / 2 + marcado.clientWidth / 2
   }, [ativo, de, ate])
 
   return (
@@ -64,35 +96,64 @@ function TimelinePedidos({
       <h2>Pedidos por dia</h2>
       {cortado ? <p className="financeiro-timeline-nota">Mostrando os últimos 400 dias do período.</p> : null}
       <div className="financeiro-dias" ref={trilho}>
-        {dias.map((dia, index) => {
-          const partes = partesDia(dia.data)
-          const total = dia.pecas + dia.pecasFora
-          const altura = total > 0 ? Math.max(10, Math.round((total / pico) * 72)) : 4
-          const alturaUsados = total > 0 ? Math.round((dia.pecas / total) * altura) : 0
-          const mostraMes = index === 0 || partes.dia === '01'
-          return (
-            <button
-              key={dia.data}
-              type="button"
-              className={dia.data === ativo ? 'financeiro-dia is-on' : 'financeiro-dia'}
-              aria-pressed={dia.data === ativo}
-              aria-label={`${partes.dia} de ${partes.mes}, ${dia.pedidos.length} ${dia.pedidos.length === 1 ? 'pedido' : 'pedidos'}, ${dia.pecas} peças`}
-              onClick={() => setEscolhido(dia.data)}
-            >
-              <span className="financeiro-dia-trilho" aria-hidden="true">
-                <span className={total > 0 ? 'financeiro-dia-barra' : 'financeiro-dia-barra is-vazio'} style={{ height: altura }}>
-                  {dia.pecas > 0 ? <i className="usados" style={{ height: Math.max(2, alturaUsados) }} /> : null}
-                  {dia.pecasFora > 0 ? <i className="fora" style={{ height: Math.max(2, altura - alturaUsados) }} /> : null}
-                </span>
-              </span>
-              <span className="financeiro-dia-mes">{mostraMes ? partes.mes : ''}</span>
-              <span className="financeiro-dia-num">{partes.dia}</span>
-              <span className="financeiro-dia-sem">{partes.semana}</span>
-            </button>
-          )
-        })}
+        <div className="financeiro-dias-miolo" style={{ width: grafico.largura }}>
+          <svg
+            className="financeiro-linha"
+            width={grafico.largura}
+            height={ALTURA_LINHA}
+            viewBox={`0 0 ${grafico.largura} ${ALTURA_LINHA}`}
+            aria-hidden="true"
+          >
+            <line x1="0" y1={ALTURA_LINHA - 2} x2={grafico.largura} y2={ALTURA_LINHA - 2} />
+            {grafico.area ? <path className="financeiro-linha-area" d={grafico.area} /> : null}
+            {grafico.linha ? <path className="financeiro-linha-traco" d={grafico.linha} /> : null}
+            {grafico.pontos
+              .filter((ponto) => ponto.pecas > 0)
+              .map((ponto) => (
+                <circle key={ponto.data} cx={ponto.x} cy={grafico.y(ponto.valor)} r="3.5" />
+              ))}
+          </svg>
+          <div className="financeiro-dias-botoes">
+            {dias.map((dia, index) => {
+              const partes = partesDia(dia.data)
+              const total = dia.pecas + dia.pecasFora
+              const altura = total > 0 ? Math.max(10, Math.round((total / pico) * 64)) : 4
+              const alturaUsados = total > 0 ? Math.round((dia.pecas / total) * altura) : 0
+              const mostraMes = index === 0 || partes.dia === '01'
+              const espera = !dia.dentro || dia.data > hoje
+              const classe = [
+                'financeiro-dia',
+                dia.data === ativo ? 'is-on' : '',
+                espera ? 'is-espera' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')
+              return (
+                <button
+                  key={dia.data}
+                  type="button"
+                  className={classe}
+                  aria-pressed={dia.data === ativo}
+                  aria-label={`${partes.dia} de ${partes.mes}, ${dia.pedidos.length} ${dia.pedidos.length === 1 ? 'pedido' : 'pedidos'}, ${dia.pecas} peças`}
+                  onClick={() => setEscolhido(dia.data)}
+                >
+                  <span className="financeiro-dia-trilho" aria-hidden="true">
+                    <span className={total > 0 ? 'financeiro-dia-barra' : 'financeiro-dia-barra is-vazio'} style={{ height: altura }}>
+                      {dia.pecas > 0 ? <i className="usados" style={{ height: Math.max(2, alturaUsados) }} /> : null}
+                      {dia.pecasFora > 0 ? <i className="fora" style={{ height: Math.max(2, altura - alturaUsados) }} /> : null}
+                    </span>
+                  </span>
+                  <span className="financeiro-dia-mes">{mostraMes ? partes.mes : ''}</span>
+                  <span className="financeiro-dia-num">{partes.dia}</span>
+                  <span className="financeiro-dia-sem">{partes.semana}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
-      {temFora ? <p className="financeiro-timeline-nota">Barra escura entrou na conta. Faixa marrom não entrou.</p> : null}
+      <p className="financeiro-timeline-nota">A linha soma as peças até o dia. O resto do mês fica vazio até preencher.</p>
+      {temFora ? <p className="financeiro-timeline-nota">Barra amarela entrou na conta. Faixa rosa não entrou.</p> : null}
       {diaAtivo ? (
         <div className="financeiro-dia-detalhe">
           <p>
@@ -223,7 +284,7 @@ export function FinanceiroPanel({ board }: { board: BoardState }) {
         </label>
       </div>
 
-      <TimelinePedidos dias={timeline.dias} cortado={timeline.periodoCortado} de={de} ate={ate} />
+      <TimelinePedidos dias={timeline.dias} cortado={timeline.periodoCortado} de={de} ate={ate} hoje={hoje} />
 
       {resumo.usados.length === 0 ? (
         <p className="financeiro-vazio">Nenhuma peça usada neste período.</p>

@@ -333,19 +333,38 @@ function ordemNumero(numero) {
   return Number.isFinite(valor) && valor > 0 ? valor : Number.MAX_SAFE_INTEGER
 }
 
-/** Um dia para cada data do período. O pedido entra no dia de dataPedido. Teste fica de fora. */
+function inicioDoMes(iso) {
+  const [ano, mes] = String(iso).split('-')
+  return `${ano}-${mes}-01`
+}
+
+function fimDoMes(iso) {
+  const [ano, mes] = String(iso).split('-').map(Number)
+  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(ultimo).padStart(2, '0')}`
+}
+
+/** O eixo vai do dia 1 ao último dia do mês. O pedido só entra se a data estiver no período escolhido. */
 export function timelinePedidosFinanceiro(cards, inicio, fim) {
   const deInformado = String(inicio || '')
   const ate = String(fim || '')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(deInformado) || !/^\d{4}-\d{2}-\d{2}$/.test(ate) || deInformado > ate) {
     return { dias: [], periodoCortado: false }
   }
-  const limite = avancarData(ate, -399)
-  const de = deInformado < limite ? limite : deInformado
+  const eixoFim = fimDoMes(ate)
+  const limite = avancarData(eixoFim, -399)
+  const eixoInicio = inicioDoMes(deInformado)
+  const de = eixoInicio < limite ? limite : eixoInicio
   const porDia = new Map()
   let cursor = de
-  while (cursor <= ate && porDia.size < 400) {
-    porDia.set(cursor, { data: cursor, pecas: 0, pecasFora: 0, pedidos: [] })
+  while (cursor <= eixoFim && porDia.size < 400) {
+    porDia.set(cursor, {
+      data: cursor,
+      pecas: 0,
+      pecasFora: 0,
+      dentro: cursor >= deInformado && cursor <= ate,
+      pedidos: [],
+    })
     cursor = avancarData(cursor, 1)
   }
 
@@ -354,7 +373,7 @@ export function timelinePedidosFinanceiro(cards, inicio, fim) {
     if (classe === 'ignorar') continue
     const data = dataReferenciaPedido(card)
     const dia = porDia.get(data)
-    if (!dia) continue
+    if (!dia?.dentro) continue
     const { pecas, produtos } = pecasEProdutos(card)
     const fora = classe === 'fora'
     if (fora) dia.pecasFora += pecas
