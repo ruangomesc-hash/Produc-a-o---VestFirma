@@ -2585,6 +2585,21 @@ body.vestfirma-tv .pwa-install-banner {
   border-top: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+.logos-pdf-fila {
+  position: fixed;
+  z-index: 80;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: #141414;
+  color: #f5c400;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
 .separacao-print {
   display: none;
 }
@@ -2777,6 +2792,13 @@ body.vestfirma-tv .pwa-install-banner {
   font-size: 14pt;
 }
 
+.logos-pdf-documento strong.logos-pdf-documento-longo {
+  max-width: 62mm;
+  margin-left: auto;
+  font-size: 12pt;
+  line-height: 1.15;
+}
+
 .logos-pdf-main {
   padding: 8mm 13mm 0;
 }
@@ -2835,7 +2857,7 @@ body.vestfirma-tv .pwa-install-banner {
 .logos-pdf-pecas-tabela {
   width: 100%;
   border-collapse: collapse;
-  margin: 0 0 6mm;
+  margin: 6mm 0;
   font-size: 11pt;
 }
 

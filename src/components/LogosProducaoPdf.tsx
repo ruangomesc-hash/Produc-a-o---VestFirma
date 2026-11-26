@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedidos, resumoPecasPdf } from '../logosProducao'
+import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, resumoPecasPdf } from '../logosProducao'
 import { linhasResumoDoPedido, quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
 
@@ -44,7 +44,15 @@ function FichaPedido({ card, comResumo = false }: { card: OrderCard; comResumo?:
           <span>UNIFORMES PERSONALIZADOS</span>
         </div>
         <div className="logos-pdf-documento">
-          FICHA DE<strong>IMPRESSÃO</strong>
+          {comResumo ? (
+            <>
+              FICHA DE<strong className="logos-pdf-documento-longo">APLICAÇÃO E ESTAMPARIA</strong>
+            </>
+          ) : (
+            <>
+              FICHA DE<strong>IMPRESSÃO</strong>
+            </>
+          )}
         </div>
       </header>
       <main className="logos-pdf-main">
@@ -60,6 +68,31 @@ function FichaPedido({ card, comResumo = false }: { card: OrderCard; comResumo?:
             <span className="logos-pdf-valor">{data || '—'}</span>
           </div>
         </div>
+        <div className="logos-pdf-quantidades">
+          <div className="logos-pdf-quantidade">
+            <h2>LOGOS PEQUENAS</h2>
+            <span className="logos-pdf-numero">{contagem.pequenas}</span>
+            <small>unidades para impressão</small>
+          </div>
+          <div className="logos-pdf-quantidade">
+            <h2>LOGOS GRANDES</h2>
+            <span className="logos-pdf-numero">{contagem.grandes}</span>
+            <small>unidades para impressão</small>
+          </div>
+        </div>
+        <section className="logos-pdf-secao">
+          <h2>PREVIEW APROVADO</h2>
+          <p className="logos-pdf-descricao">Referência visual aprovada pelo cliente.</p>
+          {(previews.length ? previews : ['']).map((src, index) => (
+            <div className="logos-pdf-preview" key={`preview-${index}`}>
+              <QuadroImagem
+                src={urlAbsoluta(src)}
+                alt="Preview aprovado pelo cliente"
+                vazio={<><strong>PREVIEW APROVADO</strong><small>Imagem ainda não vinculada</small></>}
+              />
+            </div>
+          ))}
+        </section>
         {comResumo ? (
           <table className="logos-pdf-pecas-tabela">
             <thead>
@@ -89,31 +122,6 @@ function FichaPedido({ card, comResumo = false }: { card: OrderCard; comResumo?:
             </tbody>
           </table>
         ) : null}
-        <div className="logos-pdf-quantidades">
-          <div className="logos-pdf-quantidade">
-            <h2>LOGOS PEQUENAS</h2>
-            <span className="logos-pdf-numero">{contagem.pequenas}</span>
-            <small>unidades para impressão</small>
-          </div>
-          <div className="logos-pdf-quantidade">
-            <h2>LOGOS GRANDES</h2>
-            <span className="logos-pdf-numero">{contagem.grandes}</span>
-            <small>unidades para impressão</small>
-          </div>
-        </div>
-        <section className="logos-pdf-secao">
-          <h2>PREVIEW APROVADO</h2>
-          <p className="logos-pdf-descricao">Referência visual aprovada pelo cliente.</p>
-          {(previews.length ? previews : ['']).map((src, index) => (
-            <div className="logos-pdf-preview" key={`preview-${index}`}>
-              <QuadroImagem
-                src={urlAbsoluta(src)}
-                alt="Preview aprovado pelo cliente"
-                vazio={<><strong>PREVIEW APROVADO</strong><small>Imagem ainda não vinculada</small></>}
-              />
-            </div>
-          ))}
-        </section>
         <section className="logos-pdf-secao">
           <h2>ARTE PARA IMPRESSÃO</h2>
           {(artes.length ? artes : ['']).map((src, index) => {
@@ -168,15 +176,20 @@ export function LogosProducaoPdf({
   comResumo?: boolean
   onClose: () => void
 }) {
-  const chave = cards.map((card) => card.id).join(',')
+  const varios = cards.length > 1
+  const [indice, setIndice] = useState(0)
+  const atual = varios ? cards[Math.min(indice, cards.length - 1)] : null
+  const visiveis = atual ? [atual] : cards
+  const chave = visiveis.map((card) => card.id).join(',')
   const fechar = useRef(onClose)
   fechar.current = onClose
 
   useEffect(() => {
     const tituloAntes = document.title
-    document.title = nomeArquivoPdfPedidos(cards.map((card) => card.numeroPedido))
+    document.title = nomeArquivoPdfPedido(visiveis[0]?.numeroPedido)
     let cancelado = false
     let jaImprimiu = false
+    let seguiu = false
     const imprimir = () => {
       if (cancelado || jaImprimiu) return
       jaImprimiu = true
@@ -194,7 +207,15 @@ export function LogosProducaoPdf({
     })
     const quadro = pendentes.length === 0 ? requestAnimationFrame(imprimir) : 0
     const limite = window.setTimeout(imprimir, 2500)
-    const fim = () => fechar.current()
+    const fim = () => {
+      if (cancelado || seguiu) return
+      seguiu = true
+      if (varios && indice < cards.length - 1) {
+        setIndice((valor) => valor + 1)
+        return
+      }
+      fechar.current()
+    }
     window.addEventListener('afterprint', fim)
     return () => {
       cancelado = true
@@ -207,14 +228,21 @@ export function LogosProducaoPdf({
       window.removeEventListener('afterprint', fim)
       document.title = tituloAntes
     }
-  }, [chave, cards])
+  }, [chave, cards.length, indice, varios])
 
   return createPortal(
-    <div className="separacao-print logos-pdf-print" id="logos-pdf-print" aria-hidden="true">
-      {cards.map((card) => (
-        <FichaPedido key={card.id} card={card} comResumo={comResumo} />
-      ))}
-    </div>,
+    <>
+      {varios ? (
+        <p className="logos-pdf-fila" role="status">
+          PDF {indice + 1} de {cards.length}. Salve este arquivo. O próximo abre em seguida.
+        </p>
+      ) : null}
+      <div className="separacao-print logos-pdf-print" id="logos-pdf-print" aria-hidden="true">
+        {visiveis.map((card) => (
+          <FichaPedido key={card.id} card={card} comResumo={comResumo} />
+        ))}
+      </div>
+    </>,
     document.body,
   )
 }
