@@ -473,6 +473,159 @@ body.vestfirma-tv .pwa-install-banner {
   outline-offset: 2px;
 }
 
+.financeiro {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.85rem max(1rem, env(safe-area-inset-right, 0px)) 1.5rem max(1rem, env(safe-area-inset-left, 0px));
+  color: #141414;
+}
+
+.financeiro-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 0.85rem;
+}
+
+.financeiro-topo h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+.financeiro-topo p {
+  margin: 0;
+  max-width: 42rem;
+  color: #3a2e10;
+}
+
+.financeiro-totais {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  font-weight: 800;
+}
+
+.financeiro-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.financeiro-filtros button,
+.financeiro-filtros label {
+  border: 1px solid #1a1404;
+  background: rgba(255, 255, 255, 0.35);
+  color: #1a1404;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.financeiro-filtros button.is-on {
+  background: #1a1404;
+  color: #f5c400;
+}
+
+.financeiro-filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  cursor: default;
+}
+
+.financeiro-filtros input {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+}
+
+.financeiro-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.financeiro-produto {
+  background: #1a222d;
+  color: #eef2f7;
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem 0.7rem;
+}
+
+.financeiro-produto-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.55rem;
+}
+
+.financeiro-produto-topo h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.financeiro-produto-topo p {
+  margin: 0;
+  text-align: right;
+}
+
+.financeiro-produto-topo span {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.financeiro-tamanhos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.financeiro-tamanhos th,
+.financeiro-tamanhos td {
+  padding: 0.28rem 0;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.financeiro-tamanhos th:last-child,
+.financeiro-tamanhos td:last-child {
+  text-align: right;
+}
+
+.financeiro-geral th,
+.financeiro-geral td {
+  border-bottom: 0;
+  font-size: 1rem;
+  padding-top: 0.45rem;
+}
+
+.financeiro-vazio,
+.financeiro-fora > p {
+  margin: 0.4rem 0 0.8rem;
+}
+
+.financeiro-fora {
+  margin-top: 1.3rem;
+}
+
+.financeiro-fora h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
 .brand-center {
   grid-column: 2;
   display: flex;

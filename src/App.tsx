@@ -40,6 +40,7 @@ import { VisaoEquipePanel } from './components/VisaoEquipePanel'
 import { SystemStatusPanel } from './components/SystemStatusPanel'
 import { ShopifySetupPanel } from './components/ShopifySetupPanel'
 import { VendedoresOverviewPanel } from './components/VendedoresOverviewPanel'
+import { FinanceiroPanel } from './components/FinanceiroPanel'
 import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
 import { PortalFestaPreviewPage } from './components/PortalFestaPreviewPage'
 import { PortalPedidoQuickLink } from './components/PortalPedidoQuickLink'
@@ -343,7 +344,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const boardKanban = isAdmin(session) ? boardPainelAdmin : boardForSession
 
   const [view, setView] = useState<
-    'kanban' | 'visao' | 'status' | 'shopify' | 'vendedores' | 'historico' | 'equipe'
+    'kanban' | 'visao' | 'status' | 'shopify' | 'vendedores' | 'financeiro' | 'historico' | 'equipe'
   >(() => {
     const hash = window.location.hash.replace(/^#/, '')
     if (
@@ -352,6 +353,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
       hash === 'visao' ||
       hash === 'kanban' ||
       hash === 'vendedores' ||
+      hash === 'financeiro' ||
       hash === 'historico' ||
       hash === 'equipe'
     ) {
@@ -374,7 +376,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
 
   useEffect(() => {
     if (!ready || !session) return
-    if (view === 'vendedores' || view === 'kanban' || view === 'visao') {
+    if (view === 'vendedores' || view === 'kanban' || view === 'visao' || view === 'financeiro') {
       void refreshBoardFromServer()
     }
   }, [view, ready, session, refreshBoardFromServer])
@@ -395,7 +397,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         hidden ||
         view === 'kanban' ||
         view === 'visao' ||
-        view === 'vendedores'
+        view === 'vendedores' ||
+        view === 'financeiro'
       ) {
         void refreshBoardFromServer(document.visibilityState === 'visible' ? false : true)
       }
@@ -587,6 +590,17 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
               <button
                 type="button"
                 role="tab"
+                id="tab-financeiro"
+                aria-selected={view === 'financeiro'}
+                aria-controls="panel-financeiro"
+                className={`nav-tab ${view === 'financeiro' ? 'active' : ''}`}
+                onClick={() => setView('financeiro')}
+              >
+                Financeiro
+              </button>
+              <button
+                type="button"
+                role="tab"
                 id="tab-status"
                 aria-selected={view === 'status'}
                 aria-controls="panel-status"
@@ -658,6 +672,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
                     ? 'Ligação com a loja Shopify'
                     : view === 'vendedores'
                     ? 'Desempenho por vendedor'
+                    : view === 'financeiro'
+                      ? 'Peças usadas no período'
                     : view === 'historico'
                       ? 'Histórico de ações no app'
                       : view === 'equipe'
@@ -834,6 +850,10 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
             board={isAdmin(session) ? boardPainelAdmin : boardForSession}
             managedVendedores={isAdmin(session) ? vendedoresCadastrados : undefined}
           />
+        </div>
+      ) : view === 'financeiro' ? (
+        <div id="panel-financeiro" className="app-panel" role="tabpanel" aria-labelledby="tab-financeiro">
+          <FinanceiroPanel board={isAdmin(session) ? boardPainelAdmin : boardForSession} />
         </div>
       ) : view === 'historico' ? (
         <div id="panel-historico" className="app-panel" role="tabpanel" aria-labelledby="tab-historico">

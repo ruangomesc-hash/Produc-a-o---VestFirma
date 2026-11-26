@@ -214,14 +214,21 @@ function somarLinha(grupo, card, linha) {
 function listarProdutos(grupo) {
   return [...grupo.entries()]
     .map(([, produto]) => {
-      let nome = 'Sem produto informado'
-      let maior = -1
+      let popular = ''
+      let vezesPopular = -1
+      let comMaiuscula = ''
+      let vezesMaiuscula = -1
       for (const [rotulo, vezes] of produto.nomes) {
-        if (vezes > maior) {
-          nome = rotulo
-          maior = vezes
+        if (vezes > vezesPopular) {
+          popular = rotulo
+          vezesPopular = vezes
+        }
+        if (/\p{Lu}/u.test(rotulo) && vezes > vezesMaiuscula) {
+          comMaiuscula = rotulo
+          vezesMaiuscula = vezes
         }
       }
+      const nome = comMaiuscula || popular || 'Sem produto informado'
       const tamanhos = [...produto.tamanhos.entries()]
         .map(([tamanho, quantidade]) => ({ tamanho, quantidade }))
         .sort((a, b) => ordemTamanho(a.tamanho) - ordemTamanho(b.tamanho) || a.tamanho.localeCompare(b.tamanho, 'pt-BR'))
