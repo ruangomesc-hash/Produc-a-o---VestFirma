@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { baixarZip, nomesArquivoUnicos, pdfDaFolha } from '../baixarFichasPdf'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, nomeArquivoPdfPedidos, resumoPecasPdf } from '../logosProducao'
+import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, nomeArquivoZipPedidos, resumoPecasPdf } from '../logosProducao'
 import { linhasResumoDoPedido, quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
 
@@ -266,7 +266,7 @@ export function LogosProducaoPdf({
       const nomes = nomesArquivoUnicos(prontos.map((item) => item.nome))
       setStatus('Baixando o arquivo com os PDFs…')
       await baixarZip(
-        `${nomeArquivoPdfPedidos(cards.map((card) => card.numeroPedido))}.zip`,
+        nomeArquivoZipPedidos(cards.map((card) => card.numeroPedido)),
         prontos.map((item, index) => ({ nome: nomes[index], blob: item.blob })),
       )
       if (!cancelado) fechar.current()

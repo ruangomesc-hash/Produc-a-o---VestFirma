@@ -16,11 +16,29 @@ export function nomeArquivoPdfPedido(numero) {
   return `pedido #${limpo || 's/n'} - vestfirma`
 }
 
-/** Vários pedidos saem num arquivo só: pedidos - vestfirma. */
+/** Vários pedidos saem no ZIP pedidos - vestfirma. Cada PDF de dentro continua com o número do pedido. */
 export function nomeArquivoPdfPedidos(numeros) {
   const limpos = (numeros || []).map((numero) => String(numero || '').trim().replace(/^#/, '')).filter(Boolean)
   if (limpos.length <= 1) return nomeArquivoPdfPedido(limpos[0])
   return 'pedidos - vestfirma'
+}
+
+/** O ZIP guarda o nome de sempre e a data e hora do download, no fuso de São Paulo. */
+export function nomeArquivoZipPedidos(numeros, agora = new Date()) {
+  const partes = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(agora)
+  const pegar = (tipo) => (partes.find((parte) => parte.type === tipo)?.value ?? '').replace(/\D/g, '')
+  const data = `${pegar('day')}-${pegar('month')}-${pegar('year')}`
+  const hora = `${pegar('hour')}h${pegar('minute')}m${pegar('second')}s`
+  return `${nomeArquivoPdfPedidos(numeros)} ${data} ${hora}.zip`
 }
 
 /** Peça, tamanho e quantidade de cada linha. O detalhe que não é só o tamanho continua visível. */

@@ -36,6 +36,25 @@ export function nomeArquivoPdfPedidos(numeros: Array<string | undefined>) {
   return 'pedidos - vestfirma'
 }
 
+/** O ZIP guarda o nome de sempre e a data e hora do download, no fuso de São Paulo. */
+export function nomeArquivoZipPedidos(numeros: Array<string | undefined>, agora = new Date()) {
+  const partes = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(agora)
+  const pegar = (tipo: Intl.DateTimeFormatPartTypes) =>
+    (partes.find((parte) => parte.type === tipo)?.value ?? '').replace(/\D/g, '')
+  const data = `${pegar('day')}-${pegar('month')}-${pegar('year')}`
+  const hora = `${pegar('hour')}h${pegar('minute')}m${pegar('second')}s`
+  return `${nomeArquivoPdfPedidos(numeros)} ${data} ${hora}.zip`
+}
+
 /** Peça, tamanho e quantidade de cada linha. O detalhe que não é só o tamanho continua visível. */
 export function resumoPecasPdf(
   linhas: Array<{ titulo?: string; quantidade?: number; detalhe?: string }> | undefined,

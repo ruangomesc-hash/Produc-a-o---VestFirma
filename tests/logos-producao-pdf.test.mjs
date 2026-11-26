@@ -5,6 +5,7 @@ import {
   dataPedidoImpressao,
   nomeArquivoPdfPedido,
   nomeArquivoPdfPedidos,
+  nomeArquivoZipPedidos,
   resumoPecasPdf,
 } from '../shared/logosProducao.mjs'
 
@@ -33,6 +34,10 @@ test('o PDF do pedido usa o nome pedido #número - vestfirma, sem data', () => {
   assert.equal(dataPedidoImpressao(''), '')
   assert.equal(nomeArquivoPdfPedidos(['1205', '1206']), 'pedidos - vestfirma')
   assert.equal(nomeArquivoPdfPedidos(['#1205']), 'pedido #1205 - vestfirma')
+  assert.equal(
+    nomeArquivoZipPedidos(['1205', '1206'], new Date('2026-11-26T21:54:09Z')),
+    'pedidos - vestfirma 26-11-2026 18h54m09s.zip',
+  )
 })
 
 test('o resumo da aplicação lista peça, tamanho e quantidade', () => {
