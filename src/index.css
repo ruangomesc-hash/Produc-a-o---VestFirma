@@ -557,6 +557,158 @@ body.vestfirma-tv .pwa-install-banner {
   font-weight: 700;
 }
 
+.financeiro-timeline {
+  margin-bottom: 1.15rem;
+}
+
+.financeiro-timeline h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+}
+
+.financeiro-timeline-nota {
+  margin: 0.35rem 0 0;
+  color: #3a2e10;
+  font-size: 0.82rem;
+}
+
+.financeiro-dias {
+  display: flex;
+  gap: 0.28rem;
+  overflow-x: auto;
+  align-items: flex-end;
+  padding: 0.15rem 0 0.35rem;
+}
+
+.financeiro-dia {
+  flex: 0 0 2.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08rem;
+  border: 0;
+  background: transparent;
+  color: #1a1404;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.15rem 0 0.2rem;
+  border-radius: 8px;
+}
+
+.financeiro-dia.is-on {
+  background: rgba(26, 20, 4, 0.12);
+}
+
+.financeiro-dia-trilho {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 4.6rem;
+  width: 100%;
+}
+
+.financeiro-dia-barra {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 0.85rem;
+  border-radius: 6px 6px 2px 2px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.financeiro-dia-barra.is-vazio {
+  background: rgba(26, 20, 4, 0.28);
+}
+
+.financeiro-dia-barra i {
+  display: block;
+  width: 100%;
+}
+
+.financeiro-dia-barra i.usados {
+  background: #1a1404;
+}
+
+.financeiro-dia-barra i.fora {
+  background: #9a3412;
+}
+
+.financeiro-dia-mes {
+  min-height: 0.85rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.financeiro-dia-num {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.financeiro-dia.is-on .financeiro-dia-num {
+  background: #1a1404;
+  color: #f5c400;
+  border-radius: 999px;
+  min-width: 1.45rem;
+  padding: 0.12rem 0.2rem;
+}
+
+.financeiro-dia-sem {
+  font-size: 0.62rem;
+  color: #3a2e10;
+}
+
+.financeiro-dia-detalhe {
+  margin-top: 0.55rem;
+}
+
+.financeiro-dia-detalhe > p {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+}
+
+.financeiro-dia-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.financeiro-dia-lista li {
+  display: flex;
+  flex-direction: column;
+  min-width: 7.5rem;
+  padding: 0.4rem 0.55rem 0.45rem;
+  border-radius: 10px;
+  background: #1a222d;
+  color: #eef2f7;
+}
+
+.financeiro-dia-lista li.is-fora {
+  background: transparent;
+  color: #1a1404;
+  border: 1px dashed #9a3412;
+}
+
+.financeiro-dia-lista strong {
+  font-size: 0.95rem;
+}
+
+.financeiro-dia-lista span,
+.financeiro-dia-lista em {
+  font-size: 0.75rem;
+  font-style: normal;
+  color: #94a3b8;
+}
+
+.financeiro-dia-lista li.is-fora span,
+.financeiro-dia-lista li.is-fora em {
+  color: #7c2d12;
+}
+
 .financeiro-lista {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

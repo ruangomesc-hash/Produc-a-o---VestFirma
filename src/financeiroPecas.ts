@@ -19,6 +19,26 @@ export type ResumoFinanceiro = {
   pedidosFora: number
 }
 
+export type PedidoDiaFinanceiro = {
+  id: string
+  numero: string
+  pecas: number
+  produtos: string[]
+  fora: boolean
+}
+
+export type DiaFinanceiro = {
+  data: string
+  pecas: number
+  pecasFora: number
+  pedidos: PedidoDiaFinanceiro[]
+}
+
+export type TimelineFinanceira = {
+  dias: DiaFinanceiro[]
+  periodoCortado: boolean
+}
+
 const ORDEM_TAMANHO = [
   'PP',
   'P',
@@ -304,4 +324,77 @@ export function resumirPecasFinanceiro(cards: OrderCard[], inicio: string, fim: 
     pedidosUsados: pedidosUsados.size,
     pedidosFora: pedidosFora.size,
   }
+}
+
+function avancarData(iso: string, dias: number) {
+  const [ano, mes, dia] = iso.split('-').map(Number)
+  return new Date(Date.UTC(ano, mes - 1, dia + dias)).toISOString().slice(0, 10)
+}
+
+function numeroDoPedido(card: OrderCard) {
+  const bruto = String(card.numeroPedido || card.shopifyOrderName || '').replace(/^#/, '').trim()
+  return bruto || 's/n'
+}
+
+function pecasEProdutos(card: OrderCard) {
+  const linhas = linhasDoCard(card)
+  if (!linhas.length) {
+    return { pecas: Math.max(0, Math.floor(Number(card.quantidade) || 0)), produtos: [] as string[] }
+  }
+  const produtos: string[] = []
+  let pecas = 0
+  for (const linha of linhas) {
+    pecas += linha.quantidade
+    const separado = separarProdutoTamanho(linha.titulo, linha.detalhe)
+    const nome = familiaDoNome(separado.nome) || separado.nome
+    if (nome && !produtos.includes(nome)) produtos.push(nome)
+  }
+  return { pecas, produtos }
+}
+
+function ordemNumero(numero: string) {
+  const valor = Number(numero.replace(/\D/g, ''))
+  return Number.isFinite(valor) && valor > 0 ? valor : Number.MAX_SAFE_INTEGER
+}
+
+/** Um dia para cada data do período. O pedido entra no dia de dataPedido. Teste fica de fora. */
+export function timelinePedidosFinanceiro(cards: OrderCard[], inicio: string, fim: string): TimelineFinanceira {
+  const deInformado = inicio || ''
+  const ate = fim || ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(deInformado) || !/^\d{4}-\d{2}-\d{2}$/.test(ate) || deInformado > ate) {
+    return { dias: [], periodoCortado: false }
+  }
+  const limite = avancarData(ate, -399)
+  const de = deInformado < limite ? limite : deInformado
+  const porDia = new Map<string, DiaFinanceiro>()
+  let cursor = de
+  while (cursor <= ate && porDia.size < 400) {
+    porDia.set(cursor, { data: cursor, pecas: 0, pecasFora: 0, pedidos: [] })
+    cursor = avancarData(cursor, 1)
+  }
+
+  for (const card of cards) {
+    const classe = classePedido(card)
+    if (classe === 'ignorar') continue
+    const data = dataReferenciaPedido(card)
+    const dia = porDia.get(data)
+    if (!dia) continue
+    const { pecas, produtos } = pecasEProdutos(card)
+    const fora = classe === 'fora'
+    if (fora) dia.pecasFora += pecas
+    else dia.pecas += pecas
+    dia.pedidos.push({
+      id: card.id || `${data}-${numeroDoPedido(card)}`,
+      numero: numeroDoPedido(card),
+      pecas,
+      produtos,
+      fora,
+    })
+  }
+
+  for (const dia of porDia.values()) {
+    dia.pedidos.sort((a, b) => ordemNumero(a.numero) - ordemNumero(b.numero) || a.numero.localeCompare(b.numero, 'pt-BR'))
+  }
+
+  return { dias: [...porDia.values()], periodoCortado: deInformado < de }
 }

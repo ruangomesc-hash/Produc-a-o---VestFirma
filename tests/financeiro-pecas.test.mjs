@@ -5,6 +5,7 @@ import {
   periodoMesPassado,
   resumirPecasFinanceiro,
   separarProdutoTamanho,
+  timelinePedidosFinanceiro,
 } from '../shared/financeiroPecas.mjs'
 
 function card(extra) {
@@ -101,4 +102,62 @@ test('o período limita o mês e cancelado fica fora da conta', () => {
   assert.equal(resumo.pedidosUsados, 1)
   assert.equal(resumo.usados[0].tamanhos[0].tamanho, 'M')
   assert.equal(resumo.fora[0].tamanhos[0].tamanho, 'P')
+})
+
+test('a timeline segue o período e junta os pedidos do dia', () => {
+  const linha = timelinePedidosFinanceiro(
+    [
+      card({
+        id: 'a',
+        numeroPedido: '1205',
+        dataPedido: '2026-11-02',
+        linhasPedido: [{ titulo: 'Corta-vento Time', quantidade: 4, detalhe: 'G' }],
+      }),
+      card({
+        id: 'b',
+        numeroPedido: '#1206',
+        dataPedido: '2026-11-02',
+        linhasPedido: [{ titulo: 'Link corta venda', quantidade: 2, detalhe: 'M' }],
+      }),
+      card({
+        id: 'c',
+        numeroPedido: '99',
+        dataPedido: '2026-10-20',
+        linhasPedido: [{ titulo: 'Camiseta', quantidade: 9, detalhe: 'G' }],
+      }),
+      card({
+        id: 'd',
+        numeroPedido: '7',
+        dataPedido: '2026-11-02',
+        columnId: 'cancelados-expirados',
+        linhasPedido: [{ titulo: 'Camiseta', quantidade: 1, detalhe: 'P' }],
+      }),
+      card({
+        id: 'e',
+        numeroPedido: '8',
+        dataPedido: '2026-11-02',
+        pedidoTeste: true,
+        linhasPedido: [{ titulo: 'Camiseta', quantidade: 50, detalhe: 'G' }],
+      }),
+    ],
+    '2026-11-01',
+    '2026-11-03',
+  )
+  assert.equal(linha.periodoCortado, false)
+  assert.deepEqual(
+    linha.dias.map((dia) => dia.data),
+    ['2026-11-01', '2026-11-02', '2026-11-03'],
+  )
+  assert.equal(linha.dias[0].pedidos.length, 0)
+  assert.equal(linha.dias[1].pecas, 6)
+  assert.equal(linha.dias[1].pecasFora, 1)
+  assert.deepEqual(
+    linha.dias[1].pedidos.map((pedido) => [pedido.numero, pedido.pecas, pedido.fora, pedido.produtos.join('|')]),
+    [
+      ['7', 1, true, 'Camiseta'],
+      ['1205', 4, false, 'Corta-vento'],
+      ['1206', 2, false, 'Corta-vento'],
+    ],
+  )
+  assert.equal(linha.dias[2].pedidos.length, 0)
 })
