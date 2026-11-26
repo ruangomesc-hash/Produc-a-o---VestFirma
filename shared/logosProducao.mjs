@@ -1,3 +1,5 @@
+import { separarProdutoTamanho } from './financeiroPecas.mjs'
+
 /** Frente é logo pequena. Costas é logo grande. Frente e costas soma uma de cada. O resultado multiplica pela quantidade de peças. */
 export function contarLogosDoPedido(local, pecas) {
   const quantidade = Math.max(0, Math.floor(Number(pecas) || 0))
@@ -19,6 +21,27 @@ export function nomeArquivoPdfPedidos(numeros) {
   const limpos = (numeros || []).map((numero) => String(numero || '').trim().replace(/^#/, '')).filter(Boolean)
   if (limpos.length <= 1) return nomeArquivoPdfPedido(limpos[0])
   return 'pedidos - vestfirma'
+}
+
+/** Peça, tamanho e quantidade de cada linha. O detalhe que não é só o tamanho continua visível. */
+export function resumoPecasPdf(linhas) {
+  const saida = []
+  for (const linha of linhas || []) {
+    const titulo = String(linha?.titulo || '').trim()
+    const quantidade = Math.max(0, Math.floor(Number(linha?.quantidade) || 0))
+    if (!titulo || quantidade <= 0) continue
+    const separado = separarProdutoTamanho(titulo, linha?.detalhe)
+    const detalhe = String(linha?.detalhe || '').trim()
+    const extra =
+      detalhe && detalhe.localeCompare(separado.tamanho, 'pt-BR', { sensitivity: 'accent' }) !== 0 ? detalhe : ''
+    saida.push({
+      quantidade,
+      peca: separado.nome || titulo,
+      tamanho: separado.tamanho,
+      extra,
+    })
+  }
+  return saida
 }
 
 /** Data do pedido na ficha, no formato dd/mm/aaaa. */

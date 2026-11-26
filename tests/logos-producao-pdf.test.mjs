@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedido, nomeArquivoPdfPedidos } from '../shared/logosProducao.mjs'
+import {
+  contarLogosDoPedido,
+  dataPedidoImpressao,
+  nomeArquivoPdfPedido,
+  nomeArquivoPdfPedidos,
+  resumoPecasPdf,
+} from '../shared/logosProducao.mjs'
 
 test('frente conta só logo pequena, vezes as peças', () => {
   assert.deepEqual(contarLogosDoPedido('frente', 8), { pequenas: 8, grandes: 0 })
@@ -27,4 +33,19 @@ test('o PDF do pedido usa o nome pedido #número - vestfirma, sem data', () => {
   assert.equal(dataPedidoImpressao(''), '')
   assert.equal(nomeArquivoPdfPedidos(['1205', '1206']), 'pedidos - vestfirma')
   assert.equal(nomeArquivoPdfPedidos(['#1205']), 'pedido #1205 - vestfirma')
+})
+
+test('o resumo da aplicação lista peça, tamanho e quantidade', () => {
+  assert.deepEqual(
+    resumoPecasPdf([
+      { titulo: 'Corta-vento Personalizado Time Azul', quantidade: 12, detalhe: 'G' },
+      { titulo: 'Camiseta Personalizada Escola Municipal G', quantidade: 3 },
+      { titulo: 'Camisa Polo Time', quantidade: 2, detalhe: 'Estampa frente / M' },
+    ]),
+    [
+      { quantidade: 12, peca: 'Corta-vento Personalizado Time Azul', tamanho: 'G', extra: '' },
+      { quantidade: 3, peca: 'Camiseta Personalizada Escola Municipal', tamanho: 'G', extra: '' },
+      { quantidade: 2, peca: 'Camisa Polo Time', tamanho: 'M', extra: 'Estampa frente / M' },
+    ],
+  )
 })

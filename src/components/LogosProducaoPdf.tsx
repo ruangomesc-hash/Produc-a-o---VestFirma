@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedidos } from '../logosProducao'
-import { quantidadeExibidaComResumo } from '../pedidoResumo'
+import { contarLogosDoPedido, dataPedidoImpressao, nomeArquivoPdfPedidos, resumoPecasPdf } from '../logosProducao'
+import { linhasResumoDoPedido, quantidadeExibidaComResumo } from '../pedidoResumo'
 import type { OrderCard } from '../types'
 
 function urlAbsoluta(src: string, download = false) {
@@ -26,9 +26,10 @@ function QuadroImagem({ src, alt, vazio }: { src: string; alt: string; vazio: Re
   )
 }
 
-function FichaPedido({ card }: { card: OrderCard }) {
+function FichaPedido({ card, comResumo = false }: { card: OrderCard; comResumo?: boolean }) {
   const pecas = quantidadeExibidaComResumo(card)
   const contagem = contarLogosDoPedido(card.localLogo, pecas)
+  const pecasResumo = comResumo ? resumoPecasPdf(linhasResumoDoPedido(card)) : []
   const previews = (card.previewAprovacaoCliente ?? []).map((src) => src.trim()).filter(Boolean)
   const artes = (card.logoProntaImpressao ?? []).map((src) => src.trim()).filter(Boolean)
   const observacao = card.observacao?.trim() ?? ''
@@ -59,6 +60,35 @@ function FichaPedido({ card }: { card: OrderCard }) {
             <span className="logos-pdf-valor">{data || '—'}</span>
           </div>
         </div>
+        {comResumo ? (
+          <table className="logos-pdf-pecas-tabela">
+            <thead>
+              <tr>
+                <th>Peça</th>
+                <th>Tamanho</th>
+                <th>Qtd</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pecasResumo.length === 0 ? (
+                <tr>
+                  <td colSpan={3}>Sem peças informadas.</td>
+                </tr>
+              ) : (
+                pecasResumo.map((linha, index) => (
+                  <tr key={`${linha.peca}-${linha.tamanho}-${index}`}>
+                    <td>
+                      {linha.peca}
+                      {linha.extra ? <small className="logos-pdf-pecas-extra">{linha.extra}</small> : null}
+                    </td>
+                    <td>{linha.tamanho}</td>
+                    <td>{linha.quantidade}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        ) : null}
         <div className="logos-pdf-quantidades">
           <div className="logos-pdf-quantidade">
             <h2>LOGOS PEQUENAS</h2>
@@ -129,7 +159,15 @@ function FichaPedido({ card }: { card: OrderCard }) {
   )
 }
 
-export function LogosProducaoPdf({ cards, onClose }: { cards: OrderCard[]; onClose: () => void }) {
+export function LogosProducaoPdf({
+  cards,
+  comResumo = false,
+  onClose,
+}: {
+  cards: OrderCard[]
+  comResumo?: boolean
+  onClose: () => void
+}) {
   const chave = cards.map((card) => card.id).join(',')
   const fechar = useRef(onClose)
   fechar.current = onClose
@@ -174,7 +212,7 @@ export function LogosProducaoPdf({ cards, onClose }: { cards: OrderCard[]; onClo
   return createPortal(
     <div className="separacao-print logos-pdf-print" id="logos-pdf-print" aria-hidden="true">
       {cards.map((card) => (
-        <FichaPedido key={card.id} card={card} />
+        <FichaPedido key={card.id} card={card} comResumo={comResumo} />
       ))}
     </div>,
     document.body,

@@ -41,6 +41,8 @@ import { SystemStatusPanel } from './components/SystemStatusPanel'
 import { ShopifySetupPanel } from './components/ShopifySetupPanel'
 import { VendedoresOverviewPanel } from './components/VendedoresOverviewPanel'
 import { FinanceiroPanel } from './components/FinanceiroPanel'
+import { COLUNA_NOVO_PEDIDO_ID } from './defaultBoard'
+import { COLUNA_DISPONIVEIS_APLICACAO_ID } from './controleQualidade'
 import { VendedorPedidoPortalPage } from './components/VendedorPedidoPortalPage'
 import { PortalFestaPreviewPage } from './components/PortalFestaPreviewPage'
 import { PortalPedidoQuickLink } from './components/PortalPedidoQuickLink'
@@ -212,7 +214,8 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
   const [whatsappRedirectOpen, setWhatsappRedirectOpen] = useState(false)
   const [separacaoOpen, setSeparacaoOpen] = useState(false)
   const [pdfLogoPedidos, setPdfLogoPedidos] = useState<OrderCard[] | null>(null)
-  const [pdfLoteAberto, setPdfLoteAberto] = useState(false)
+  const [pdfComResumo, setPdfComResumo] = useState(false)
+  const [pdfLoteColuna, setPdfLoteColuna] = useState<string | null>(null)
   const [createSaveError, setCreateSaveError] = useState<string | null>(null)
   const [archiveConfirm, setArchiveConfirm] = useState<OrderCard | null>(null)
   const [pedidoSearchHighlightId, setPedidoSearchHighlightId] = useState<string | null>(null)
@@ -812,7 +815,7 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         <KanbanBoard
           board={boardKanban}
           highlightPedidoId={pedidoSearchHighlightId}
-          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen && !separacaoOpen && !pdfLoteAberto}
+          dragEnabled={!modalOpen && !usuariosOpen && !whatsappNotifyOpen && !whatsappRedirectOpen && !separacaoOpen && !pdfLoteColuna}
           onMoveCard={moveCard}
           onAddCard={openCreate}
           onEditCard={openEdit}
@@ -823,9 +826,15 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
           onMarcarControle={marcarControleQualidade}
           onAprovarControle={(cardId) => moveCard(cardId, 'disponiveis-aplicacao')}
           onAbrirSeparacao={() => setSeparacaoOpen(true)}
-          onAbrirPdfLote={() => setPdfLoteAberto(true)}
+          onAbrirPdfLote={(colunaId) => setPdfLoteColuna(colunaId)}
           onGerarPdfLogo={(card) => {
             marcarPdfProducaoImpresso([card.id])
+            setPdfComResumo(false)
+            setPdfLogoPedidos([card])
+          }}
+          onGerarPdfAplicacao={(card) => {
+            marcarPdfProducaoImpresso([card.id])
+            setPdfComResumo(true)
             setPdfLogoPedidos([card])
           }}
         />
@@ -962,17 +971,19 @@ function AuthenticatedApp({ session, onLogout }: AuthenticatedProps) {
         onImpressa={marcarSeparacaoImpressa}
       />
       <LogosPdfLoteModal
-        open={pdfLoteAberto}
+        open={Boolean(pdfLoteColuna)}
+        colunaId={pdfLoteColuna || COLUNA_NOVO_PEDIDO_ID}
         board={boardKanban}
-        onClose={() => setPdfLoteAberto(false)}
+        onClose={() => setPdfLoteColuna(null)}
         onBaixar={(lista) => {
           marcarPdfProducaoImpresso(lista.map((card) => card.id))
-          setPdfLoteAberto(false)
+          setPdfComResumo(pdfLoteColuna === COLUNA_DISPONIVEIS_APLICACAO_ID)
+          setPdfLoteColuna(null)
           setPdfLogoPedidos(lista)
         }}
       />
       {pdfLogoPedidos?.length ? (
-        <LogosProducaoPdf cards={pdfLogoPedidos} onClose={() => setPdfLogoPedidos(null)} />
+        <LogosProducaoPdf cards={pdfLogoPedidos} comResumo={pdfComResumo} onClose={() => setPdfLogoPedidos(null)} />
       ) : null}
 
       <ConfirmModal

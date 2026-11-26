@@ -2832,6 +2832,50 @@ body.vestfirma-tv .pwa-install-banner {
   line-height: 1.3;
 }
 
+.logos-pdf-pecas-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 6mm;
+  font-size: 11pt;
+}
+
+.logos-pdf-pecas-tabela th {
+  text-align: left;
+  color: #666;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.4pt;
+  padding: 0 3mm 2mm 0;
+}
+
+.logos-pdf-pecas-tabela td {
+  border-top: 1px solid #e6e6e6;
+  padding: 2.4mm 3mm 2.4mm 0;
+  vertical-align: top;
+  line-height: 1.35;
+}
+
+.logos-pdf-pecas-tabela th:last-child,
+.logos-pdf-pecas-tabela td:last-child {
+  width: 18mm;
+  text-align: right;
+  font-weight: 700;
+  padding-right: 0;
+}
+
+.logos-pdf-pecas-tabela th:nth-child(2),
+.logos-pdf-pecas-tabela td:nth-child(2) {
+  width: 28mm;
+}
+
+.logos-pdf-pecas-extra {
+  display: block;
+  margin-top: 0.6mm;
+  color: #555;
+  font-size: 9pt;
+  font-weight: 500;
+}
+
 .logos-pdf-quantidades {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

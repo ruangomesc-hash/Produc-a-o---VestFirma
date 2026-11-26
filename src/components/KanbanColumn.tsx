@@ -2,7 +2,12 @@ import { useDroppable } from '@dnd-kit/core'
 import { useState } from 'react'
 import { COLUNA_NOVO_PEDIDO_ID, COLUNA_PEDIDO_FEITO_ID, COLUNA_PREVIEW_EM_ANDAMENTO_ID } from '../defaultBoard'
 import { COLUNA_CANCELADOS_EXPIRADOS_ID, COLUNA_PEDIDO_ENVIADO_ID } from '../boardColumns'
-import { COLUNA_CONTROLE_QUALIDADE_ID, textoMarcaControleQualidade, type MarcaControleQualidade } from '../controleQualidade'
+import {
+  COLUNA_CONTROLE_QUALIDADE_ID,
+  COLUNA_DISPONIVEIS_APLICACAO_ID,
+  textoMarcaControleQualidade,
+  type MarcaControleQualidade,
+} from '../controleQualidade'
 import { etapaCanceladosExpirados, etapaDevePiscar, etapaPedidoEnviado, resumirPrazosColuna } from '../etapas'
 import { useRelogioPrazo } from '../hooks/useRelogioPrazo'
 import type { BoardState, Column as ColumnType, OrderCard } from '../types'
@@ -22,8 +27,9 @@ type Props = {
   onMarcarControle?: (cardId: string, marca: MarcaControleQualidade) => void
   onAprovarControle?: (cardId: string) => void
   onAbrirSeparacao?: () => void
-  onAbrirPdfLote?: () => void
+  onAbrirPdfLote?: (colunaId: string) => void
   onGerarPdfLogo?: (card: OrderCard) => void
+  onGerarPdfAplicacao?: (card: OrderCard) => void
   highlightPedidoId?: string | null
 }
 
@@ -42,6 +48,7 @@ export function KanbanColumn({
   onAbrirSeparacao,
   onAbrirPdfLote,
   onGerarPdfLogo,
+  onGerarPdfAplicacao,
   highlightPedidoId = null,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
@@ -105,7 +112,11 @@ export function KanbanColumn({
         colunaQualidade && onAprovarControle ? () => onAprovarControle(card.id) : undefined
       }
       onGerarPdfLogo={
-        column.id === COLUNA_NOVO_PEDIDO_ID && onGerarPdfLogo ? () => onGerarPdfLogo(card) : undefined
+        column.id === COLUNA_NOVO_PEDIDO_ID && onGerarPdfLogo
+          ? () => onGerarPdfLogo(card)
+          : column.id === COLUNA_DISPONIVEIS_APLICACAO_ID && onGerarPdfAplicacao
+            ? () => onGerarPdfAplicacao(card)
+            : undefined
       }
     />
   )
@@ -178,11 +189,11 @@ export function KanbanColumn({
             Separação de produto
           </button>
         ) : null}
-        {column.id === COLUNA_NOVO_PEDIDO_ID && onAbrirPdfLote ? (
+        {(column.id === COLUNA_NOVO_PEDIDO_ID || column.id === COLUNA_DISPONIVEIS_APLICACAO_ID) && onAbrirPdfLote ? (
           <button
             type="button"
             className="logos-pdf-lote-card"
-            onClick={onAbrirPdfLote}
+            onClick={() => onAbrirPdfLote(column.id)}
             onPointerDown={(event) => event.stopPropagation()}
           >
             Baixar PDFs

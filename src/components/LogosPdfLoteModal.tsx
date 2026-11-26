@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { COLUNA_DISPONIVEIS_APLICACAO_ID } from '../controleQualidade'
 import { COLUNA_NOVO_PEDIDO_ID } from '../defaultBoard'
 import { ordenarCardsPorNumeroPedido } from '../ordenarCardsKanban'
 import { pedidoVisivelNoKanban } from '../pedidosPolicy'
@@ -8,22 +9,23 @@ import { PdfProducaoMarca } from './PdfProducaoMarca'
 
 type Props = {
   open: boolean
+  colunaId: string
   board: BoardState
   onClose: () => void
   onBaixar: (cards: OrderCard[]) => void
 }
 
-export function LogosPdfLoteModal({ open, board, onClose, onBaixar }: Props) {
+export function LogosPdfLoteModal({ open, colunaId, board, onClose, onBaixar }: Props) {
   const [escolhidos, setEscolhidos] = useState<string[]>([])
+  const aplicacao = colunaId === COLUNA_DISPONIVEIS_APLICACAO_ID
+  const etapa = colunaId || COLUNA_NOVO_PEDIDO_ID
 
   const pedidos = useMemo(
     () =>
       ordenarCardsPorNumeroPedido(
-        board.cards.filter(
-          (card) => card.columnId === COLUNA_NOVO_PEDIDO_ID && pedidoVisivelNoKanban(card),
-        ),
+        board.cards.filter((card) => card.columnId === etapa && pedidoVisivelNoKanban(card)),
       ),
-    [board.cards],
+    [board.cards, etapa],
   )
 
   useEffect(() => {
@@ -55,7 +57,9 @@ export function LogosPdfLoteModal({ open, board, onClose, onBaixar }: Props) {
         <header className="separacao-modal-topo">
           <h2 id="pdf-lote-titulo">Baixar PDFs</h2>
           <p>
-            Logos liberadas para produção. Marque os pedidos ou baixe todos. Na impressão, salve como PDF. O card ganha a marca de enviado para produção.
+            {aplicacao
+              ? 'Disponíveis para aplicação. Marque os pedidos ou baixe todos. Na impressão, salve como PDF. A ficha traz peça, tamanho, quantidade e a observação.'
+              : 'Logos liberadas para produção. Marque os pedidos ou baixe todos. Na impressão, salve como PDF. O card ganha a marca de enviado para produção.'}
           </p>
         </header>
         <div className="separacao-modal-corpo">

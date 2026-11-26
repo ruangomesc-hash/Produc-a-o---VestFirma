@@ -1,4 +1,12 @@
+import { separarProdutoTamanho } from './financeiroPecas'
 import type { LogoLocal } from './logoLocal'
+
+export type PecaResumoPdf = {
+  quantidade: number
+  peca: string
+  tamanho: string
+  extra: string
+}
 
 export type ContagemLogos = { pequenas: number; grandes: number }
 
@@ -26,6 +34,29 @@ export function nomeArquivoPdfPedidos(numeros: Array<string | undefined>) {
   const limpos = numeros.map((numero) => String(numero || '').trim().replace(/^#/, '')).filter(Boolean)
   if (limpos.length <= 1) return nomeArquivoPdfPedido(limpos[0])
   return 'pedidos - vestfirma'
+}
+
+/** Peça, tamanho e quantidade de cada linha. O detalhe que não é só o tamanho continua visível. */
+export function resumoPecasPdf(
+  linhas: Array<{ titulo?: string; quantidade?: number; detalhe?: string }> | undefined,
+): PecaResumoPdf[] {
+  const saida: PecaResumoPdf[] = []
+  for (const linha of linhas ?? []) {
+    const titulo = String(linha?.titulo || '').trim()
+    const quantidade = Math.max(0, Math.floor(Number(linha?.quantidade) || 0))
+    if (!titulo || quantidade <= 0) continue
+    const separado = separarProdutoTamanho(titulo, linha?.detalhe)
+    const detalhe = String(linha?.detalhe || '').trim()
+    const extra =
+      detalhe && detalhe.localeCompare(separado.tamanho, 'pt-BR', { sensitivity: 'accent' }) !== 0 ? detalhe : ''
+    saida.push({
+      quantidade,
+      peca: separado.nome || titulo,
+      tamanho: separado.tamanho,
+      extra,
+    })
+  }
+  return saida
 }
 
 /** Data do pedido na ficha, no formato dd/mm/aaaa. */
